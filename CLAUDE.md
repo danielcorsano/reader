@@ -43,3 +43,35 @@ This is a Python project called "reader" managed with Poetry for dependency mana
 - Use `poetry add` instead of pip install
 - Prefer virtual environment managed by Poetry over manual venv creation
 - Specify version constraints when adding dependencies for stability
+
+## Project Plan: 3-Phase Audiobook CLI Development
+
+### Phase 1: Basic CLI Foundation (~50MB)
+**Goal**: Working audiobook generator with pyttsx3
+- Basic CLI with pyttsx3 TTS engine
+- EPUB/PDF/TXT text parsing
+- Modular architecture for easy component swapping
+- Configuration management
+- Dependencies: pyttsx3, ebooklib, PyPDF2, pydub, click, pyyaml
+
+### Phase 2: Enhanced TTS + Smart Acting (~300MB)
+**Goal**: High-quality voices + emotion-aware narration
+- Kokoro TTS engine (48 voices, 8 languages)
+- Voice blending and character mapping
+- VADER emotion detection → SSML prosody
+- Smart acting rules (punctuation, context keywords)
+- Additional dependencies: kokoro-onnx, onnxruntime, vaderSentiment
+
+### Phase 3: Advanced Features + Polish (~350MB)
+**Goal**: Professional audiobook production
+- Dialogue detection and context analysis
+- Chapter metadata and M4B export
+- Multiple audio formats (MP3, M4A, M4B)
+- Voice preview and batch processing
+- Additional dependencies: spacy, regex
+
+### Architecture Principles
+- **Swappable Components**: Abstract base classes for TTS engines, parsers, processors
+- **Modular Design**: Easy to upgrade engines without breaking existing code
+- **Token-Efficient Development**: ~5K tokens per phase across focused conversations
+- **Progressive Enhancement**: Each phase delivers complete, usable software

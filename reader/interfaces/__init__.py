@@ -1,0 +1,1 @@
+"""Abstract interfaces for swappable components."""

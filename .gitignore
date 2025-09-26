@@ -19,6 +19,7 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
+MANIFEST
 
 # Virtual environments
 .env
@@ -29,24 +30,81 @@ ENV/
 env.bak/
 venv.bak/
 
-# Poetry
-poetry.lock
+# Poetry virtual environment
+.venv/
 
-# IDE
+# Environment variables
+.env.local
+.env.development
+.env.test
+.env.production
+
+# IDE and Editor
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
+.spyderproject
+.spyproject
 
 # OS
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
 Thumbs.db
 
 # Testing
 .pytest_cache/
 .coverage
 htmlcov/
+.tox/
+.nox/
+coverage.xml
+*.cover
+.hypothesis/
+
+# Type checking
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pyre/
 
 # Documentation
 docs/_build/
+site/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Application-specific: Text and Audio files
+text/*
+!text/.gitkeep
+!text/sample.txt
+audio/*
+!audio/.gitkeep
+
+# Application-specific: Generated files
+config/settings.yaml
+config/available_voices.yaml
+
+# Application-specific: Temporary files
+temp/
+tmp/
+*.tmp
+*.temp
+
+# Application-specific: Downloaded models (for future phases)
+models/
+voices/generated/
+voices/models/
+
+# Logs
+*.log
+logs/
+
+# Cache directories
+.cache/

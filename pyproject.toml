@@ -5,13 +5,22 @@ build-backend = "poetry.core.masonry.api"
 [tool.poetry]
 name = "reader"
 version = "0.1.0"
-description = "A reader application"
+description = "A lightweight text-to-audiobook CLI application"
 authors = ["corsano"]
 readme = "README.md"
 packages = [{include = "reader"}]
 
+[tool.poetry.scripts]
+reader = "reader.cli:cli"
+
 [tool.poetry.dependencies]
 python = "^3.9"
+pyttsx3 = "^2.90"
+ebooklib = "^0.18"
+PyPDF2 = "^3.0.1"
+click = "^8.1.7"
+pyyaml = "^6.0.1"
+beautifulsoup4 = "^4.12.2"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.0"
