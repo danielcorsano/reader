@@ -8,17 +8,19 @@ from dataclasses import dataclass, asdict
 @dataclass
 class TTSConfig:
     """TTS engine configuration."""
-    engine: str = "pyttsx3"
+    engine: str = "pyttsx3"  # "pyttsx3" or "kokoro"
     voice: Optional[str] = None
     speed: float = 1.0
     volume: float = 1.0
+    # Phase 2 options
+    fallback_engine: str = "pyttsx3"  # Fallback if primary engine fails
 
 
 @dataclass
 class AudioConfig:
     """Audio output configuration."""
-    format: str = "wav"  # Phase 1 only supports WAV
-    add_metadata: bool = False  # Phase 1 doesn't support metadata
+    format: str = "wav"  # Phase 1-2 support WAV, Phase 3+ adds MP3/M4B
+    add_metadata: bool = False  # Phase 3+ feature
 
 
 @dataclass
@@ -27,6 +29,11 @@ class ProcessingConfig:
     chunk_size: int = 1000
     pause_between_chapters: float = 1.0
     auto_detect_chapters: bool = True
+    # Phase 2 options
+    emotion_analysis: bool = True
+    smart_acting: bool = True
+    character_voices: bool = True
+    voice_blending: bool = False  # Advanced feature
 
 
 @dataclass

@@ -225,9 +225,55 @@ text_dir: text
 audio_dir: audio
 ```
 
+## Phase 2: Advanced Features
+
+Phase 2 adds neural TTS, emotion detection, and character voice mapping.
+
+### Neural TTS with Kokoro
+```bash
+# Use Kokoro neural TTS (48+ voices, 8 languages)
+poetry run reader convert --engine kokoro
+
+# Combine with emotion analysis
+poetry run reader convert --engine kokoro --emotion
+```
+
+### Emotion-Aware Conversion
+```bash
+# Enable emotion detection and smart acting
+poetry run reader convert --emotion
+
+# Full Phase 2 features
+poetry run reader convert --engine kokoro --emotion --characters
+```
+
+### Character Voice Management
+```bash
+# Add character-to-voice mapping
+poetry run reader characters add "Alice" "af_sarah"
+poetry run reader characters add "Bob" "am_adam"
+
+# List character mappings
+poetry run reader characters list
+
+# Remove character mapping
+poetry run reader characters remove "Alice"
+```
+
+### Voice Blending
+```bash
+# Create custom voice blend (weights as percentages)
+poetry run reader blend create "MyBlend" "af_sarah:60,af_sky:40"
+
+# List voice blends
+poetry run reader blend list
+
+# Remove voice blend
+poetry run reader blend remove "MyBlend"
+```
+
 ## Next Steps
 
-- **Phase 2**: Neural TTS with 48 voices, emotion detection
-- **Phase 3**: Character voices, dialogue detection, professional formats
+- **Phase 3**: Professional audiobook formats (MP3, M4B), batch processing, advanced dialogue detection
 
 For advanced features and development, see the main README.md.

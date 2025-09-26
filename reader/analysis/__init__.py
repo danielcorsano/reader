@@ -1,0 +1,1 @@
+"""Text analysis modules for emotion detection and smart acting."""

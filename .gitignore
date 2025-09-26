@@ -90,6 +90,8 @@ audio/*
 # Application-specific: Generated files
 config/settings.yaml
 config/available_voices.yaml
+config/characters.yaml
+config/voice_blends.yaml
 
 # Application-specific: Temporary files
 temp/

@@ -18,6 +18,20 @@ This is a Python project called "reader" managed with Poetry for dependency mana
 - `poetry lock` - Update poetry.lock file
 - `poetry show` - List installed packages
 
+### Reader CLI Commands
+**Main Commands:**
+- `poetry run python -m reader info` - Show application information and quick start
+- `poetry run python -m reader convert` - Convert text files to audiobooks
+- `poetry run python -m reader voices` - List available TTS voices
+- `poetry run python -m reader config` - Configure default settings
+
+**Phase 2 Commands (Neural TTS + Emotion Analysis):**
+- `poetry run python -m reader convert --engine kokoro --emotion --characters` - Advanced conversion
+- `poetry run python -m reader characters add NAME VOICE` - Map character to voice
+- `poetry run python -m reader characters list` - Show character mappings
+- `poetry run python -m reader blend create NAME SPEC` - Create voice blend (e.g., "voice1:60,voice2:40")
+- `poetry run python -m reader blend list` - Show voice blends
+
 ### Testing and Code Quality
 - `poetry run pytest` - Run tests
 - `poetry run black .` - Format code
