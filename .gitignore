@@ -104,9 +104,23 @@ models/
 voices/generated/
 voices/models/
 
+# Kokoro model files (large - 310MB each)
+models/kokoro/kokoro-v1.0.onnx
+models/kokoro/voices-v1.0.bin
+
 # Logs
 *.log
 logs/
 
 # Cache directories
 .cache/
+
+# Phase 3 specific
+reader_previews/
+*.m4a
+*.m4b
+*.mp3
+sample_chapters.json
+
+# FFmpeg temporary files
+*.ffmpeg_tmp

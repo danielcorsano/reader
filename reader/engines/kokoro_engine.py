@@ -57,7 +57,8 @@ class KokoroEngine(TTSEngine):
             
         try:
             # Kokoro will handle model downloading automatically
-            self.kokoro = Kokoro()
+            # Initialize with no arguments - Kokoro auto-downloads models
+            self.kokoro = Kokoro(model_path=None, voices_path=None)
             self._initialized = True
             
         except Exception as e:
