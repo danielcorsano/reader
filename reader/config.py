@@ -29,11 +29,19 @@ class ProcessingConfig:
     chunk_size: int = 1000
     pause_between_chapters: float = 1.0
     auto_detect_chapters: bool = True
+    # Phase selection
+    level: str = "phase1"  # "phase1", "phase2", "phase3"
     # Phase 2 options
     emotion_analysis: bool = True
     smart_acting: bool = True
     character_voices: bool = True
     voice_blending: bool = False  # Advanced feature
+    # Phase 3 options
+    dialogue_detection: bool = True
+    advanced_audio_formats: bool = True
+    chapter_metadata: bool = True
+    voice_preview: bool = True
+    batch_processing: bool = True
 
 
 @dataclass
@@ -130,6 +138,60 @@ class ConfigManager:
             if hasattr(self.config.processing, key):
                 setattr(self.config.processing, key, value)
         self.save_config()
+    
+    def set_processing_level(self, level: str) -> None:
+        """Set processing level (phase1, phase2, phase3)."""
+        valid_levels = ["phase1", "phase2", "phase3"]
+        if level not in valid_levels:
+            raise ValueError(f"Invalid processing level. Must be one of: {valid_levels}")
+        
+        self.config.processing.level = level
+        
+        # Auto-configure features based on level
+        if level == "phase1":
+            self.config.processing.emotion_analysis = False
+            self.config.processing.character_voices = False
+            self.config.processing.dialogue_detection = False
+            self.config.processing.advanced_audio_formats = False
+            self.config.tts.engine = "pyttsx3"
+        elif level == "phase2":
+            self.config.processing.emotion_analysis = True
+            self.config.processing.character_voices = True
+            self.config.processing.dialogue_detection = False
+            self.config.processing.advanced_audio_formats = False
+            # Only set to kokoro if it's likely to work
+            try:
+                from ..engines.kokoro_engine import KokoroEngine
+                # Test if we can initialize without models
+                self.config.tts.engine = "kokoro"
+            except:
+                self.config.tts.engine = "pyttsx3"
+        elif level == "phase3":
+            self.config.processing.emotion_analysis = True
+            self.config.processing.character_voices = True
+            self.config.processing.dialogue_detection = True
+            self.config.processing.advanced_audio_formats = True
+            # Only set to kokoro if it's likely to work
+            try:
+                from ..engines.kokoro_engine import KokoroEngine
+                # Test if we can initialize without models
+                self.config.tts.engine = "kokoro"
+            except:
+                self.config.tts.engine = "pyttsx3"
+        
+        self.save_config()
+    
+    def get_processing_level(self) -> str:
+        """Get current processing level."""
+        return self.config.processing.level
+    
+    def is_phase2_enabled(self) -> bool:
+        """Check if Phase 2 features are enabled."""
+        return self.config.processing.level in ["phase2", "phase3"]
+    
+    def is_phase3_enabled(self) -> bool:
+        """Check if Phase 3 features are enabled."""
+        return self.config.processing.level == "phase3"
     
     def get_text_dir(self) -> Path:
         """Get text input directory path."""

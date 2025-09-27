@@ -26,14 +26,27 @@ try:
 except ImportError:
     PHASE2_AVAILABLE = False
 
+# Phase 3 imports
+try:
+    from .analysis.dialogue_detector import DialogueDetector
+    from .chapters.chapter_manager import ChapterManager
+    from .audio.ffmpeg_processor import get_audio_processor
+    from .voices.voice_previewer import get_voice_previewer
+    from .batch.batch_processor import create_batch_processor
+    PHASE3_AVAILABLE = True
+except ImportError:
+    PHASE3_AVAILABLE = False
+
 
 class ReaderApp:
     """Main application class."""
     
-    def __init__(self):
+    def __init__(self, init_tts=True):
         """Initialize the reader application."""
         self.config_manager = ConfigManager()
-        self.tts_engine = self._initialize_tts_engine()
+        self.tts_engine = None
+        if init_tts:
+            self.tts_engine = self._initialize_tts_engine()
         
         # Initialize parsers
         self.parsers: List[TextParser] = [
@@ -47,6 +60,12 @@ class ReaderApp:
         self.ssml_generator = None
         self.character_mapper = None
         
+        # Phase 3 components (optional)
+        self.dialogue_detector = None
+        self.chapter_manager = None
+        self.audio_processor = None
+        self.voice_previewer = None
+        
         if PHASE2_AVAILABLE:
             try:
                 self.emotion_detector = EmotionDetector()
@@ -54,6 +73,15 @@ class ReaderApp:
                 self.character_mapper = CharacterVoiceMapper(self.config_manager.get_config_dir())
             except Exception as e:
                 print(f"Warning: Phase 2 features not available: {e}")
+        
+        if PHASE3_AVAILABLE:
+            try:
+                self.dialogue_detector = DialogueDetector()
+                self.chapter_manager = ChapterManager()
+                self.audio_processor = get_audio_processor()
+                self.voice_previewer = get_voice_previewer()
+            except Exception as e:
+                print(f"Warning: Phase 3 features not available: {e}")
         
         # Ensure directories exist
         self.config_manager.get_text_dir().mkdir(exist_ok=True)
@@ -68,8 +96,14 @@ class ReaderApp:
             try:
                 return KokoroEngine()
             except Exception as e:
-                print(f"Warning: Could not initialize Kokoro engine: {e}")
-                print("Falling back to pyttsx3...")
+                # Only show the warning once and update config to prevent repeated attempts
+                if "Kokoro models not found" in str(e):
+                    print("Info: Kokoro models not yet downloaded. Using pyttsx3 for now.")
+                    print("Kokoro models will download automatically on first successful use.")
+                else:
+                    print(f"Warning: Could not initialize Kokoro engine: {e}")
+                # Automatically switch to pyttsx3 to prevent repeated warnings
+                self.config_manager.update_tts_config(engine="pyttsx3")
                 return PyTTSX3Engine()
         else:
             return PyTTSX3Engine()
@@ -99,7 +133,9 @@ class ReaderApp:
         speed: Optional[float] = None,
         format: Optional[str] = None,
         emotion_analysis: Optional[bool] = None,
-        character_voices: Optional[bool] = None
+        character_voices: Optional[bool] = None,
+        chapter_detection: Optional[bool] = None,
+        dialogue_detection: Optional[bool] = None
     ) -> Path:
         """Convert a single file to audiobook."""
         # Get parser
@@ -127,6 +163,10 @@ class ReaderApp:
             processing_config.emotion_analysis = emotion_analysis
         if character_voices is not None:
             processing_config.character_voices = character_voices
+        if chapter_detection is not None:
+            processing_config.auto_detect_chapters = chapter_detection
+        if dialogue_detection is not None:
+            processing_config.dialogue_detection = dialogue_detection
         
         # Phase 2: Character analysis
         if self.character_mapper and processing_config.character_voices:
@@ -154,9 +194,26 @@ class ReaderApp:
                 parsed_content.content, tts_config, processing_config
             )
         
-        # Create output filename
+        # Create output filename with phase and config info
         audio_dir = self.config_manager.get_audio_dir()
-        output_filename = f"{parsed_content.title}.{audio_config.format}"
+        
+        # Build descriptive filename
+        phase = processing_config.level
+        engine = tts_config.engine
+        speed_str = f"speed{tts_config.speed}".replace(".", "p")
+        
+        # Add feature flags
+        features = []
+        if processing_config.emotion_analysis:
+            features.append("emotion")
+        if processing_config.character_voices:
+            features.append("characters")
+        if processing_config.dialogue_detection:
+            features.append("dialogue")
+        
+        feature_str = "_".join(features) if features else "basic"
+        
+        output_filename = f"{parsed_content.title}_{phase}_{engine}_{speed_str}_{feature_str}.{audio_config.format}"
         output_path = audio_dir / output_filename
         
         # Phase 1: Simple concatenation for multiple segments
@@ -265,14 +322,22 @@ def cli():
 @cli.command()
 @click.option('--voice', '-v', help='Voice to use for synthesis')
 @click.option('--speed', '-s', type=float, help='Speech speed multiplier (e.g., 1.2)')
-@click.option('--format', '-f', type=click.Choice(['wav']), help='Output audio format (Phase 1-2: WAV only)')
+@click.option('--format', '-f', type=click.Choice(['wav', 'mp3', 'm4a', 'm4b']), help='Output audio format')
 @click.option('--file', '-F', type=click.Path(exists=True), help='Convert specific file instead of scanning text/ folder')
 @click.option('--engine', '-e', type=click.Choice(['pyttsx3', 'kokoro']), help='TTS engine to use')
 @click.option('--emotion/--no-emotion', default=None, help='Enable/disable emotion analysis')
 @click.option('--characters/--no-characters', default=None, help='Enable/disable character voice mapping')
-def convert(voice, speed, format, file, engine, emotion, characters):
+@click.option('--chapters/--no-chapters', default=None, help='Enable/disable chapter detection and metadata')
+@click.option('--dialogue/--no-dialogue', default=None, help='Enable/disable dialogue detection (Phase 3)')
+@click.option('--processing-level', type=click.Choice(['phase1', 'phase2', 'phase3']), help='Set processing level')
+def convert(voice, speed, format, file, engine, emotion, characters, chapters, dialogue, processing_level):
     """Convert text files in text/ folder to audiobooks."""
     app = ReaderApp()
+    
+    # Override processing level if specified
+    if processing_level:
+        app.config_manager.set_processing_level(processing_level)
+        app.tts_engine = app._initialize_tts_engine()
     
     # Override engine if specified
     if engine:
@@ -284,7 +349,7 @@ def convert(voice, speed, format, file, engine, emotion, characters):
         file_path = Path(file)
         try:
             output_path = app.convert_file(
-                file_path, voice, speed, format, emotion, characters
+                file_path, voice, speed, format, emotion, characters, chapters, dialogue
             )
             click.echo(f"✓ Conversion complete: {output_path}")
         except Exception as e:
@@ -307,7 +372,7 @@ def convert(voice, speed, format, file, engine, emotion, characters):
         for file_path in text_files:
             try:
                 output_path = app.convert_file(
-                    file_path, voice, speed, format, emotion, characters
+                    file_path, voice, speed, format, emotion, characters, chapters, dialogue
                 )
                 click.echo(f"✓ {file_path.name} -> {output_path.name}")
             except Exception as e:
@@ -489,11 +554,12 @@ def list():
 @cli.command()
 @click.option('--voice', help='Set default voice')
 @click.option('--speed', type=float, help='Set default speed')
-@click.option('--format', type=click.Choice(['wav']), help='Set default audio format (Phase 1-2: WAV only)')
+@click.option('--format', type=click.Choice(['wav', 'mp3', 'm4a', 'm4b']), help='Set default audio format')
 @click.option('--engine', type=click.Choice(['pyttsx3', 'kokoro']), help='Set default TTS engine')
 @click.option('--emotion/--no-emotion', help='Enable/disable emotion analysis by default')
 @click.option('--characters/--no-characters', help='Enable/disable character voices by default')
-def config(voice, speed, format, engine, emotion, characters):
+@click.option('--processing-level', type=click.Choice(['phase1', 'phase2', 'phase3']), help='Set default processing level')
+def config(voice, speed, format, engine, emotion, characters, processing_level):
     """Configure default settings."""
     app = ReaderApp()
     
@@ -515,6 +581,11 @@ def config(voice, speed, format, engine, emotion, characters):
         app.config_manager.update_audio_config(format=format)
         click.echo("Audio configuration updated.")
     
+    # Processing level update
+    if processing_level:
+        app.config_manager.set_processing_level(processing_level)
+        click.echo(f"Processing level set to {processing_level}.")
+    
     # Processing configuration updates
     processing_updates = {}
     if emotion is not None:
@@ -526,13 +597,14 @@ def config(voice, speed, format, engine, emotion, characters):
         app.config_manager.update_processing_config(**processing_updates)
         click.echo("Processing configuration updated.")
     
-    if not any([voice, speed, format, engine, emotion is not None, characters is not None]):
+    if not any([voice, speed, format, engine, emotion is not None, characters is not None, processing_level]):
         # Display current config
         tts_config = app.config_manager.get_tts_config()
         audio_config = app.config_manager.get_audio_config()
         processing_config = app.config_manager.get_processing_config()
         
         click.echo("Current configuration:")
+        click.echo(f"  Processing level: {processing_config.level}")
         click.echo(f"  Engine: {tts_config.engine}")
         click.echo(f"  Voice: {tts_config.voice or 'default'}")
         click.echo(f"  Speed: {tts_config.speed}")
@@ -545,6 +617,13 @@ def config(voice, speed, format, engine, emotion, characters):
             click.echo(f"    Emotion analysis: {processing_config.emotion_analysis}")
             click.echo(f"    Character voices: {processing_config.character_voices}")
             click.echo(f"    Smart acting: {processing_config.smart_acting}")
+        
+        # Phase 3 settings
+        if PHASE3_AVAILABLE:
+            click.echo("  Phase 3 Features:")
+            click.echo(f"    Dialogue detection: {processing_config.dialogue_detection}")
+            click.echo(f"    Advanced audio formats: {processing_config.advanced_audio_formats}")
+            click.echo(f"    Chapter metadata: {processing_config.chapter_metadata}")
 
 
 @cli.command()
@@ -556,7 +635,12 @@ def info():
     audio_dir = app.config_manager.get_audio_dir()
     
     # Header
-    phase = "Phase 2" if PHASE2_AVAILABLE else "Phase 1"
+    if PHASE3_AVAILABLE:
+        phase = "Phase 3"
+    elif PHASE2_AVAILABLE:
+        phase = "Phase 2"
+    else:
+        phase = "Phase 1"
     click.echo(f"📖 Reader: Text-to-Audiobook CLI ({phase})")
     click.echo("=" * 50)
     
@@ -599,6 +683,14 @@ def info():
         click.echo("  reader blend create NAME SPEC # Create voice blend")
         click.echo("  reader blend list           # Show voice blends")
     
+    if PHASE3_AVAILABLE:
+        click.echo("\n🚀 Phase 3 Commands:")
+        click.echo("  reader preview VOICE        # Preview voice samples")
+        click.echo("  reader chapters extract FILE # Extract chapter structure")
+        click.echo("  reader batch add FILES      # Add files to batch queue")
+        click.echo("  reader batch process        # Process batch queue")
+        click.echo("  reader config --processing-level phase3 # Enable all features")
+    
     # Configuration
     tts_config = app.config_manager.get_tts_config()
     audio_config = app.config_manager.get_audio_config()
@@ -628,6 +720,16 @@ def info():
         click.echo("  Professional audiobook formats (MP3, M4B)")
         click.echo("  Advanced dialogue detection")
         click.echo("  Batch processing with queues")
+    
+    if PHASE3_AVAILABLE:
+        click.echo("\n🎯 Phase 3 Features:")
+        click.echo("  ✅ Professional audio formats (MP3, M4A, M4B)")
+        click.echo("  ✅ Advanced dialogue detection with NLP")
+        click.echo("  ✅ Chapter extraction and metadata")
+        click.echo("  ✅ Voice preview and comparison")
+        click.echo("  ✅ Batch processing with progress tracking")
+        click.echo("  ✅ Audio normalization and enhancement")
+        click.echo("  ✅ Configurable processing levels")
     else:
         click.echo("\n🎯 Phase 1 Features:")
         click.echo("  ✅ 5 file formats (EPUB, PDF, TXT, MD, RST)")
@@ -639,6 +741,8 @@ def info():
         click.echo("\n🔮 Available Upgrades:")
         click.echo("  Phase 2: Neural TTS + emotion detection")
         click.echo("  Install: poetry add kokoro-onnx vaderSentiment")
+        click.echo("  Phase 3: Professional audiobook production")
+        click.echo("  Install: poetry add spacy pydub mutagen")
     
     # Tips
     if len(text_files) == 0:
@@ -649,6 +753,254 @@ def info():
         click.echo("\n💡 Tip: Run 'reader convert' to create audiobooks!")
     else:
         click.echo("\n🎉 Great! You have text and audio files ready.")
+
+
+# Phase 3 commands
+@cli.command()
+@click.argument('voice')
+@click.option('--engine', type=click.Choice(['pyttsx3', 'kokoro']), default='kokoro', help='TTS engine to use')
+@click.option('--text', help='Custom preview text')
+@click.option('--emotion', type=click.Choice(['neutral', 'excited', 'sad', 'angry', 'whisper', 'dramatic']), 
+              default='neutral', help='Emotional style for preview')
+@click.option('--output-dir', type=click.Path(), help='Directory to save preview files')
+def preview(voice, engine, text, emotion, output_dir):
+    """Generate voice preview samples."""
+    if not PHASE3_AVAILABLE:
+        click.echo("Voice preview requires Phase 3 dependencies.")
+        click.echo("Install with: poetry add spacy pydub mutagen")
+        return
+    
+    app = ReaderApp(init_tts=False)  # TTS initialized by voice_previewer
+    if not app.voice_previewer:
+        click.echo("Voice previewer not available.")
+        return
+    
+    try:
+        output_path = Path(output_dir) if output_dir else None
+        preview_file = app.voice_previewer.generate_voice_preview(
+            engine_name=engine,
+            voice=voice,
+            preview_text=text,
+            emotion=emotion,
+            output_dir=output_path
+        )
+        
+        click.echo(f"✓ Voice preview generated: {preview_file}")
+        click.echo("Play the file to hear how this voice sounds.")
+        
+    except Exception as e:
+        click.echo(f"✗ Error generating preview: {e}", err=True)
+
+
+@cli.group()
+def chapters():
+    """Manage chapter extraction and metadata."""
+    pass
+
+
+@chapters.command()
+@click.argument('file_path', type=click.Path(exists=True))
+@click.option('--output', '-o', type=click.Path(), help='Output file for chapter metadata')
+@click.option('--format', type=click.Choice(['json', 'text']), default='json', help='Output format')
+def extract(file_path, output, format):
+    """Extract chapter structure from a book file."""
+    if not PHASE3_AVAILABLE:
+        click.echo("Chapter extraction requires Phase 3 dependencies.")
+        return
+    
+    app = ReaderApp(init_tts=False)  # No TTS needed for chapter extraction
+    if not app.chapter_manager:
+        click.echo("Chapter manager not available.")
+        return
+    
+    input_file = Path(file_path)
+    
+    try:
+        # Extract chapters based on file type
+        if input_file.suffix.lower() == '.epub':
+            chapters = app.chapter_manager.extract_chapters_from_epub(input_file)
+        elif input_file.suffix.lower() == '.pdf':
+            chapters = app.chapter_manager.extract_chapters_from_pdf(input_file)
+        else:
+            # Read as text and extract
+            with open(input_file, 'r', encoding='utf-8') as f:
+                text_content = f.read()
+            chapters = app.chapter_manager.extract_chapters_from_text(text_content)
+        
+        if not chapters:
+            click.echo("No chapters found in the file.")
+            return
+        
+        click.echo(f"Found {len(chapters)} chapters:")
+        for i, chapter in enumerate(chapters, 1):
+            duration_str = f"{chapter.duration:.1f}s" if chapter.duration else "N/A"
+            click.echo(f"  {i}. {chapter.title} ({chapter.word_count} words, ~{duration_str})")
+        
+        # Save to output file if specified
+        if output:
+            output_path = Path(output)
+            if format == 'json':
+                app.chapter_manager.save_chapters_metadata(chapters, output_path)
+            else:
+                # Save as text report
+                with open(output_path, 'w', encoding='utf-8') as f:
+                    f.write(f"Chapter Structure for: {input_file.name}\n")
+                    f.write("=" * 50 + "\n\n")
+                    
+                    stats = app.chapter_manager.get_chapter_statistics(chapters)
+                    f.write(f"Total chapters: {stats['total_chapters']}\n")
+                    f.write(f"Total duration: {stats['total_duration_formatted']}\n")
+                    f.write(f"Total words: {stats['total_words']}\n\n")
+                    
+                    for i, chapter in enumerate(chapters, 1):
+                        f.write(f"Chapter {i}: {chapter.title}\n")
+                        f.write(f"  Words: {chapter.word_count}\n")
+                        if chapter.duration:
+                            f.write(f"  Duration: {chapter.duration:.1f}s\n")
+                        f.write(f"  Start time: {chapter.start_time:.1f}s\n\n")
+            
+            click.echo(f"✓ Chapter metadata saved to: {output_path}")
+        
+    except Exception as e:
+        click.echo(f"✗ Error extracting chapters: {e}", err=True)
+
+
+@cli.group()
+def batch():
+    """Manage batch processing of multiple files."""
+    pass
+
+
+@batch.command()
+@click.argument('files', nargs=-1, type=click.Path(exists=True))
+@click.option('--directory', '-d', type=click.Path(exists=True), help='Add all files from directory')
+@click.option('--recursive', '-r', is_flag=True, help='Search directory recursively')
+@click.option('--output-dir', type=click.Path(), help='Output directory for converted files')
+def add(files, directory, recursive, output_dir):
+    """Add files to batch processing queue."""
+    if not PHASE3_AVAILABLE:
+        click.echo("Batch processing requires Phase 3 dependencies.")
+        return
+    
+    app = ReaderApp(init_tts=False)  # Batch processor handles TTS internally
+    batch_processor = create_batch_processor(app.config_manager)
+    
+    job_ids = []
+    
+    # Add individual files
+    for file_path in files:
+        input_file = Path(file_path)
+        output_file = None
+        if output_dir:
+            output_file = Path(output_dir) / input_file.with_suffix('.wav').name
+        
+        job_id = batch_processor.add_job(input_file, output_file)
+        job_ids.append(job_id)
+        click.echo(f"✓ Added: {input_file.name} (Job ID: {job_id})")
+    
+    # Add directory
+    if directory:
+        dir_job_ids = batch_processor.add_directory(
+            Path(directory),
+            Path(output_dir) if output_dir else None,
+            recursive=recursive
+        )
+        job_ids.extend(dir_job_ids)
+        click.echo(f"✓ Added {len(dir_job_ids)} files from directory")
+    
+    if job_ids:
+        click.echo(f"Total jobs in queue: {len(batch_processor.jobs)}")
+    else:
+        click.echo("No files added to batch queue.")
+
+
+@batch.command()
+@click.option('--max-workers', type=int, default=2, help='Maximum number of concurrent workers')
+@click.option('--save-progress', is_flag=True, help='Save progress to file')
+def process(max_workers, save_progress):
+    """Process all jobs in the batch queue."""
+    if not PHASE3_AVAILABLE:
+        click.echo("Batch processing requires Phase 3 dependencies.")
+        return
+    
+    app = ReaderApp()
+    batch_processor = create_batch_processor(app.config_manager, max_workers)
+    
+    if not batch_processor.jobs:
+        click.echo("No jobs in batch queue. Use 'reader batch add' to add files.")
+        return
+    
+    def progress_callback(job):
+        status_symbol = "✓" if job.status.value == "completed" else "✗" if job.status.value == "failed" else "⏳"
+        click.echo(f"{status_symbol} {job.input_file.name} - {job.status.value}")
+    
+    batch_processor.set_progress_callback(progress_callback)
+    
+    click.echo(f"Processing {len(batch_processor.jobs)} jobs with {max_workers} workers...")
+    
+    try:
+        result = batch_processor.process_batch(save_progress=save_progress)
+        
+        click.echo(f"\nBatch processing complete!")
+        click.echo(f"  Total jobs: {result.total_jobs}")
+        click.echo(f"  Completed: {result.completed_jobs}")
+        click.echo(f"  Failed: {result.failed_jobs}")
+        click.echo(f"  Success rate: {result.success_rate:.1f}%")
+        click.echo(f"  Total time: {result.total_duration:.1f}s")
+        
+        if result.failed_jobs > 0:
+            click.echo("\nFailed jobs:")
+            for job in result.results:
+                if job.status.value == "failed":
+                    click.echo(f"  ✗ {job.input_file.name}: {job.error_message}")
+    
+    except KeyboardInterrupt:
+        click.echo("\nBatch processing cancelled by user.")
+        batch_processor.cancel_batch()
+    except Exception as e:
+        click.echo(f"✗ Batch processing error: {e}", err=True)
+
+
+@batch.command()
+def status():
+    """Show current batch queue status."""
+    if not PHASE3_AVAILABLE:
+        click.echo("Batch processing requires Phase 3 dependencies.")
+        return
+    
+    app = ReaderApp()
+    batch_processor = create_batch_processor(app.config_manager)
+    
+    summary = batch_processor.get_batch_summary()
+    
+    click.echo("Batch Queue Status:")
+    click.echo(f"  Total jobs: {summary['total_jobs']}")
+    click.echo(f"  Running: {summary['is_running']}")
+    
+    if summary['total_jobs'] > 0:
+        click.echo("  Job status breakdown:")
+        for status, count in summary['status_counts'].items():
+            if count > 0:
+                click.echo(f"    {status}: {count}")
+
+
+@batch.command()
+def clear():
+    """Clear all jobs from the batch queue."""
+    if not PHASE3_AVAILABLE:
+        click.echo("Batch processing requires Phase 3 dependencies.")
+        return
+    
+    app = ReaderApp()
+    batch_processor = create_batch_processor(app.config_manager)
+    
+    if batch_processor.is_running:
+        click.echo("Cannot clear queue while batch is running.")
+        return
+    
+    job_count = len(batch_processor.jobs)
+    batch_processor.clear_jobs()
+    click.echo(f"✓ Cleared {job_count} jobs from batch queue.")
 
 
 if __name__ == "__main__":

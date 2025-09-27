@@ -89,22 +89,41 @@ class PyTTSX3Engine(TTSEngine):
         format: str = "wav"
     ) -> None:
         """
-        Save audio data to file. Phase 1 only supports WAV output.
+        Save audio data to file with format conversion support.
         
         Args:
             audio_data: Audio bytes to save
             output_path: Output file path
-            format: Target audio format (only WAV supported in Phase 1)
+            format: Target audio format
         """
         output_path.parent.mkdir(parents=True, exist_ok=True)
         
-        # For Phase 1, we only support WAV output
-        if format.lower() != "wav":
-            print(f"Warning: Phase 1 only supports WAV format. Converting {format} request to WAV.")
-            # Change extension to .wav
-            output_path = output_path.with_suffix('.wav')
+        # Try to use Phase 3 audio processor for format conversion
+        try:
+            from ..audio.ffmpeg_processor import get_audio_processor
+            audio_processor = get_audio_processor()
+            
+            if format.lower() != "wav":
+                # Save as temporary WAV first
+                temp_wav = output_path.with_suffix('.wav')
+                with open(temp_wav, 'wb') as f:
+                    f.write(audio_data)
+                
+                # Convert to target format
+                final_output = output_path.with_suffix(f'.{format.lower()}')
+                audio_processor.convert_format(temp_wav, final_output, format)
+                
+                # Clean up temp file
+                temp_wav.unlink(missing_ok=True)
+                return
+            
+        except ImportError:
+            # Phase 3 not available, fallback to WAV only
+            if format.lower() != "wav":
+                print(f"Warning: Format conversion requires Phase 3. Saving as WAV instead.")
+                output_path = output_path.with_suffix('.wav')
         
-        # Direct save for WAV
+        # Direct save for WAV or fallback
         with open(output_path, 'wb') as f:
             f.write(audio_data)
     

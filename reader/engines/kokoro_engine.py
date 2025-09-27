@@ -134,19 +134,37 @@ class KokoroEngine(TTSEngine):
         output_path: Path,
         format: str = "wav"
     ) -> None:
-        """Save audio data to file."""
+        """Save audio data to file with format conversion support."""
         output_path.parent.mkdir(parents=True, exist_ok=True)
         
-        if format.lower() == "wav":
-            # Direct save for WAV
-            with open(output_path, 'wb') as f:
-                f.write(audio_data)
-        else:
-            # For other formats, save as WAV first then let Phase 3 handle conversion
-            wav_path = output_path.with_suffix('.wav')
-            with open(wav_path, 'wb') as f:
-                f.write(audio_data)
-            print(f"Phase 2: Saved as WAV. Format conversion will be available in Phase 3.")
+        # Try to use Phase 3 audio processor for format conversion
+        try:
+            from ..audio.ffmpeg_processor import get_audio_processor
+            audio_processor = get_audio_processor()
+            
+            if format.lower() != "wav":
+                # Save as temporary WAV first
+                temp_wav = output_path.with_suffix('.wav')
+                with open(temp_wav, 'wb') as f:
+                    f.write(audio_data)
+                
+                # Convert to target format
+                final_output = output_path.with_suffix(f'.{format.lower()}')
+                audio_processor.convert_format(temp_wav, final_output, format)
+                
+                # Clean up temp file
+                temp_wav.unlink(missing_ok=True)
+                return
+            
+        except ImportError:
+            # Phase 3 not available, fallback to WAV only
+            if format.lower() != "wav":
+                print(f"Warning: Format conversion requires Phase 3. Saving as WAV instead.")
+                output_path = output_path.with_suffix('.wav')
+        
+        # Direct save for WAV or fallback
+        with open(output_path, 'wb') as f:
+            f.write(audio_data)
     
     def get_voice_info(self, voice: str) -> Dict[str, Any]:
         """Get information about a specific voice."""

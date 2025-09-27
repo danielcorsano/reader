@@ -1,0 +1,25 @@
+{
+  "chapters": [
+    {
+      "title": "Chapter 1: The Meeting",
+      "start_time": 0.0,
+      "end_time": 38.0,
+      "duration": 38.0,
+      "word_count": 95,
+      "text_content": "The old library was quiet except for the gentle rustling of pages. Sarah walked between the tall shelves, her footsteps echoing softly on the wooden floor.\n\n\"Excuse me,\" said a voice behind her. \"Are you looking for something specific?\"\n\nShe turned to see a tall man with kind eyes and a warm smile. \"Actually, yes. I'm trying to find books about ancient civilizations.\"\n\n\"You're in luck!\" he replied enthusiastically. \"I'm Marcus, the librarian here. Follow me.\"\n\nAs they walked deeper into the library, Sarah felt a sense of adventure beginning to stir within her heart.",
+      "chapter_number": 1
+    },
+    {
+      "title": "Chapter 2: The Discovery",
+      "start_time": 38.0,
+      "end_time": 69.2,
+      "duration": 31.200000000000003,
+      "word_count": 78,
+      "text_content": "Marcus led her to a secluded section filled with dusty volumes. The air smelled of old paper and forgotten stories.\n\n\"These books,\" he whispered, \"contain secrets that most people have never imagined.\"\n\nSarah's eyes widened with curiosity. \"What kind of secrets?\"\n\n\"The kind that change everything you thought you knew about history,\" Marcus said mysteriously.\n\nShe reached for a leather-bound tome, her fingers trembling with excitement. This was exactly what she had been searching for all her life.",
+      "chapter_number": 2
+    }
+  ],
+  "total_chapters": 2,
+  "total_duration": 69.2,
+  "total_words": 173
+}
