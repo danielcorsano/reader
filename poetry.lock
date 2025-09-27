@@ -533,17 +533,6 @@ typing-extensions = {version = ">=4.6.0", markers = "python_version < \"3.13\""}
 test = ["pytest (>=6)"]
 
 [[package]]
-name = "ffmpeg"
-version = "1.4"
-description = "ffmpeg python package url [https://github.com/jiashaokun/ffmpeg]"
-optional = false
-python-versions = "*"
-groups = ["main"]
-files = [
-    {file = "ffmpeg-1.4.tar.gz", hash = "sha256:6931692c890ff21d39938433c2189747815dca0c60ddc7f9bb97f199dba0b5b9"},
-]
-
-[[package]]
 name = "ffmpeg-python"
 version = "0.2.0"
 description = "Python bindings for FFmpeg - with complex filtering support"
@@ -1635,18 +1624,6 @@ files = [
 
 [package.dependencies]
 typing-extensions = ">=4.6.0,<4.7.0 || >4.7.0"
-
-[[package]]
-name = "pydub"
-version = "0.25.1"
-description = "Manipulate audio with an simple and easy high level interface"
-optional = false
-python-versions = "*"
-groups = ["main"]
-files = [
-    {file = "pydub-0.25.1-py2.py3-none-any.whl", hash = "sha256:65617e33033874b59d87db603aa1ed450633288aefead953b30bded59cb599a6"},
-    {file = "pydub-0.25.1.tar.gz", hash = "sha256:980a33ce9949cab2a569606b65674d748ecbca4f0796887fd6f46173a7b0d30f"},
-]
 
 [[package]]
 name = "pyflakes"
@@ -6536,4 +6513,4 @@ files = [
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<3.14"
-content-hash = "5b2dee5bfe1091cd037d0107f41eedeeb938080301004e48a47d85d574c5afc8"
+content-hash = "09f716d7e4e7284b48d785eb51ec11a9daba836d28c5f120dfed4e87194e5792"

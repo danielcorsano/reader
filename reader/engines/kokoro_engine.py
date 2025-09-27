@@ -45,28 +45,26 @@ class KokoroEngine(TTSEngine):
             raise ImportError("Kokoro ONNX not available. Install with: poetry add kokoro-onnx")
         
         self.kokoro = None
-        self._initialize_engine()
+        self._initialized = False
+        self._init_error = None
     
-    def _initialize_engine(self) -> None:
-        """Initialize Kokoro engine with model files."""
+    def _ensure_initialized(self) -> None:
+        """Ensure Kokoro is initialized, initializing lazily if needed."""
+        if self._initialized:
+            if self.kokoro is None:
+                raise RuntimeError(f"Kokoro initialization failed: {self._init_error}")
+            return
+            
         try:
             # Kokoro will handle model downloading automatically
             self.kokoro = Kokoro()
+            self._initialized = True
             
         except Exception as e:
-            # Fallback to manual initialization if needed
-            try:
-                model_path = Path.cwd() / "models" / "kokoro-v1.0.onnx"
-                voices_path = Path.cwd() / "models" / "voices-v1.0.bin"
-                
-                if model_path.exists() and voices_path.exists():
-                    self.kokoro = Kokoro(str(model_path), str(voices_path))
-                else:
-                    raise FileNotFoundError(
-                        "Kokoro models not found. They should download automatically on first use."
-                    )
-            except Exception as init_error:
-                raise RuntimeError(f"Failed to initialize Kokoro: {init_error}")
+            self._initialized = True
+            self._init_error = str(e)
+            self.kokoro = None
+            raise RuntimeError(f"Failed to initialize Kokoro: {e}")
     
     def synthesize(
         self, 
@@ -87,6 +85,7 @@ class KokoroEngine(TTSEngine):
         Returns:
             Audio data as bytes (WAV format)
         """
+        self._ensure_initialized()
         if not self.kokoro:
             raise RuntimeError("Kokoro engine not initialized")
         
@@ -126,6 +125,7 @@ class KokoroEngine(TTSEngine):
     
     def list_voices(self) -> List[str]:
         """Get list of available Kokoro voices."""
+        # No need to initialize for static voice list
         return list(self.VOICES.keys())
     
     def save_audio(

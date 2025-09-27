@@ -28,9 +28,7 @@ vaderSentiment = "^3.3.2"
 regex = "^2023.12.25"
 # Phase 3 dependencies
 spacy = "^3.7.0"
-pydub = "^0.25.1"
 mutagen = "^1.47.0"
-ffmpeg = "^1.4"
 ffmpeg-python = "^0.2.0"
 
 [tool.poetry.group.dev.dependencies]

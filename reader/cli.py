@@ -41,7 +41,7 @@ except ImportError:
 class ReaderApp:
     """Main application class."""
     
-    def __init__(self, init_tts=True):
+    def __init__(self, init_tts=False):
         """Initialize the reader application."""
         self.config_manager = ConfigManager()
         self.tts_engine = None
@@ -87,6 +87,12 @@ class ReaderApp:
         self.config_manager.get_text_dir().mkdir(exist_ok=True)
         self.config_manager.get_audio_dir().mkdir(exist_ok=True)
         self.config_manager.get_config_dir().mkdir(exist_ok=True)
+    
+    def get_tts_engine(self):
+        """Get TTS engine, initializing if needed."""
+        if self.tts_engine is None:
+            self.tts_engine = self._initialize_tts_engine()
+        return self.tts_engine
     
     def _initialize_tts_engine(self):
         """Initialize TTS engine based on configuration."""
@@ -218,17 +224,17 @@ class ReaderApp:
         
         # Phase 1: Simple concatenation for multiple segments
         if len(audio_segments) == 1:
-            self.tts_engine.save_audio(audio_segments[0], output_path, audio_config.format)
+            self.get_tts_engine().save_audio(audio_segments[0], output_path, audio_config.format)
         else:
             # For Phase 1, save each segment as separate file
             click.echo("Phase 1: Saving audio segments as separate files...")
             for i, segment in enumerate(audio_segments):
                 segment_path = audio_dir / f"{parsed_content.title}_part_{i+1:03d}.wav"
-                self.tts_engine.save_audio(segment, segment_path, "wav")
+                self.get_tts_engine().save_audio(segment, segment_path, "wav")
             
             # Save first segment as main file for now
             output_path = output_path.with_suffix('.wav')
-            self.tts_engine.save_audio(audio_segments[0], output_path, "wav")
+            self.get_tts_engine().save_audio(audio_segments[0], output_path, "wav")
         
         # Phase 1: Skip metadata (requires complex audio libraries)
         if audio_config.add_metadata:
@@ -251,7 +257,8 @@ class ReaderApp:
                     emotion_analysis = self.emotion_detector.analyze_emotion(sentence)
                     
                     # Generate SSML if supported
-                    if hasattr(self.tts_engine, 'supports_ssml') and self.tts_engine.supports_ssml():
+                    tts_engine = self.get_tts_engine()
+                    if hasattr(tts_engine, 'supports_ssml') and tts_engine.supports_ssml():
                         # Generate SSML with emotion-based prosody
                         ssml_text = self.ssml_generator.generate_ssml(sentence, emotion_analysis)
                         text_to_synthesize = ssml_text
@@ -273,7 +280,7 @@ class ReaderApp:
                                 voice_to_use = char_voice.voice_id
                     
                     # Synthesize with appropriate voice and emotion adjustments
-                    audio_data = self.tts_engine.synthesize(
+                    audio_data = self.get_tts_engine().synthesize(
                         text=text_to_synthesize,
                         voice=voice_to_use,
                         speed=emotion_speed if 'emotion_speed' in locals() else tts_config.speed,
@@ -293,7 +300,7 @@ class ReaderApp:
         with click.progressbar(chunks, label="Converting to speech") as bar:
             for chunk in bar:
                 if chunk.strip():
-                    audio_data = self.tts_engine.synthesize(
+                    audio_data = self.get_tts_engine().synthesize(
                         text=chunk,
                         voice=tts_config.voice,
                         speed=tts_config.speed,
@@ -389,51 +396,84 @@ def voices(engine, language, gender):
     
     engines_to_show = []
     if engine == 'all':
-        engines_to_show.append(('pyttsx3', app.tts_engine if isinstance(app.tts_engine, PyTTSX3Engine) else PyTTSX3Engine()))
+        engines_to_show.append(('pyttsx3', PyTTSX3Engine()))
         if KOKORO_AVAILABLE:
-            try:
-                kokoro_engine = KokoroEngine() if not isinstance(app.tts_engine, KokoroEngine) else app.tts_engine
-                engines_to_show.append(('kokoro', kokoro_engine))
-            except:
-                pass
+            # Use static voice list without initializing the engine
+            engines_to_show.append(('kokoro', 'static'))
     elif engine == 'kokoro' and KOKORO_AVAILABLE:
-        try:
-            kokoro_engine = KokoroEngine() if not isinstance(app.tts_engine, KokoroEngine) else app.tts_engine
-            engines_to_show.append(('kokoro', kokoro_engine))
-        except Exception as e:
-            click.echo(f"Kokoro engine not available: {e}")
-            return
-    else:
-        engines_to_show.append((engine, app.tts_engine))
+        # Use static voice list without initializing the engine
+        engines_to_show.append(('kokoro', 'static'))
+    elif engine == 'pyttsx3':
+        engines_to_show.append(('pyttsx3', PyTTSX3Engine()))
     
     for engine_name, engine_obj in engines_to_show:
         click.echo(f"\n{engine_name.upper()} Voices:")
         click.echo("=" * (len(engine_name) + 8))
         
-        available_voices = engine_obj.list_voices()
-        
-        # Apply filters
-        filtered_voices = available_voices
-        
-        if hasattr(engine_obj, 'get_voices_by_language') and language:
-            filtered_voices = engine_obj.get_voices_by_language(language)
-        
-        if hasattr(engine_obj, 'get_voices_by_gender') and gender:
+        if engine_name == 'kokoro' and engine_obj == 'static':
+            # Use static Kokoro voice list without full engine initialization
+            kokoro_voices = {
+                "af_sarah": {"name": "Sarah (American)", "lang": "en-us", "gender": "female"},
+                "af_nicole": {"name": "Nicole (American)", "lang": "en-us", "gender": "female"},
+                "af_michael": {"name": "Michael (American)", "lang": "en-us", "gender": "male"},
+                "af_adam": {"name": "Adam (American)", "lang": "en-us", "gender": "male"},
+                "bf_emma": {"name": "Emma (British)", "lang": "en-uk", "gender": "female"},
+                "bf_isabella": {"name": "Isabella (British)", "lang": "en-uk", "gender": "female"},
+                "bf_oliver": {"name": "Oliver (British)", "lang": "en-uk", "gender": "male"},
+                "bf_william": {"name": "William (British)", "lang": "en-uk", "gender": "male"},
+                "ef_clara": {"name": "Clara (Spanish)", "lang": "es", "gender": "female"},
+                "ef_pedro": {"name": "Pedro (Spanish)", "lang": "es", "gender": "male"},
+                "ff_marie": {"name": "Marie (French)", "lang": "fr", "gender": "female"},
+                "ff_pierre": {"name": "Pierre (French)", "lang": "fr", "gender": "male"},
+            }
+            
+            available_voices = list(kokoro_voices.keys())
+            filtered_voices = available_voices
+            
+            # Apply filters
             if language:
-                # Filter further
-                filtered_voices = [v for v in filtered_voices if v in engine_obj.get_voices_by_gender(gender)]
-            else:
-                filtered_voices = engine_obj.get_voices_by_gender(gender)
-        
-        for voice in filtered_voices:
-            voice_info = engine_obj.get_voice_info(voice)
-            click.echo(f"  - {voice}")
+                filtered_voices = [v for v in available_voices 
+                                 if kokoro_voices.get(v, {}).get('lang') == language]
+            if gender:
+                if language:
+                    filtered_voices = [v for v in filtered_voices 
+                                     if kokoro_voices.get(v, {}).get('gender') == gender.lower()]
+                else:
+                    filtered_voices = [v for v in available_voices 
+                                     if kokoro_voices.get(v, {}).get('gender') == gender.lower()]
             
-            if voice_info.get('gender') != 'unknown':
+            for voice in filtered_voices:
+                voice_info = kokoro_voices.get(voice, {})
+                click.echo(f"  - {voice}")
+                click.echo(f"    Name: {voice_info.get('name', 'unknown')}")
                 click.echo(f"    Gender: {voice_info.get('gender', 'unknown')}")
-            
-            if voice_info.get('lang'):
                 click.echo(f"    Language: {voice_info.get('lang', 'unknown')}")
+        else:
+            # Regular engine
+            available_voices = engine_obj.list_voices()
+            
+            # Apply filters
+            filtered_voices = available_voices
+            
+            if hasattr(engine_obj, 'get_voices_by_language') and language:
+                filtered_voices = engine_obj.get_voices_by_language(language)
+            
+            if hasattr(engine_obj, 'get_voices_by_gender') and gender:
+                if language:
+                    # Filter further
+                    filtered_voices = [v for v in filtered_voices if v in engine_obj.get_voices_by_gender(gender)]
+                else:
+                    filtered_voices = engine_obj.get_voices_by_gender(gender)
+            
+            for voice in filtered_voices:
+                voice_info = engine_obj.get_voice_info(voice)
+                click.echo(f"  - {voice}")
+                
+                if voice_info.get('gender') != 'unknown':
+                    click.echo(f"    Gender: {voice_info.get('gender', 'unknown')}")
+                
+                if voice_info.get('lang'):
+                    click.echo(f"    Language: {voice_info.get('lang', 'unknown')}")
         
         click.echo(f"  Total: {len(filtered_voices)} voices")
 

@@ -8,7 +8,6 @@ import json
 from ..interfaces.audio_processor import AudioProcessor
 
 try:
-    from pydub import AudioSegment
     from mutagen.mp4 import MP4, MP4Cover
     from mutagen.id3 import ID3, TIT2, TPE1, TALB, TRCK, TPOS, CHAP, CTOC
     AUDIO_LIBS_AVAILABLE = True
@@ -17,14 +16,14 @@ except ImportError:
 
 
 class FFmpegAudioProcessor(AudioProcessor):
-    """Audio processor using FFmpeg and pydub for advanced audio operations."""
+    """Audio processor using FFmpeg for advanced audio operations."""
     
     SUPPORTED_FORMATS = ['wav', 'mp3', 'm4a', 'm4b', 'aac', 'ogg', 'flac']
     
     def __init__(self):
         """Initialize the FFmpeg audio processor."""
         if not AUDIO_LIBS_AVAILABLE:
-            raise ImportError("Audio libraries not available. Install with: poetry add pydub mutagen")
+            raise ImportError("Audio libraries not available. Install with: poetry add mutagen")
         
         self._check_ffmpeg()
     
@@ -56,16 +55,28 @@ class FFmpegAudioProcessor(AudioProcessor):
                            f"Supported: {self.SUPPORTED_FORMATS}")
         
         try:
-            # Load audio with pydub
-            audio = AudioSegment.from_file(str(input_path))
-            
-            # Set export parameters based on format
-            export_params = self._get_export_parameters(target_format)
-            
-            # Export to target format
+            # Use FFmpeg for format conversion
             output_path.parent.mkdir(parents=True, exist_ok=True)
-            audio.export(str(output_path), format=target_format.lower(), **export_params)
             
+            cmd = ['ffmpeg', '-i', str(input_path)]
+            
+            # Add format-specific parameters
+            export_params = self._get_export_parameters(target_format)
+            if 'codec' in export_params:
+                cmd.extend(['-c:a', export_params['codec']])
+            if 'bitrate' in export_params:
+                cmd.extend(['-b:a', export_params['bitrate']])
+            if 'parameters' in export_params:
+                cmd.extend(export_params['parameters'])
+            
+            cmd.extend(['-y', str(output_path)])
+            
+            subprocess.run(cmd, check=True, capture_output=True)
+            
+        except subprocess.CalledProcessError as e:
+            raise RuntimeError(f"Failed to convert audio with FFmpeg: {e}")
+        except FileNotFoundError:
+            raise RuntimeError("FFmpeg not found. Please install FFmpeg: https://ffmpeg.org/download.html")
         except Exception as e:
             raise RuntimeError(f"Failed to convert audio: {e}")
     
@@ -266,35 +277,42 @@ class FFmpegAudioProcessor(AudioProcessor):
             raise ValueError("No input files provided")
         
         try:
-            # Load and concatenate audio files
-            combined = AudioSegment.empty()
-            current_time = 0
-            
-            # Update chapter timings if provided
-            if chapters:
-                updated_chapters = []
-                file_index = 0
-                
-                for chapter in chapters:
-                    # Adjust chapter start time based on accumulated duration
-                    if file_index < len(input_files):
-                        chapter_copy = chapter.copy()
-                        chapter_copy['start_time'] = current_time + chapter.get('start_time', 0)
-                        updated_chapters.append(chapter_copy)
-            
-            for i, input_file in enumerate(input_files):
-                audio_segment = AudioSegment.from_file(str(input_file))
-                combined += audio_segment
-                current_time += len(audio_segment) / 1000.0  # Convert to seconds
-            
             # Create output directory
             output_path.parent.mkdir(parents=True, exist_ok=True)
             
-            # Export merged file
-            format = output_path.suffix[1:].lower()  # Remove dot from extension
-            export_params = self._get_export_parameters(format)
-            combined.export(str(output_path), format=format, **export_params)
+            # Create temporary file list for FFmpeg concat
+            with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as f:
+                for input_file in input_files:
+                    f.write(f"file '{input_file.absolute()}'\n")
+                list_file = f.name
             
+            try:
+                # Use FFmpeg concat demuxer for merging
+                format = output_path.suffix[1:].lower()
+                export_params = self._get_export_parameters(format)
+                
+                cmd = ['ffmpeg', '-f', 'concat', '-safe', '0', '-i', list_file]
+                
+                # Add format-specific parameters
+                if 'codec' in export_params:
+                    cmd.extend(['-c:a', export_params['codec']])
+                if 'bitrate' in export_params:
+                    cmd.extend(['-b:a', export_params['bitrate']])
+                if 'parameters' in export_params:
+                    cmd.extend(export_params['parameters'])
+                
+                cmd.extend(['-y', str(output_path)])
+                
+                subprocess.run(cmd, check=True, capture_output=True)
+                
+            finally:
+                # Clean up temporary file
+                Path(list_file).unlink(missing_ok=True)
+            
+        except subprocess.CalledProcessError as e:
+            raise RuntimeError(f"Failed to merge audio files with FFmpeg: {e}")
+        except FileNotFoundError:
+            raise RuntimeError("FFmpeg not found. Please install FFmpeg: https://ffmpeg.org/download.html")
         except Exception as e:
             raise RuntimeError(f"Failed to merge audio files: {e}")
     
@@ -309,25 +327,36 @@ class FFmpegAudioProcessor(AudioProcessor):
             Dictionary with audio metadata and properties
         """
         try:
-            # Use pydub to get basic info
-            audio = AudioSegment.from_file(str(audio_path))
+            # Use FFprobe to get audio info
+            cmd = [
+                'ffprobe', '-v', 'quiet', '-print_format', 'json',
+                '-show_format', '-show_streams', str(audio_path)
+            ]
+            
+            result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+            probe_data = json.loads(result.stdout)
+            
+            # Extract audio stream info
+            audio_stream = None
+            for stream in probe_data.get('streams', []):
+                if stream.get('codec_type') == 'audio':
+                    audio_stream = stream
+                    break
+            
+            if not audio_stream:
+                raise RuntimeError("No audio stream found")
+            
+            duration = float(probe_data.get('format', {}).get('duration', 0))
             
             info = {
-                'duration_seconds': len(audio) / 1000.0,
-                'duration_formatted': self._format_duration(len(audio) / 1000.0),
-                'sample_rate': audio.frame_rate,
-                'channels': audio.channels,
+                'duration_seconds': duration,
+                'duration_formatted': self._format_duration(duration),
+                'sample_rate': int(audio_stream.get('sample_rate', 0)),
+                'channels': int(audio_stream.get('channels', 0)),
                 'format': audio_path.suffix[1:].upper(),
                 'file_size': audio_path.stat().st_size,
-                'bitrate': None  # Will be calculated if possible
+                'bitrate': int(audio_stream.get('bit_rate', 0)) // 1000 if audio_stream.get('bit_rate') else None
             }
-            
-            # Calculate bitrate
-            if info['duration_seconds'] > 0:
-                # Estimate bitrate from file size
-                file_size_bits = info['file_size'] * 8
-                bitrate_bps = file_size_bits / info['duration_seconds']
-                info['bitrate'] = int(bitrate_bps / 1000)  # Convert to kbps
             
             # Try to get metadata
             metadata = self._get_file_metadata(audio_path)
@@ -401,10 +430,7 @@ class FFmpegAudioProcessor(AudioProcessor):
         except subprocess.CalledProcessError as e:
             raise RuntimeError(f"Failed to normalize audio: {e}")
         except FileNotFoundError:
-            # Fallback to pydub if FFmpeg not available
-            audio = AudioSegment.from_file(str(input_path))
-            normalized = audio.normalize()
-            normalized.export(str(output_path), format=output_path.suffix[1:])
+            raise RuntimeError("FFmpeg not found. Please install FFmpeg: https://ffmpeg.org/download.html")
     
     def add_silence(self, input_path: Path, output_path: Path, 
                    start_silence: float = 0.0, end_silence: float = 0.0) -> None:
@@ -418,28 +444,42 @@ class FFmpegAudioProcessor(AudioProcessor):
             end_silence: Seconds of silence to add at end
         """
         try:
-            audio = AudioSegment.from_file(str(input_path))
+            # Use FFmpeg to add silence with adelay and apad filters
+            cmd = ['ffmpeg', '-i', str(input_path)]
             
-            # Add silence
+            filters = []
             if start_silence > 0:
-                silence_start = AudioSegment.silent(duration=int(start_silence * 1000))
-                audio = silence_start + audio
-            
+                filters.append(f'adelay={int(start_silence * 1000)}|{int(start_silence * 1000)}')
             if end_silence > 0:
-                silence_end = AudioSegment.silent(duration=int(end_silence * 1000))
-                audio = audio + silence_end
+                filters.append(f'apad=pad_dur={end_silence}')
             
-            # Export with silence
+            if filters:
+                cmd.extend(['-af', ','.join(filters)])
+            
+            # Add format-specific parameters
             format = output_path.suffix[1:].lower()
             export_params = self._get_export_parameters(format)
-            audio.export(str(output_path), format=format, **export_params)
+            if 'codec' in export_params:
+                cmd.extend(['-c:a', export_params['codec']])
+            if 'bitrate' in export_params:
+                cmd.extend(['-b:a', export_params['bitrate']])
+            if 'parameters' in export_params:
+                cmd.extend(export_params['parameters'])
             
+            cmd.extend(['-y', str(output_path)])
+            
+            subprocess.run(cmd, check=True, capture_output=True)
+            
+        except subprocess.CalledProcessError as e:
+            raise RuntimeError(f"Failed to add silence with FFmpeg: {e}")
+        except FileNotFoundError:
+            raise RuntimeError("FFmpeg not found. Please install FFmpeg: https://ffmpeg.org/download.html")
         except Exception as e:
             raise RuntimeError(f"Failed to add silence: {e}")
 
 
 class BasicAudioProcessor(AudioProcessor):
-    """Basic audio processor for when FFmpeg/pydub is not available."""
+    """Basic audio processor for when FFmpeg is not available."""
     
     def convert_format(self, input_path: Path, output_path: Path, target_format: str) -> None:
         """Basic format conversion (copy only for same format)."""
@@ -449,7 +489,7 @@ class BasicAudioProcessor(AudioProcessor):
             output_path.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(input_path, output_path)
         else:
-            raise NotImplementedError("Format conversion requires FFmpeg and pydub")
+            raise NotImplementedError("Format conversion requires FFmpeg")
     
     def add_metadata(self, audio_path: Path, title: str, author: Optional[str] = None, 
                     album: Optional[str] = None, chapters: Optional[List[Dict[str, Any]]] = None) -> None:
@@ -459,14 +499,14 @@ class BasicAudioProcessor(AudioProcessor):
     def merge_audio_files(self, input_files: List[Path], output_path: Path, 
                          chapters: Optional[List[Dict[str, Any]]] = None) -> None:
         """Basic file merging not supported."""
-        raise NotImplementedError("Audio merging requires pydub")
+        raise NotImplementedError("Audio merging requires FFmpeg")
     
     def get_audio_info(self, audio_path: Path) -> Dict[str, Any]:
         """Basic audio info (file size only)."""
         return {
             'file_size': audio_path.stat().st_size if audio_path.exists() else 0,
             'format': audio_path.suffix[1:].upper(),
-            'error': 'Limited info - install pydub for full details'
+            'error': 'Limited info - install FFmpeg for full details'
         }
 
 
