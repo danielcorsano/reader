@@ -398,10 +398,8 @@ def voices(engine, language, gender):
     if engine == 'all':
         engines_to_show.append(('pyttsx3', PyTTSX3Engine()))
         if KOKORO_AVAILABLE:
-            # Use static voice list without initializing the engine
             engines_to_show.append(('kokoro', 'static'))
     elif engine == 'kokoro' and KOKORO_AVAILABLE:
-        # Use static voice list without initializing the engine
         engines_to_show.append(('kokoro', 'static'))
     elif engine == 'pyttsx3':
         engines_to_show.append(('pyttsx3', PyTTSX3Engine()))
@@ -411,7 +409,7 @@ def voices(engine, language, gender):
         click.echo("=" * (len(engine_name) + 8))
         
         if engine_name == 'kokoro' and engine_obj == 'static':
-            # Use static Kokoro voice list without full engine initialization
+            # Define static Kokoro voice data
             kokoro_voices = {
                 "af_sarah": {"name": "Sarah (American)", "lang": "en-us", "gender": "female"},
                 "af_nicole": {"name": "Nicole (American)", "lang": "en-us", "gender": "female"},
@@ -427,27 +425,28 @@ def voices(engine, language, gender):
                 "ff_pierre": {"name": "Pierre (French)", "lang": "fr", "gender": "male"},
             }
             
-            available_voices = list(kokoro_voices.keys())
-            filtered_voices = available_voices
+            # Get all available voices (manual list to avoid the keys() issue)
+            filtered_voices = [
+                "af_sarah", "af_nicole", "af_michael", "af_adam",
+                "bf_emma", "bf_isabella", "bf_oliver", "bf_william", 
+                "ef_clara", "ef_pedro", "ff_marie", "ff_pierre"
+            ]
             
-            # Apply filters
+            # Apply filters if specified
             if language:
-                filtered_voices = [v for v in available_voices 
-                                 if kokoro_voices.get(v, {}).get('lang') == language]
+                filtered_voices = [v for v in filtered_voices 
+                                 if kokoro_voices[v]['lang'] == language]
             if gender:
-                if language:
-                    filtered_voices = [v for v in filtered_voices 
-                                     if kokoro_voices.get(v, {}).get('gender') == gender.lower()]
-                else:
-                    filtered_voices = [v for v in available_voices 
-                                     if kokoro_voices.get(v, {}).get('gender') == gender.lower()]
+                filtered_voices = [v for v in filtered_voices 
+                                 if kokoro_voices[v]['gender'] == gender.lower()]
             
+            # Display voices
             for voice in filtered_voices:
-                voice_info = kokoro_voices.get(voice, {})
+                voice_info = kokoro_voices[voice]
                 click.echo(f"  - {voice}")
-                click.echo(f"    Name: {voice_info.get('name', 'unknown')}")
-                click.echo(f"    Gender: {voice_info.get('gender', 'unknown')}")
-                click.echo(f"    Language: {voice_info.get('lang', 'unknown')}")
+                click.echo(f"    Name: {voice_info['name']}")
+                click.echo(f"    Gender: {voice_info['gender']}")
+                click.echo(f"    Language: {voice_info['lang']}")
         else:
             # Regular engine
             available_voices = engine_obj.list_voices()
