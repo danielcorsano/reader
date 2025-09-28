@@ -279,8 +279,11 @@ class CharacterVoiceMapper:
             try:
                 voice_engine = KokoroEngine()
             except:
-                # Fallback to basic assignment
-                return {name: "af_sarah" for name in character_names}
+                # Fallback to basic assignment using configured default
+                from ..config import ConfigManager
+                config = ConfigManager().config
+                fallback_voice = config.tts.fallback_voice
+                return {name: fallback_voice for name in character_names}
         
         available_voices = voice_engine.list_voices()
         
@@ -331,7 +334,10 @@ class CharacterVoiceMapper:
             return narrator.voice_id
         
         # Default narration voice
-        return "af_sarah"  # Neutral female voice
+        # Use configured fallback voice
+        from ..config import ConfigManager
+        config = ConfigManager().config
+        return config.tts.fallback_voice
     
     def analyze_text_for_voices(self, text: str) -> Dict[str, any]:
         """

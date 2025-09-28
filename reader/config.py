@@ -14,6 +14,7 @@ class TTSConfig:
     volume: float = 1.0
     # Phase 2 options
     fallback_engine: str = "pyttsx3"  # Fallback if primary engine fails
+    fallback_voice: str = "af_sarah"  # Default voice when engine fails to auto-assign
 
 
 @dataclass

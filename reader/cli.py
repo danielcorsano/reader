@@ -409,27 +409,13 @@ def voices(engine, language, gender):
         click.echo("=" * (len(engine_name) + 8))
         
         if engine_name == 'kokoro' and engine_obj == 'static':
-            # Define static Kokoro voice data
-            kokoro_voices = {
-                "af_sarah": {"name": "Sarah (American)", "lang": "en-us", "gender": "female"},
-                "af_nicole": {"name": "Nicole (American)", "lang": "en-us", "gender": "female"},
-                "af_michael": {"name": "Michael (American)", "lang": "en-us", "gender": "male"},
-                "af_adam": {"name": "Adam (American)", "lang": "en-us", "gender": "male"},
-                "bf_emma": {"name": "Emma (British)", "lang": "en-uk", "gender": "female"},
-                "bf_isabella": {"name": "Isabella (British)", "lang": "en-uk", "gender": "female"},
-                "bf_oliver": {"name": "Oliver (British)", "lang": "en-uk", "gender": "male"},
-                "bf_william": {"name": "William (British)", "lang": "en-uk", "gender": "male"},
-                "ef_clara": {"name": "Clara (Spanish)", "lang": "es", "gender": "female"},
-                "ef_pedro": {"name": "Pedro (Spanish)", "lang": "es", "gender": "male"},
-                "ff_marie": {"name": "Marie (French)", "lang": "fr", "gender": "female"},
-                "ff_pierre": {"name": "Pierre (French)", "lang": "fr", "gender": "male"},
-            }
+            # Use KokoroEngine voices (avoid duplication)
+            from .engines.kokoro_engine import KokoroEngine
+            kokoro_voices = KokoroEngine.VOICES
             
-            # Get all available voices (manual list to avoid the keys() issue)
+            # Get all available voices (avoid list(keys()) to prevent Click argument parsing issue)
             filtered_voices = [
-                "af_sarah", "af_nicole", "af_michael", "af_adam",
-                "bf_emma", "bf_isabella", "bf_oliver", "bf_william", 
-                "ef_clara", "ef_pedro", "ff_marie", "ff_pierre"
+                voice_id for voice_id in kokoro_voices
             ]
             
             # Apply filters if specified

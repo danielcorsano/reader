@@ -56,9 +56,17 @@ class KokoroEngine(TTSEngine):
             return
             
         try:
-            # Kokoro will handle model downloading automatically
-            # Initialize with no arguments - Kokoro auto-downloads models
-            self.kokoro = Kokoro(model_path=None, voices_path=None)
+            # Initialize with proper model paths
+            model_path = Path(__file__).parent.parent.parent / "models" / "kokoro" / "kokoro-v1.0.onnx"
+            voices_path = Path(__file__).parent.parent.parent / "models" / "kokoro" / "voices-v1.0.bin"
+            
+            if not model_path.exists() or not voices_path.exists():
+                raise FileNotFoundError(f"Kokoro models not found. Please download:\n"
+                                      f"  {model_path}\n"
+                                      f"  {voices_path}\n"
+                                      f"See docs/KOKORO_SETUP.md for instructions")
+            
+            self.kokoro = Kokoro(str(model_path), str(voices_path))
             self._initialized = True
             
         except Exception as e:
@@ -126,8 +134,16 @@ class KokoroEngine(TTSEngine):
     
     def list_voices(self) -> List[str]:
         """Get list of available Kokoro voices."""
-        # No need to initialize for static voice list
-        return list(self.VOICES.keys())
+        try:
+            self._ensure_initialized()
+            if self.kokoro and hasattr(self.kokoro, 'get_voices'):
+                return self.kokoro.get_voices()
+            else:
+                # Fallback to static voice list
+                return list(self.VOICES.keys())
+        except:
+            # Fallback to static voice list if initialization fails
+            return list(self.VOICES.keys())
     
     def save_audio(
         self, 
