@@ -89,3 +89,4 @@ This is a Python project called "reader" managed with Poetry for dependency mana
 - **Modular Design**: Easy to upgrade engines without breaking existing code
 - **Token-Efficient Development**: ~5K tokens per phase across focused conversations
 - **Progressive Enhancement**: Each phase delivers complete, usable software
+- never put claude in any git commits
