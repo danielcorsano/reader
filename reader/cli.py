@@ -37,6 +37,7 @@ except ImportError:
 try:
     from .analysis.dialogue_detector import DialogueDetector
     from .chapters.chapter_manager import ChapterManager
+    from .batch.robust_processor import RobustProcessor, BatchConfig, create_chunk_processor
     from .audio.ffmpeg_processor import get_audio_processor
     from .voices.voice_previewer import get_voice_previewer
     from .batch.batch_processor import create_batch_processor
@@ -184,7 +185,11 @@ class ReaderApp:
         emotion_analysis: Optional[bool] = None,
         character_voices: Optional[bool] = None,
         chapter_detection: Optional[bool] = None,
-        dialogue_detection: Optional[bool] = None
+        dialogue_detection: Optional[bool] = None,
+        batch_mode: bool = False,
+        checkpoint_interval: int = 50,
+        thermal_management: bool = True,
+        chunk_delay: float = 1.0
     ) -> Path:
         """Convert a single file to audiobook."""
         # Get parser
@@ -231,8 +236,13 @@ class ReaderApp:
         # Generate audio with enhanced processing
         click.echo(f"Generating audio for '{parsed_content.title}'...")
         
-        # Process content intelligently
-        if processing_config.emotion_analysis and self.ssml_generator:
+        # Choose processing method based on batch mode
+        if batch_mode and PHASE3_AVAILABLE:
+            # Use robust batch processing with checkpoints
+            audio_segments = self._convert_with_robust_processing(
+                file_path, parsed_content, tts_config, processing_config, checkpoint_interval, thermal_management, chunk_delay
+            )
+        elif processing_config.emotion_analysis and self.ssml_generator:
             # Process with emotion and character awareness
             audio_segments = self._convert_with_emotion_analysis(
                 parsed_content, tts_config, processing_config
@@ -350,6 +360,76 @@ class ReaderApp:
         
         return audio_segments
     
+    def _convert_with_robust_processing(self, file_path, parsed_content, tts_config, processing_config, checkpoint_interval, thermal_management, chunk_delay):
+        """Convert using robust batch processing with checkpoints."""
+        if not PHASE3_AVAILABLE:
+            raise RuntimeError("Batch processing requires Phase 3 components")
+        
+        # Create robust processor with conservative thermal management
+        batch_config = BatchConfig(
+            checkpoint_interval=checkpoint_interval,
+            max_retries=3,
+            continue_on_error=True,
+            cleanup_on_completion=True,
+            max_checkpoint_segments=100,  # Keep only last 100 segments (≈20-50MB)
+            keep_checkpoint_history=3,
+            # Conservative thermal management to prevent CPU overload
+            thermal_management=thermal_management,
+            chunk_delay_seconds=max(chunk_delay, 3.0),  # Minimum 3s delay for CPU-intensive TTS
+            cool_down_interval=5,                       # Cool down every 5 chunks
+            cool_down_seconds=5.0                       # 5 second cool down
+        )
+        processor = RobustProcessor(batch_config)
+        
+        # Split content into chunks using Kokoro's intelligent chunking
+        if tts_config.engine == "kokoro" and KOKORO_AVAILABLE:
+            # Use Kokoro's optimized chunking
+            kokoro_engine = self.get_tts_engine()
+            text_chunks = kokoro_engine._chunk_text_intelligently(parsed_content.content, max_length=400)
+        else:
+            # Use basic chunking for other engines
+            chunk_size = min(400, processing_config.chunk_size)  # Smaller chunks for robustness
+            text_chunks = [parsed_content.content[i:i+chunk_size] 
+                          for i in range(0, len(parsed_content.content), chunk_size)]
+        
+        # Get voice blend configuration
+        voice_blend = {}
+        if tts_config.voice:
+            voice_blend = {tts_config.voice: 1.0}
+        else:
+            # Default voice
+            if tts_config.engine == "kokoro":
+                voice_blend = {"af_sarah": 1.0}
+            else:
+                voice_blend = {"default": 1.0}
+        
+        # Create chunk processor
+        chunk_processor = create_chunk_processor(
+            self.get_tts_engine(), 
+            voice_blend, 
+            tts_config.speed
+        )
+        
+        # Processing configuration for checkpoints
+        proc_config = {
+            'engine': tts_config.engine,
+            'voice': tts_config.voice,
+            'speed': tts_config.speed,
+            'processing_level': processing_config.level,
+            'total_text_length': len(parsed_content.content)
+        }
+        
+        # Process with robust checkpointing
+        audio_segments = processor.process_with_checkpoints(
+            file_path=file_path,
+            parsed_content=parsed_content,
+            processing_config=proc_config,
+            chunk_processor=chunk_processor,
+            text_chunks=text_chunks
+        )
+        
+        return audio_segments
+    
     def _split_into_sentences(self, text):
         """Split text into sentences for emotion analysis."""
         import re
@@ -410,7 +490,11 @@ def cli():
 @click.option('--chapters/--no-chapters', default=None, help='Enable/disable chapter detection and metadata (temporary override)')
 @click.option('--dialogue/--no-dialogue', default=None, help='Enable/disable dialogue detection (Phase 3, temporary override)')
 @click.option('--processing-level', type=click.Choice(['phase1', 'phase2', 'phase3']), help='Set processing level (temporary override)')
-def convert(voice, speed, format, file, engine, emotion, characters, chapters, dialogue, processing_level):
+@click.option('--batch-mode', is_flag=True, help='Enable robust batch processing with checkpoints')
+@click.option('--checkpoint-interval', type=int, default=50, help='Save checkpoint every N chunks (default: 50)')
+@click.option('--thermal-management/--no-thermal-management', default=True, help='Enable thermal management to prevent overheating (default: enabled)')
+@click.option('--chunk-delay', type=float, default=1.0, help='Delay between chunks in seconds (default: 1.0)')
+def convert(voice, speed, format, file, engine, emotion, characters, chapters, dialogue, processing_level, batch_mode, checkpoint_interval, thermal_management, chunk_delay):
     """Convert text files in text/ folder to audiobooks.
     
     All options are temporary overrides and won't be saved to config.
@@ -434,7 +518,9 @@ def convert(voice, speed, format, file, engine, emotion, characters, chapters, d
         file_path = Path(file)
         try:
             output_path = app.convert_file(
-                file_path, voice, speed, format, emotion, characters, chapters, dialogue
+                file_path, voice, speed, format, emotion, characters, chapters, dialogue,
+                batch_mode=batch_mode, checkpoint_interval=checkpoint_interval,
+                thermal_management=thermal_management, chunk_delay=chunk_delay
             )
             click.echo(f"✓ Conversion complete: {output_path}")
         except Exception as e:
@@ -652,6 +738,127 @@ def list():
             click.echo(f"  {blend_name}: {blend.voices}")
             if blend.description:
                 click.echo(f"    {blend.description}")
+
+
+@cli.command()
+@click.option('--monitor', is_flag=True, help='Monitor current conversion progress')
+def progress(monitor):
+    """Monitor conversion progress in real-time."""
+    if not PHASE3_AVAILABLE:
+        click.echo("Progress monitoring requires Phase 3 components.")
+        return
+    
+    processor = RobustProcessor()
+    
+    if monitor:
+        import time
+        try:
+            while True:
+                summary = processor.get_system_status()
+                checkpoints = processor.list_all_checkpoints()
+                
+                click.clear()
+                click.echo("📊 Real-time Progress Monitor")
+                click.echo("=" * 40)
+                
+                if checkpoints:
+                    for cp in checkpoints[:3]:  # Show top 3
+                        file_name = Path(cp['file']).name
+                        click.echo(f"📄 {file_name}")
+                        click.echo(f"   Progress: {cp['progress']} ({cp['percent']:.1f}%)")
+                        
+                        # Progress bar
+                        bar_length = 30
+                        filled = int(cp['percent'] / 100 * bar_length)
+                        bar = "█" * filled + "░" * (bar_length - filled)
+                        click.echo(f"   [{bar}] {cp['percent']:.1f}%")
+                        click.echo()
+                
+                click.echo(f"💾 System: {summary['disk_usage_mb']:.1f}MB disk usage")
+                click.echo("Press Ctrl+C to stop monitoring")
+                
+                time.sleep(5)  # Update every 5 seconds
+                
+        except KeyboardInterrupt:
+            click.echo("\n👋 Monitoring stopped.")
+    else:
+        # One-time status check
+        summary = processor.get_system_status()
+        checkpoints = processor.list_all_checkpoints()
+        
+        if checkpoints:
+            click.echo("📊 Current Progress:")
+            for cp in checkpoints:
+                file_name = Path(cp['file']).name
+                click.echo(f"📄 {file_name}: {cp['percent']:.1f}% complete")
+        else:
+            click.echo("No active conversions found.")
+
+
+@cli.command()
+@click.option('--list', 'list_checkpoints', is_flag=True, help='List all checkpoints')
+@click.option('--cleanup', type=click.Path(exists=True), help='Clean up checkpoint for specific file')
+@click.option('--status', type=click.Path(exists=True), help='Show processing status for specific file')
+@click.option('--summary', is_flag=True, help='Show checkpoint system summary')
+def checkpoints(list_checkpoints, cleanup, status, summary):
+    """Manage batch processing checkpoints."""
+    if not PHASE3_AVAILABLE:
+        click.echo("Checkpoint management requires Phase 3 components.")
+        return
+    
+    processor = RobustProcessor()
+    
+    if list_checkpoints:
+        checkpoints = processor.list_all_checkpoints()
+        if not checkpoints:
+            click.echo("No checkpoints found.")
+            return
+        
+        click.echo("📂 Available Checkpoints:")
+        for cp in checkpoints:
+            age = f"{cp['age_hours']:.1f}h ago" if cp['age_hours'] < 24 else f"{cp['age_hours']/24:.1f}d ago"
+            click.echo(f"  📄 {Path(cp['file']).name}")
+            click.echo(f"      Progress: {cp['progress']} ({cp['percent']:.1f}%)")
+            click.echo(f"      Age: {age}")
+            click.echo()
+    
+    elif cleanup:
+        file_path = Path(cleanup)
+        if processor.cleanup_checkpoint(file_path):
+            click.echo(f"✅ Checkpoint cleaned up for {file_path.name}")
+        else:
+            click.echo(f"❌ Failed to cleanup checkpoint for {file_path.name}")
+    
+    elif status:
+        file_path = Path(status)
+        status_info = processor.get_processing_status(file_path)
+        
+        if not status_info['has_checkpoint']:
+            click.echo(f"📄 {file_path.name}: No checkpoint found")
+        else:
+            progress = status_info['progress']
+            age = f"{status_info['age_hours']:.1f}h ago" if status_info['age_hours'] < 24 else f"{status_info['age_hours']/24:.1f}d ago"
+            
+            click.echo(f"📄 {file_path.name}")
+            click.echo(f"   Status: {status_info['status']}")
+            click.echo(f"   Progress: {progress['completed']}/{progress['total']} ({progress['percent']:.1f}%)")
+            click.echo(f"   Last update: {age}")
+    
+    elif summary:
+        summary_info = processor.get_system_status()
+        click.echo("📊 Checkpoint System Summary:")
+        click.echo(f"   Active checkpoints: {summary_info['active_checkpoints']}")
+        click.echo(f"   Total segments: {summary_info['total_segments']}")
+        click.echo(f"   Disk usage: {summary_info['disk_usage_mb']:.1f} MB")
+        click.echo(f"   Checkpoint directory: {summary_info['checkpoint_dir']}")
+        
+        if summary_info['recent_checkpoints']:
+            click.echo("\n📂 Recent Checkpoints:")
+            for cp in summary_info['recent_checkpoints']:
+                click.echo(f"   📄 {Path(cp['file']).name} ({cp['percent']:.1f}%)")
+    
+    else:
+        click.echo("Use --help to see checkpoint management options.")
 
 
 @cli.command()

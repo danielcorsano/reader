@@ -10,7 +10,7 @@ class TTSConfig:
     """TTS engine configuration."""
     engine: str = "pyttsx3"  # "pyttsx3" or "kokoro"
     voice: Optional[str] = None
-    speed: float = 0.9
+    speed: float = 1.0
     volume: float = 1.0
     # Phase 2 options
     fallback_engine: str = "pyttsx3"  # Fallback if primary engine fails

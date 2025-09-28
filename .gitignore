@@ -98,6 +98,15 @@ temp/
 tmp/
 *.tmp
 *.temp
+*.wav.tmp
+*.mp3.tmp
+
+# Batch processing checkpoints and state
+checkpoints/
+batch_state/
+processing_queue/
+*.checkpoint
+*.batch_state
 
 # Application-specific: Downloaded models (for future phases)
 models/

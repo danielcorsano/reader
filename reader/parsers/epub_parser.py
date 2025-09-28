@@ -29,7 +29,10 @@ class EPUBParser(TextParser):
                 warnings.filterwarnings("ignore", 
                                       message=".*This search incorrectly ignores the root element.*",
                                       category=FutureWarning)
-                book = epub.read_epub(str(file_path))
+                warnings.filterwarnings("ignore", 
+                                      message=".*ignore_ncx.*",
+                                      category=UserWarning)
+                book = epub.read_epub(str(file_path), options={'ignore_ncx': True})
             
             # Quick text length analysis before processing
             print(f"📖 Analyzing EPUB: {file_path.name}", file=sys.stderr)

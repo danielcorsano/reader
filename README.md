@@ -1,16 +1,25 @@
 # Reader: Text-to-Audiobook CLI
 
-A lightweight, modular Python application that converts text files into audiobooks using AI-powered text-to-speech.
+A powerful, modular Python application that converts text files into audiobooks using AI-powered text-to-speech engines.
 
-## 🎯 Phase 1: Complete CLI Foundation (~50MB)
+## ✨ **All Phases Implemented**
 
-✅ **Current features:**
-- **Multiple file formats**: EPUB, PDF, TXT, Markdown, ReStructuredText
-- **System TTS integration**: Voice selection, speed control, volume adjustment
-- **WAV audio output**: High-quality uncompressed audio
-- **Automatic chapter detection**: Smart parsing for structured content
-- **Modular architecture**: Swappable components for future enhancements
-- **Configuration management**: Persistent settings and preferences
+✅ **Phase 1: Core Foundation**
+- Multiple file formats: EPUB, PDF, TXT, Markdown, ReStructuredText
+- System TTS integration with voice selection and speed control
+- Automatic chapter detection and smart parsing
+
+✅ **Phase 2: Neural TTS + Emotion Analysis** 
+- **Kokoro TTS**: 48 high-quality neural voices across 8 languages
+- **Emotion analysis**: Automatic prosody based on text sentiment
+- **Character voice mapping**: Different voices for different characters
+- **Voice blending**: Create custom mixed voices
+
+✅ **Phase 3: Professional Production**
+- **Advanced audio formats**: MP3, M4A, M4B with metadata
+- **Dialogue detection**: Smart character voice assignment
+- **Optimized for audiobooks**: Smaller file sizes, better quality
+- **Batch processing**: Robust processing with checkpoint recovery
 
 ## 🚀 Quick Start
 
@@ -33,23 +42,52 @@ poetry run reader convert
 - **[Examples](docs/EXAMPLES.md)** - Real-world examples and use cases
 - **[Architecture](docs/ARCHITECTURE.md)** - Technical design and development guide
 
-## 🎙️ Basic Commands
+## 🎙️ Command Reference
 
+### Basic Conversion
 ```bash
-# Convert all files in text/ folder
-poetry run reader convert
+# Convert single file (temporary overrides, won't save to config)
+poetry run reader convert --file text/book.epub --voice am_michael --engine kokoro
 
-# Convert with custom voice and speed
-poetry run reader convert --voice "Samantha" --speed 1.2
+# Convert with specific processing level
+poetry run reader convert --processing-level phase3 --engine kokoro
 
-# List available voices
+# Fast conversion for large books
+poetry run reader convert --engine pyttsx3 --processing-level phase1
+
+# Batch processing with checkpoints (for very large books)
+poetry run reader convert --batch-mode --checkpoint-interval 100
+```
+
+### Configuration Management
+```bash
+# Save permanent settings to config file
+poetry run reader config --engine kokoro --voice am_michael --format mp3
+
+# List available voices (both pyttsx3 and Kokoro)
 poetry run reader voices
 
-# Configure default settings
-poetry run reader config --voice "Daniel" --speed 1.1
+# View current configuration
+poetry run reader config
 
-# View application info
+# View application info and features
 poetry run reader info
+```
+
+### **Parameter Hierarchy (How Settings Work)**
+1. **CLI parameters** (highest priority) - temporary overrides, never saved
+2. **Config file** (middle priority) - your saved preferences  
+3. **Code defaults** (lowest priority) - sensible fallbacks
+
+Example:
+```bash
+# Save your preferred settings
+poetry run reader config --engine kokoro --voice am_michael --format mp3
+
+# Use temporary override (doesn't change your saved config)  
+poetry run reader convert --engine pyttsx3 --voice af_sarah
+
+# Your config file still has kokoro/am_michael/mp3 saved
 ```
 
 ## 📁 File Support
@@ -64,8 +102,9 @@ poetry run reader info
 | ReStructuredText | `.rst` | ✅ Header-based |
 
 ### Output Formats
-- **WAV** (Phase 1) - Uncompressed, high quality
-- **MP3, M4A, M4B** (Phase 2+) - Compressed with metadata
+- **MP3** (default) - Optimized for audiobooks, ~4-5x smaller than WAV
+- **WAV** - Uncompressed, high quality  
+- **M4A, M4B** (Phase 3) - Professional audiobook formats with metadata
 
 ## 🏗️ Project Structure
 
