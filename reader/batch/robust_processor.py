@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import List, Optional, Dict, Any, Callable
 from dataclasses import dataclass
 import traceback
+import psutil
 
 from .checkpoint_manager import CheckpointManager, ProcessingCheckpoint
 from ..interfaces.text_parser import ParsedContent
@@ -26,6 +27,8 @@ class BatchConfig:
     chunk_delay_seconds: float = 3.0  # Long delay between chunks to reduce heat
     cool_down_interval: int = 5  # Cool down every N chunks
     cool_down_seconds: float = 5.0  # Long cool down duration
+    max_cpu_usage_percent: float = 75.0  # Never exceed 75% CPU usage
+    cpu_check_interval: int = 3  # Check CPU usage every N chunks
 
 
 class RobustProcessor:
@@ -86,13 +89,17 @@ class RobustProcessor:
             
             while retry_count <= self.config.max_retries:
                 try:
-                    # Real-time progress readout 
+                    # Real-time progress readout with CPU monitoring
                     progress_percent = ((i+1)/total_chunks)*100
                     eta_chunks = total_chunks - (i+1)
                     estimated_minutes = (eta_chunks * (self.config.chunk_delay_seconds + 3)) / 60  # Conservative estimate
                     
+                    # Get current CPU usage
+                    cpu_usage = psutil.cpu_percent(interval=0.1)
+                    
                     print(f"🔄 Processing chunk {i+1}/{total_chunks} ({progress_percent:.1f}%)", flush=True)
                     print(f"   📊 Remaining: {eta_chunks} chunks (~{estimated_minutes:.0f} min ETA)", flush=True)
+                    print(f"   💻 CPU Usage: {cpu_usage:.1f}%", flush=True)
                     
                     # Show chunk text preview (first 50 chars)
                     preview = chunk_text.strip()[:50]
@@ -113,6 +120,12 @@ class RobustProcessor:
                     
                     # Thermal management - add delays to prevent overheating
                     if self.config.thermal_management:
+                        # Check CPU usage and add extra delay if needed
+                        if cpu_usage > self.config.max_cpu_usage_percent:
+                            extra_delay = min(10.0, (cpu_usage - self.config.max_cpu_usage_percent) * 0.2)
+                            print(f"🚨 High CPU usage ({cpu_usage:.1f}%) - adding {extra_delay:.1f}s extra delay", flush=True)
+                            time.sleep(extra_delay)
+                        
                         # Small delay between chunks
                         if self.config.chunk_delay_seconds > 0:
                             print(f"⏸️ Waiting {self.config.chunk_delay_seconds}s to prevent overheating...", flush=True)

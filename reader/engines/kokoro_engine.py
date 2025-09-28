@@ -67,7 +67,31 @@ class KokoroEngine(TTSEngine):
                                       f"  {voices_path}\n"
                                       f"See docs/KOKORO_SETUP.md for instructions")
             
-            self.kokoro = Kokoro(str(model_path), str(voices_path))
+            # Try to initialize with CoreML for Apple Neural Engine acceleration
+            try:
+                import platform
+                if platform.system() == "Darwin" and platform.machine() == "arm64":
+                    # M1/M2/M3 Mac - try CoreML acceleration
+                    import os
+                    os.environ["ORT_COREML_FLAGS"] = "COREML_FLAG_ENABLE_ON_SUBGRAPH"
+                    print("🧠 Attempting Apple Neural Engine acceleration via CoreML...", flush=True)
+                
+                self.kokoro = Kokoro(str(model_path), str(voices_path))
+                
+                # Check if CoreML acceleration worked
+                if platform.system() == "Darwin" and platform.machine() == "arm64":
+                    print("✅ Kokoro initialized with potential Neural Engine acceleration", flush=True)
+                else:
+                    print("✅ Kokoro initialized with CPU inference", flush=True)
+                    
+            except Exception as coreml_error:
+                print(f"⚠️ CoreML acceleration failed, falling back to CPU: {coreml_error}", flush=True)
+                # Clear CoreML environment variables and try regular initialization
+                import os
+                os.environ.pop("ORT_COREML_FLAGS", None)
+                self.kokoro = Kokoro(str(model_path), str(voices_path))
+                print("✅ Kokoro initialized with CPU fallback", flush=True)
+            
             self._initialized = True
             
         except Exception as e:

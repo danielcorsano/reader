@@ -132,4 +132,4 @@ reader_previews/
 sample_chapters.json
 
 # FFmpeg temporary files
-*.ffmpeg_tmp
+*.ffmpeg_tmpCLAUDE.md

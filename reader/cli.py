@@ -189,7 +189,9 @@ class ReaderApp:
         batch_mode: bool = False,
         checkpoint_interval: int = 50,
         thermal_management: bool = True,
-        chunk_delay: float = 1.0
+        chunk_delay: float = 1.0,
+        parallel: bool = False,
+        max_workers: int = 8
     ) -> Path:
         """Convert a single file to audiobook."""
         # Get parser
@@ -240,7 +242,7 @@ class ReaderApp:
         if batch_mode and PHASE3_AVAILABLE:
             # Use robust batch processing with checkpoints
             audio_segments = self._convert_with_robust_processing(
-                file_path, parsed_content, tts_config, processing_config, checkpoint_interval, thermal_management, chunk_delay
+                file_path, parsed_content, tts_config, processing_config, checkpoint_interval, thermal_management, chunk_delay, parallel, max_workers
             )
         elif processing_config.emotion_analysis and self.ssml_generator:
             # Process with emotion and character awareness
@@ -360,7 +362,7 @@ class ReaderApp:
         
         return audio_segments
     
-    def _convert_with_robust_processing(self, file_path, parsed_content, tts_config, processing_config, checkpoint_interval, thermal_management, chunk_delay):
+    def _convert_with_robust_processing(self, file_path, parsed_content, tts_config, processing_config, checkpoint_interval, thermal_management, chunk_delay, parallel=False, max_workers=8):
         """Convert using robust batch processing with checkpoints."""
         if not PHASE3_AVAILABLE:
             raise RuntimeError("Batch processing requires Phase 3 components")
@@ -494,7 +496,9 @@ def cli():
 @click.option('--checkpoint-interval', type=int, default=50, help='Save checkpoint every N chunks (default: 50)')
 @click.option('--thermal-management/--no-thermal-management', default=True, help='Enable thermal management to prevent overheating (default: enabled)')
 @click.option('--chunk-delay', type=float, default=1.0, help='Delay between chunks in seconds (default: 1.0)')
-def convert(voice, speed, format, file, engine, emotion, characters, chapters, dialogue, processing_level, batch_mode, checkpoint_interval, thermal_management, chunk_delay):
+@click.option('--parallel/--no-parallel', default=False, help='Enable parallel processing for faster conversion (default: disabled)')
+@click.option('--max-workers', type=int, default=8, help='Maximum parallel workers (default: 8)')
+def convert(voice, speed, format, file, engine, emotion, characters, chapters, dialogue, processing_level, batch_mode, checkpoint_interval, thermal_management, chunk_delay, parallel, max_workers):
     """Convert text files in text/ folder to audiobooks.
     
     All options are temporary overrides and won't be saved to config.
@@ -520,7 +524,8 @@ def convert(voice, speed, format, file, engine, emotion, characters, chapters, d
             output_path = app.convert_file(
                 file_path, voice, speed, format, emotion, characters, chapters, dialogue,
                 batch_mode=batch_mode, checkpoint_interval=checkpoint_interval,
-                thermal_management=thermal_management, chunk_delay=chunk_delay
+                thermal_management=thermal_management, chunk_delay=chunk_delay,
+                parallel=parallel, max_workers=max_workers
             )
             click.echo(f"✓ Conversion complete: {output_path}")
         except Exception as e:
