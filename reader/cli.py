@@ -37,7 +37,7 @@ except ImportError:
 try:
     from .analysis.dialogue_detector import DialogueDetector
     from .chapters.chapter_manager import ChapterManager
-    from .batch.robust_processor import RobustProcessor, BatchConfig, create_chunk_processor
+    from .batch.robust_processor import create_chunk_processor
     from .audio.ffmpeg_processor import get_audio_processor
     from .voices.voice_previewer import get_voice_previewer
     from .batch.batch_processor import create_batch_processor
@@ -240,6 +240,12 @@ class ReaderApp:
         
         # Choose processing method based on batch mode
         if batch_mode and PHASE3_AVAILABLE:
+            # Clear existing audio files if they exist to force fresh conversion
+            expected_audio_path = self._get_expected_audio_path(file_path, parsed_content.title, tts_config, audio_config, processing_config)
+            if expected_audio_path.exists():
+                expected_audio_path.unlink()
+                click.echo(f"🗑️ Removed existing audio file to force fresh conversion")
+            
             # Use robust batch processing with checkpoints
             audio_segments = self._convert_with_robust_processing(
                 file_path, parsed_content, tts_config, processing_config, checkpoint_interval, thermal_management, chunk_delay, parallel, max_workers
@@ -363,25 +369,21 @@ class ReaderApp:
         return audio_segments
     
     def _convert_with_robust_processing(self, file_path, parsed_content, tts_config, processing_config, checkpoint_interval, thermal_management, chunk_delay, parallel=False, max_workers=8):
-        """Convert using robust batch processing with checkpoints."""
+        """Convert using simple streaming processor with checkpoints."""
         if not PHASE3_AVAILABLE:
             raise RuntimeError("Batch processing requires Phase 3 components")
         
-        # Create robust processor with conservative thermal management
-        batch_config = BatchConfig(
-            checkpoint_interval=checkpoint_interval,
-            max_retries=3,
-            continue_on_error=True,
-            cleanup_on_completion=True,
-            max_checkpoint_segments=100,  # Keep only last 100 segments (≈20-50MB)
-            keep_checkpoint_history=3,
-            # Conservative thermal management to prevent CPU overload
-            thermal_management=thermal_management,
-            chunk_delay_seconds=max(chunk_delay, 3.0),  # Minimum 3s delay for CPU-intensive TTS
-            cool_down_interval=5,                       # Cool down every 5 chunks
-            cool_down_seconds=5.0                       # 5 second cool down
+        # Create output file path
+        output_path = self._get_expected_audio_path(file_path, parsed_content.title, tts_config, self.config_manager.get_audio_config(), processing_config)
+        
+        # Create simple stream processor
+        from .batch.stream_processor import StreamProcessor
+        processor = StreamProcessor(
+            output_path=output_path,
+            chunk_delay=max(chunk_delay, 0.5),  # Minimum 0.5s for thermal safety
+            max_cpu_percent=75.0,
+            checkpoint_interval=checkpoint_interval
         )
-        processor = RobustProcessor(batch_config)
         
         # Split content into chunks using Kokoro's intelligent chunking
         if tts_config.engine == "kokoro" and KOKORO_AVAILABLE:
@@ -418,19 +420,19 @@ class ReaderApp:
             'voice': tts_config.voice,
             'speed': tts_config.speed,
             'processing_level': processing_config.level,
-            'total_text_length': len(parsed_content.content)
+            'format': self.config_manager.get_audio_config().format
         }
         
-        # Process with robust checkpointing
-        audio_segments = processor.process_with_checkpoints(
+        # Process with stream checkpointing
+        result_path = processor.process_with_stream(
             file_path=file_path,
-            parsed_content=parsed_content,
-            processing_config=proc_config,
+            text_chunks=text_chunks,
             chunk_processor=chunk_processor,
-            text_chunks=text_chunks
+            processing_config=proc_config
         )
         
-        return audio_segments
+        # Return empty list since audio is already written to file
+        return []
     
     def _split_into_sentences(self, text):
         """Split text into sentences for emotion analysis."""

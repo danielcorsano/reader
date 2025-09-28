@@ -19,9 +19,9 @@ class BatchConfig:
     continue_on_error: bool = True
     cleanup_on_completion: bool = True
     max_checkpoint_age_hours: int = 24
-    # Rolling checkpoint settings
-    max_checkpoint_segments: int = 100  # Keep only last 100 segments in checkpoint
-    keep_checkpoint_history: int = 3  # Keep last 3 checkpoint intervals
+    # Rolling checkpoint settings - minimal for recovery only
+    max_checkpoint_segments: int = 50   # Keep only last 50 segments in checkpoint for recovery
+    keep_checkpoint_history: int = 2    # Keep only last 2 checkpoint intervals
     # Resource management - Conservative settings for CPU-intensive TTS
     thermal_management: bool = True  # Enable thermal throttling
     chunk_delay_seconds: float = 3.0  # Long delay between chunks to reduce heat
@@ -72,10 +72,20 @@ class RobustProcessor:
         checkpoint = self.checkpoint_manager.load_checkpoint(file_path)
         
         if checkpoint:
-            # Resume from checkpoint
-            print(f"📂 Resuming from chunk {checkpoint.chunks_completed}")
-            audio_segments = self._load_checkpoint_segments(checkpoint)
-            start_chunk = checkpoint.chunks_completed
+            # Resume from checkpoint - but we need to rebuild the COMPLETE file
+            print(f"📂 Found checkpoint at {checkpoint.chunks_completed}/{checkpoint.total_chunks}")
+            if checkpoint.chunks_completed >= checkpoint.total_chunks:
+                # Already completed - clear checkpoint and start fresh for new settings
+                print(f"🔄 Checkpoint shows completion, clearing for fresh conversion")
+                self.checkpoint_manager.clear_checkpoint(file_path)
+                audio_segments = []
+                start_chunk = 0
+            else:
+                # Resume from where we left off - reconstruct ALL segments processed so far
+                print(f"📂 Resuming from chunk {checkpoint.chunks_completed}")
+                print(f"🔄 Reconstructing {checkpoint.chunks_completed} processed segments...")
+                audio_segments = self._reconstruct_all_segments(file_path, checkpoint.chunks_completed)
+                start_chunk = checkpoint.chunks_completed
         else:
             # Start fresh
             print(f"🆕 Starting fresh processing")
