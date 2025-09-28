@@ -206,6 +206,7 @@ class ReaderApp:
         # Build descriptive filename
         phase = processing_config.level
         engine = tts_config.engine
+        voice = tts_config.voice or "default"
         speed_str = f"speed{tts_config.speed}".replace(".", "p")
         
         # Add feature flags
@@ -219,22 +220,18 @@ class ReaderApp:
         
         feature_str = "_".join(features) if features else "basic"
         
-        output_filename = f"{parsed_content.title}_{phase}_{engine}_{speed_str}_{feature_str}.{audio_config.format}"
+        output_filename = f"{parsed_content.title}_{phase}_{engine}_{voice}_{speed_str}_{feature_str}.{audio_config.format}"
         output_path = audio_dir / output_filename
         
-        # Phase 1: Simple concatenation for multiple segments
+        # Combine audio segments into final audiobook
         if len(audio_segments) == 1:
             self.get_tts_engine().save_audio(audio_segments[0], output_path, audio_config.format)
         else:
-            # For Phase 1, save each segment as separate file
-            click.echo("Phase 1: Saving audio segments as separate files...")
-            for i, segment in enumerate(audio_segments):
-                segment_path = audio_dir / f"{parsed_content.title}_part_{i+1:03d}.wav"
-                self.get_tts_engine().save_audio(segment, segment_path, "wav")
-            
-            # Save first segment as main file for now
+            # Merge all segments into a single audio file
+            click.echo(f"Merging {len(audio_segments)} audio segments...")
+            merged_audio = self._merge_audio_segments(audio_segments)
             output_path = output_path.with_suffix('.wav')
-            self.get_tts_engine().save_audio(audio_segments[0], output_path, "wav")
+            self.get_tts_engine().save_audio(merged_audio, output_path, "wav")
         
         # Phase 1: Skip metadata (requires complex audio libraries)
         if audio_config.add_metadata:
@@ -316,6 +313,39 @@ class ReaderApp:
         # Simple sentence splitting
         sentences = re.split(r'(?<=[.!?])\s+', text)
         return [s.strip() for s in sentences if s.strip()]
+    
+    def _merge_audio_segments(self, audio_segments):
+        """Merge multiple audio segments into a single audio file."""
+        if not audio_segments:
+            return b''
+        
+        if len(audio_segments) == 1:
+            return audio_segments[0]
+        
+        # Merge WAV files properly by concatenating audio data and updating header
+        import struct
+        
+        # Start with the first segment
+        merged_audio = bytearray(audio_segments[0])
+        
+        # Extract audio data from subsequent segments and append
+        for segment in audio_segments[1:]:
+            if len(segment) > 44:
+                # Skip WAV header (44 bytes) and append audio data
+                audio_data = segment[44:]
+                merged_audio.extend(audio_data)
+        
+        # Update the WAV header to reflect the new file size
+        if len(merged_audio) > 44:
+            # Update file size in RIFF header (bytes 4-7)
+            file_size = len(merged_audio) - 8
+            merged_audio[4:8] = struct.pack('<L', file_size)
+            
+            # Update data chunk size (bytes 40-43)
+            data_size = len(merged_audio) - 44
+            merged_audio[40:44] = struct.pack('<L', data_size)
+        
+        return bytes(merged_audio)
 
 
 # CLI Commands
