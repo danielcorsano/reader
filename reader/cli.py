@@ -474,6 +474,30 @@ class ReaderApp:
             merged_audio[40:44] = struct.pack('<L', data_size)
         
         return bytes(merged_audio)
+    
+    def _create_output_path(self, title, tts_config, audio_config, processing_config):
+        """Create standardized output path for audio files."""
+        audio_dir = self.config_manager.get_audio_dir()
+        
+        # Build descriptive filename
+        phase = processing_config.level
+        engine = tts_config.engine
+        voice = tts_config.voice or "default"
+        speed_str = f"speed{tts_config.speed}".replace(".", "p")
+        
+        # Add feature flags
+        features = []
+        if processing_config.emotion_analysis:
+            features.append("emotion")
+        if processing_config.character_voices:
+            features.append("characters")
+        if processing_config.dialogue_detection:
+            features.append("dialogue")
+        
+        feature_str = "_".join(features) if features else "basic"
+        
+        output_filename = f"{title}_{phase}_{engine}_{voice}_{speed_str}_{feature_str}.{audio_config.format}"
+        return audio_dir / output_filename
 
 
 # CLI Commands
