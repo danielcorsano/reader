@@ -3,6 +3,13 @@ import click
 from pathlib import Path
 from typing import List, Optional
 import sys
+import warnings
+
+# Suppress known warnings from dependencies
+warnings.filterwarnings("ignore", 
+                       message=".*This search incorrectly ignores the root element.*",
+                       category=FutureWarning,
+                       module="ebooklib.*")
 
 from .config import ConfigManager
 from .engines.pyttsx3_engine import PyTTSX3Engine
@@ -113,6 +120,42 @@ class ReaderApp:
                 return PyTTSX3Engine()
         else:
             return PyTTSX3Engine()
+    
+    def _apply_temporary_overrides(self, overrides: dict):
+        """Apply temporary CLI parameter overrides without saving to config file."""
+        # Apply processing level override
+        if 'processing_level' in overrides:
+            level = overrides['processing_level']
+            # Temporarily modify the config objects in memory
+            config = self.config_manager.config
+            config.processing.level = level
+            
+            # Auto-configure features based on level (in memory only)
+            if level == "phase1":
+                config.processing.emotion_analysis = False
+                config.processing.character_voices = False
+                config.processing.dialogue_detection = False
+                config.processing.advanced_audio_formats = False
+            elif level == "phase2":
+                config.processing.emotion_analysis = True
+                config.processing.character_voices = True
+                config.processing.dialogue_detection = False
+                config.processing.advanced_audio_formats = False
+            elif level == "phase3":
+                config.processing.emotion_analysis = True
+                config.processing.character_voices = True
+                config.processing.dialogue_detection = True
+                config.processing.advanced_audio_formats = True
+        
+        # Apply engine override
+        if 'engine' in overrides:
+            engine = overrides['engine']
+            # Temporarily modify the config object in memory
+            self.config_manager.config.tts.engine = engine
+        
+        # Reinitialize TTS engine if needed
+        if 'engine' in overrides:
+            self.tts_engine = self._initialize_tts_engine()
     
     def get_parser_for_file(self, file_path: Path) -> Optional[TextParser]:
         """Get appropriate parser for file."""
@@ -230,8 +273,8 @@ class ReaderApp:
             # Merge all segments into a single audio file
             click.echo(f"Merging {len(audio_segments)} audio segments...")
             merged_audio = self._merge_audio_segments(audio_segments)
-            output_path = output_path.with_suffix('.wav')
-            self.get_tts_engine().save_audio(merged_audio, output_path, "wav")
+            output_path = output_path.with_suffix(f'.{audio_config.format}')
+            self.get_tts_engine().save_audio(merged_audio, output_path, audio_config.format)
         
         # Phase 1: Skip metadata (requires complex audio libraries)
         if audio_config.add_metadata:
@@ -361,25 +404,30 @@ def cli():
 @click.option('--speed', '-s', type=float, help='Speech speed multiplier (e.g., 1.2)')
 @click.option('--format', '-f', type=click.Choice(['wav', 'mp3', 'm4a', 'm4b']), help='Output audio format')
 @click.option('--file', '-F', type=click.Path(exists=True), help='Convert specific file instead of scanning text/ folder')
-@click.option('--engine', '-e', type=click.Choice(['pyttsx3', 'kokoro']), help='TTS engine to use')
-@click.option('--emotion/--no-emotion', default=None, help='Enable/disable emotion analysis')
-@click.option('--characters/--no-characters', default=None, help='Enable/disable character voice mapping')
-@click.option('--chapters/--no-chapters', default=None, help='Enable/disable chapter detection and metadata')
-@click.option('--dialogue/--no-dialogue', default=None, help='Enable/disable dialogue detection (Phase 3)')
-@click.option('--processing-level', type=click.Choice(['phase1', 'phase2', 'phase3']), help='Set processing level')
+@click.option('--engine', '-e', type=click.Choice(['pyttsx3', 'kokoro']), help='TTS engine to use (temporary override)')
+@click.option('--emotion/--no-emotion', default=None, help='Enable/disable emotion analysis (temporary override)')
+@click.option('--characters/--no-characters', default=None, help='Enable/disable character voice mapping (temporary override)')
+@click.option('--chapters/--no-chapters', default=None, help='Enable/disable chapter detection and metadata (temporary override)')
+@click.option('--dialogue/--no-dialogue', default=None, help='Enable/disable dialogue detection (Phase 3, temporary override)')
+@click.option('--processing-level', type=click.Choice(['phase1', 'phase2', 'phase3']), help='Set processing level (temporary override)')
 def convert(voice, speed, format, file, engine, emotion, characters, chapters, dialogue, processing_level):
-    """Convert text files in text/ folder to audiobooks."""
+    """Convert text files in text/ folder to audiobooks.
+    
+    All options are temporary overrides and won't be saved to config.
+    Use 'reader config' to permanently save settings."""
     app = ReaderApp()
     
-    # Override processing level if specified
-    if processing_level:
-        app.config_manager.set_processing_level(processing_level)
-        app.tts_engine = app._initialize_tts_engine()
+    # Apply temporary overrides without modifying config file
+    temp_overrides = {}
     
-    # Override engine if specified
+    if processing_level:
+        temp_overrides['processing_level'] = processing_level
     if engine:
-        app.config_manager.update_tts_config(engine=engine)
-        app.tts_engine = app._initialize_tts_engine()
+        temp_overrides['engine'] = engine
+    
+    # Apply overrides and reinitialize if needed
+    if temp_overrides:
+        app._apply_temporary_overrides(temp_overrides)
     
     if file:
         # Convert specific file
@@ -607,15 +655,15 @@ def list():
 
 
 @cli.command()
-@click.option('--voice', help='Set default voice')
-@click.option('--speed', type=float, help='Set default speed')
-@click.option('--format', type=click.Choice(['wav', 'mp3', 'm4a', 'm4b']), help='Set default audio format')
-@click.option('--engine', type=click.Choice(['pyttsx3', 'kokoro']), help='Set default TTS engine')
-@click.option('--emotion/--no-emotion', help='Enable/disable emotion analysis by default')
-@click.option('--characters/--no-characters', help='Enable/disable character voices by default')
-@click.option('--processing-level', type=click.Choice(['phase1', 'phase2', 'phase3']), help='Set default processing level')
+@click.option('--voice', help='Set default voice (saved to config)')
+@click.option('--speed', type=float, help='Set default speed (saved to config)')
+@click.option('--format', type=click.Choice(['wav', 'mp3', 'm4a', 'm4b']), help='Set default audio format (saved to config)')
+@click.option('--engine', type=click.Choice(['pyttsx3', 'kokoro']), help='Set default TTS engine (saved to config)')
+@click.option('--emotion/--no-emotion', help='Enable/disable emotion analysis by default (saved to config)')
+@click.option('--characters/--no-characters', help='Enable/disable character voices by default (saved to config)')
+@click.option('--processing-level', type=click.Choice(['phase1', 'phase2', 'phase3']), help='Set default processing level (saved to config)')
 def config(voice, speed, format, engine, emotion, characters, processing_level):
-    """Configure default settings."""
+    """Configure default settings (permanently saved to config file)."""
     app = ReaderApp()
     
     # TTS configuration updates

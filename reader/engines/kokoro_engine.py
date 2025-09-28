@@ -19,24 +19,25 @@ class KokoroEngine(TTSEngine):
     """TTS engine implementation using Kokoro ONNX."""
     
     # Kokoro voice mappings with language codes
+    # Updated to match actual Kokoro library voice names
     VOICES = {
-        # American English
+        # American English - using actual Kokoro voice names
         "af_sarah": {"name": "Sarah (American)", "lang": "en-us", "gender": "female"},
         "af_nicole": {"name": "Nicole (American)", "lang": "en-us", "gender": "female"},
-        "af_michael": {"name": "Michael (American)", "lang": "en-us", "gender": "male"},
-        "af_adam": {"name": "Adam (American)", "lang": "en-us", "gender": "male"},
+        "am_michael": {"name": "Michael (American)", "lang": "en-us", "gender": "male"},
+        "am_adam": {"name": "Adam (American)", "lang": "en-us", "gender": "male"},
         
         # British English  
         "bf_emma": {"name": "Emma (British)", "lang": "en-uk", "gender": "female"},
         "bf_isabella": {"name": "Isabella (British)", "lang": "en-uk", "gender": "female"},
-        "bf_oliver": {"name": "Oliver (British)", "lang": "en-uk", "gender": "male"},
-        "bf_william": {"name": "William (British)", "lang": "en-uk", "gender": "male"},
+        "bm_oliver": {"name": "Oliver (British)", "lang": "en-uk", "gender": "male"},
+        "bm_william": {"name": "William (British)", "lang": "en-uk", "gender": "male"},
         
-        # Other languages (examples)
+        # Other languages (using consistent naming pattern)
         "ef_clara": {"name": "Clara (Spanish)", "lang": "es", "gender": "female"},
-        "ef_pedro": {"name": "Pedro (Spanish)", "lang": "es", "gender": "male"},
+        "em_pedro": {"name": "Pedro (Spanish)", "lang": "es", "gender": "male"},
         "ff_marie": {"name": "Marie (French)", "lang": "fr", "gender": "female"},
-        "ff_pierre": {"name": "Pierre (French)", "lang": "fr", "gender": "male"},
+        "fm_pierre": {"name": "Pierre (French)", "lang": "fr", "gender": "male"},
     }
     
     def __init__(self):
@@ -105,8 +106,12 @@ class KokoroEngine(TTSEngine):
         # Handle voice blending
         voice_blend = self._parse_voice_blend(voice)
         
+        # Check text length and chunk if necessary to avoid phoneme limits
+        if len(text) > 400:  # Optimized limit for better performance while avoiding 510 phoneme limit
+            return self._synthesize_long_text(text, voice_blend, speed)
+        
         try:
-            # Generate audio with Kokoro
+            # Generate audio with Kokoro for short text
             if len(voice_blend) == 1:
                 # Single voice
                 voice_id, _ = list(voice_blend.items())[0]
@@ -245,6 +250,216 @@ class KokoroEngine(TTSEngine):
         else:
             return "en-us"  # Default
     
+    def _synthesize_long_text(self, text: str, voice_blend: Dict[str, float], speed: float) -> bytes:
+        """Synthesize long text by intelligent chunking with streaming to prevent memory issues."""
+        # Split text into chunks at natural break points
+        chunks = self._chunk_text_intelligently(text, max_length=400)
+        
+        if len(chunks) <= 4:
+            # For smaller texts, use in-memory processing
+            return self._synthesize_chunks_in_memory(chunks, voice_blend, speed)
+        else:
+            # For large texts, use streaming with temporary files
+            return self._synthesize_chunks_streaming(chunks, voice_blend, speed)
+    
+    def _synthesize_chunks_in_memory(self, chunks: List[str], voice_blend: Dict[str, float], speed: float) -> bytes:
+        """Memory-efficient synthesis for smaller chunk sets."""
+        audio_segments = []
+        sample_rate = None
+        total_chunks = len(chunks)
+        
+        for i, chunk in enumerate(chunks):
+            if not chunk.strip():
+                continue
+                
+            print(f"Processing chunk {i+1}/{total_chunks}...")
+            
+            try:
+                if len(voice_blend) == 1:
+                    # Single voice
+                    voice_id, _ = list(voice_blend.items())[0]
+                    samples, chunk_sample_rate = self.kokoro.create(
+                        text=chunk.strip(),
+                        voice=voice_id,
+                        speed=speed,
+                        lang=self._get_voice_lang(voice_id)
+                    )
+                else:
+                    # Voice blending - use primary voice (highest weight)
+                    primary_voice = max(voice_blend.items(), key=lambda x: x[1])[0]
+                    samples, chunk_sample_rate = self.kokoro.create(
+                        text=chunk.strip(),
+                        voice=primary_voice,
+                        speed=speed,
+                        lang=self._get_voice_lang(primary_voice)
+                    )
+                
+                audio_segments.append(samples)
+                if sample_rate is None:
+                    sample_rate = chunk_sample_rate
+                    
+            except Exception as e:
+                # Log the error but continue with other chunks
+                print(f"Warning: Failed to synthesize chunk '{chunk[:50]}...': {e}")
+                continue
+        
+        if not audio_segments:
+            raise RuntimeError("Failed to synthesize any chunks from the text")
+        
+        # Merge audio segments
+        import numpy as np
+        merged_samples = np.concatenate(audio_segments)
+        
+        # Convert to WAV bytes
+        return self._samples_to_wav_bytes(merged_samples, sample_rate)
+    
+    def _synthesize_chunks_streaming(self, chunks: List[str], voice_blend: Dict[str, float], speed: float) -> bytes:
+        """Memory-efficient synthesis using temporary files for large texts."""
+        import tempfile
+        
+        temp_files = []
+        sample_rate = None
+        total_chunks = len(chunks)
+        
+        try:
+            # Process chunks and save to temporary files
+            for i, chunk in enumerate(chunks):
+                if not chunk.strip():
+                    continue
+                
+                print(f"Processing chunk {i+1}/{total_chunks} (streaming mode)...")
+                
+                try:
+                    if len(voice_blend) == 1:
+                        # Single voice
+                        voice_id, _ = list(voice_blend.items())[0]
+                        samples, chunk_sample_rate = self.kokoro.create(
+                            text=chunk.strip(),
+                            voice=voice_id,
+                            speed=speed,
+                            lang=self._get_voice_lang(voice_id)
+                        )
+                    else:
+                        # Voice blending - use primary voice (highest weight)
+                        primary_voice = max(voice_blend.items(), key=lambda x: x[1])[0]
+                        samples, chunk_sample_rate = self.kokoro.create(
+                            text=chunk.strip(),
+                            voice=primary_voice,
+                            speed=speed,
+                            lang=self._get_voice_lang(primary_voice)
+                        )
+                    
+                    if sample_rate is None:
+                        sample_rate = chunk_sample_rate
+                    
+                    # Save to temporary file
+                    temp_file = tempfile.NamedTemporaryFile(suffix='.wav', delete=False)
+                    wav_data = self._samples_to_wav_bytes(samples, chunk_sample_rate)
+                    temp_file.write(wav_data)
+                    temp_file.close()
+                    temp_files.append(temp_file.name)
+                    
+                except Exception as e:
+                    # Log the error but continue with other chunks
+                    print(f"Warning: Failed to synthesize chunk '{chunk[:50]}...': {e}")
+                    continue
+            
+            if not temp_files:
+                raise RuntimeError("Failed to synthesize any chunks from the text")
+            
+            # Concatenate temporary files
+            print(f"Merging {len(temp_files)} audio segments...")
+            return self._concatenate_temp_files(temp_files, sample_rate)
+            
+        finally:
+            # Clean up temporary files
+            for temp_file in temp_files:
+                try:
+                    Path(temp_file).unlink(missing_ok=True)
+                except:
+                    pass
+    
+    def _concatenate_temp_files(self, temp_files: List[str], sample_rate: int) -> bytes:
+        """Concatenate temporary audio files into a single audio stream."""
+        import wave
+        import io
+        
+        # Read all WAV files and concatenate the audio data
+        all_audio_data = []
+        
+        for temp_file in temp_files:
+            try:
+                with wave.open(temp_file, 'rb') as wav_file:
+                    audio_data = wav_file.readframes(wav_file.getnframes())
+                    all_audio_data.append(audio_data)
+            except Exception as e:
+                print(f"Warning: Failed to read temp file {temp_file}: {e}")
+                continue
+        
+        if not all_audio_data:
+            raise RuntimeError("Failed to read any temporary audio files")
+        
+        # Create final WAV file in memory
+        wav_buffer = io.BytesIO()
+        
+        with wave.open(wav_buffer, 'wb') as wav_file:
+            wav_file.setnchannels(1)  # Mono
+            wav_file.setsampwidth(2)  # 16-bit
+            wav_file.setframerate(sample_rate)
+            
+            # Write all concatenated audio data
+            for audio_data in all_audio_data:
+                wav_file.writeframes(audio_data)
+        
+        wav_buffer.seek(0)
+        return wav_buffer.read()
+    
+    def _chunk_text_intelligently(self, text: str, max_length: int = 400) -> List[str]:
+        """Chunk text at natural break points while staying under max_length."""
+        chunks = []
+        current_chunk = ""
+        
+        # Split by sentences first
+        sentences = re.split(r'(?<=[.!?])\s+', text)
+        
+        for sentence in sentences:
+            # If sentence itself is too long, split by smaller units
+            if len(sentence) > max_length:
+                # Split by commas, semicolons, or other punctuation
+                sub_parts = re.split(r'([,;:—–\-])\s*', sentence)
+                temp_part = ""
+                
+                for i, part in enumerate(sub_parts):
+                    if len(temp_part + part) <= max_length:
+                        temp_part += part
+                    else:
+                        if temp_part.strip():
+                            chunks.append(temp_part.strip())
+                        temp_part = part
+                
+                if temp_part.strip():
+                    if len(current_chunk + " " + temp_part) <= max_length:
+                        current_chunk += " " + temp_part if current_chunk else temp_part
+                    else:
+                        if current_chunk.strip():
+                            chunks.append(current_chunk.strip())
+                        current_chunk = temp_part
+            else:
+                # Check if we can add this sentence to current chunk
+                if len(current_chunk + " " + sentence) <= max_length:
+                    current_chunk += " " + sentence if current_chunk else sentence
+                else:
+                    # Current chunk is full, start new one
+                    if current_chunk.strip():
+                        chunks.append(current_chunk.strip())
+                    current_chunk = sentence
+        
+        # Add remaining chunk
+        if current_chunk.strip():
+            chunks.append(current_chunk.strip())
+        
+        return chunks
+
     def _samples_to_wav_bytes(self, samples, sample_rate: int) -> bytes:
         """Convert audio samples to WAV bytes."""
         import io

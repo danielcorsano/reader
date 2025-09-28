@@ -20,7 +20,7 @@ class TTSConfig:
 @dataclass
 class AudioConfig:
     """Audio output configuration."""
-    format: str = "wav"  # Phase 1-2 support WAV, Phase 3+ adds MP3/M4B
+    format: str = "mp3"  # MP3 default for smaller audiobook files, WAV also supported
     add_metadata: bool = False  # Phase 3+ feature
 
 
