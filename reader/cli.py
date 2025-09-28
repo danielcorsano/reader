@@ -241,7 +241,7 @@ class ReaderApp:
         # Choose processing method based on batch mode
         if batch_mode and PHASE3_AVAILABLE:
             # Clear existing audio files if they exist to force fresh conversion
-            expected_audio_path = self._get_expected_audio_path(file_path, parsed_content.title, tts_config, audio_config, processing_config)
+            expected_audio_path = self._create_output_path(parsed_content.title, tts_config, self.config_manager.get_audio_config(), processing_config)
             if expected_audio_path.exists():
                 expected_audio_path.unlink()
                 click.echo(f"🗑️ Removed existing audio file to force fresh conversion")
@@ -373,8 +373,9 @@ class ReaderApp:
         if not PHASE3_AVAILABLE:
             raise RuntimeError("Batch processing requires Phase 3 components")
         
-        # Create output file path
-        output_path = self._get_expected_audio_path(file_path, parsed_content.title, tts_config, self.config_manager.get_audio_config(), processing_config)
+        # Create output file path  
+        audio_config = self.config_manager.get_audio_config()
+        output_path = self._create_output_path(parsed_content.title, tts_config, audio_config, processing_config)
         
         # Create simple stream processor
         from .batch.stream_processor import StreamProcessor

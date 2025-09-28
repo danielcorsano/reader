@@ -123,7 +123,37 @@ ls comparison/
 
 ---
 
-## 🔄 Batch Processing System
+## 🔄 Batch Processing & Checkpoint System
+
+### Efficient Stream-to-File Processing
+
+Process books with minimal memory usage and automatic resume capability:
+
+```bash
+# Convert with streaming checkpoints (recommended)
+reader convert book.epub --batch-mode --voice am_michael --engine kokoro
+
+# Resume interrupted conversion automatically
+reader convert book.epub --batch-mode  # Detects existing progress and continues
+
+# Custom checkpoint frequency (default: every 25 chunks)
+reader convert book.epub --batch-mode --checkpoint-interval 50
+```
+
+### How Stream Checkpoints Work
+
+- **Zero Memory Overhead**: Audio streams directly to output file
+- **Tiny Checkpoints**: Only metadata saved (< 1KB), not audio segments  
+- **Smart Resume**: Detects setting changes and starts fresh when needed
+- **File Integrity**: Verifies partial files before resuming
+- **Thermal Management**: Built-in CPU monitoring and throttling
+
+### Checkpoint Benefits
+
+- ✅ **Interruption Safe**: Ctrl+C, crashes, or reboots won't lose progress
+- ✅ **Memory Efficient**: No RAM overhead for long audiobooks
+- ✅ **Disk Efficient**: No temporary files or segment storage
+- ✅ **Settings Aware**: Automatically restarts if voice/quality changes
 
 ### Queue-Based Bulk Conversion
 
@@ -391,9 +421,10 @@ reader convert harry_potter.epub --characters --dialogue --emotion
 
 ### Resource Usage
 
-- **Memory**: ~100MB base + 50MB per worker
+- **Memory**: ~50MB base (stream processing eliminates RAM overhead)
 - **Storage**: WAV = ~10MB/min, MP3 = ~1MB/min, M4B = ~1MB/min
-- **CPU**: Parallel processing scales with available cores
+- **CPU**: Smart thermal management keeps usage under 75%
+- **Checkpoints**: < 1KB metadata files (no temporary segments)
 
 ---
 
