@@ -371,8 +371,8 @@ class ReaderApp:
                 else:
                     # Apply prosody hints to TTS parameters
                     text_to_synthesize = sentence
-                        # Adjust speed based on emotion
-                        emotion_speed = tts_config.speed * emotion_analysis.prosody_hints.get('rate', 1.0)
+                    # Adjust speed based on emotion
+                    emotion_speed = tts_config.speed * emotion_analysis.prosody_hints.get('rate', 1.0)
                     
                     # Determine voice (character mapping if available)
                     voice_to_use = tts_config.voice
