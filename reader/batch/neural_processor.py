@@ -13,7 +13,6 @@ from abc import ABC, abstractmethod
 # Constants
 DEFAULT_SAMPLE_RATE = 22050
 SILENCE_DURATION = 0.1
-DEFAULT_MP3_BATCH_SIZE = 4
 DEFAULT_CHECKPOINT_INTERVAL = 25
 
 
@@ -110,7 +109,6 @@ class NeuralProcessor:
         self.output_path = output_path
         self.checkpoint_interval = checkpoint_interval
         self.checkpoint_path = output_path.with_suffix('.checkpoint')
-        self.mp3_batch_size = DEFAULT_MP3_BATCH_SIZE
         self.audio_buffer = []
         self.progress_style = progress_style
         self.progress_display = create_progress_display(progress_style)
@@ -249,71 +247,52 @@ class NeuralProcessor:
             raise RuntimeError(f"Neural Engine processing failed on chunk {chunk_idx + 1}: {str(e)}") from e
     
     def _convert_and_write_chunk(self, output_file, audio_data: bytes):
-        """Convert chunk to MP3 and write to file with batching optimization."""
+        """Collect audio data for final processing."""
         if self.output_path.suffix.lower() == '.mp3':
-            # Add to batch buffer
+            # Collect WAV data for final MP3 conversion
             self.audio_buffer.append(audio_data)
-            
-            # Process batch when full
-            if len(self.audio_buffer) >= self.mp3_batch_size:
-                self._process_mp3_batch(output_file)
         else:
             # Direct write for WAV
             output_file.write(audio_data)
             output_file.flush()
     
-    def _process_mp3_batch(self, output_file):
-        """Process multiple audio chunks as a batch for MP3 conversion."""
-        if not self.audio_buffer:
-            return
-            
-        try:
-            from ..processors.ffmpeg_processor import FFmpegAudioProcessor
-            
-            # Combine all buffered audio data
-            combined_audio = b''.join(self.audio_buffer)
-            
-            # Create temp WAV file for combined audio
-            with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as temp_wav:
-                temp_wav.write(combined_audio)
-                temp_wav_path = Path(temp_wav.name)
-            
-            # Convert to MP3
-            with tempfile.NamedTemporaryFile(suffix='.mp3', delete=False) as temp_mp3:
-                temp_mp3_path = Path(temp_mp3.name)
-            
-            processor = FFmpegAudioProcessor()
-            processor.convert_format(temp_wav_path, temp_mp3_path, 'mp3')
-            
-            # Read compressed MP3 data
-            with open(temp_mp3_path, 'rb') as f:
-                mp3_data = f.read()
-            
-            # Clean up temp files
-            temp_wav_path.unlink(missing_ok=True)
-            temp_mp3_path.unlink(missing_ok=True)
-            
-            # Write compressed data
-            output_file.write(mp3_data)
-            output_file.flush()
-            
-            print(f"🎵 Batch converted {len(self.audio_buffer)} chunks to MP3", flush=True)
-            
-        except Exception as e:
-            print(f"⚠️ Batch MP3 compression failed: {e}, writing WAV chunks", flush=True)
-            # Fallback: write individual WAV chunks
-            for audio_data in self.audio_buffer:
-                output_file.write(audio_data)
-            output_file.flush()
-        
-        # Clear buffer
-        self.audio_buffer.clear()
     
     def _finalize_mp3_processing(self, output_file):
-        """Process any remaining audio chunks in buffer."""
+        """Convert all collected WAV chunks to final MP3."""
         if self.audio_buffer and self.output_path.suffix.lower() == '.mp3':
-            print(f"🎵 Processing final batch of {len(self.audio_buffer)} chunks", flush=True)
-            self._process_mp3_batch(output_file)
+            print(f"🎵 Converting {len(self.audio_buffer)} chunks to final MP3", flush=True)
+            
+            try:
+                from ..processors.ffmpeg_processor import FFmpegAudioProcessor
+                
+                # Combine all WAV chunks into single audio stream
+                combined_audio = b''.join(self.audio_buffer)
+                
+                # Create temporary WAV file with all audio
+                with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as temp_wav:
+                    temp_wav.write(combined_audio)
+                    temp_wav_path = Path(temp_wav.name)
+                
+                # Convert complete WAV to MP3
+                processor = FFmpegAudioProcessor()
+                processor.convert_format(temp_wav_path, self.output_path, 'mp3')
+                
+                # Clean up temporary WAV file
+                temp_wav_path.unlink(missing_ok=True)
+                
+                print(f"✅ Final MP3 conversion complete", flush=True)
+                
+            except Exception as e:
+                print(f"⚠️ Final MP3 conversion failed: {e}, keeping as WAV", flush=True)
+                # Fallback: write all WAV data to output file
+                output_file.seek(0)  # Start from beginning
+                output_file.truncate()  # Clear any existing data
+                for audio_data in self.audio_buffer:
+                    output_file.write(audio_data)
+                output_file.flush()
+                
+            # Clear the buffer
+            self.audio_buffer.clear()
     
     def _get_settings_hash(self, config: Dict[str, Any]) -> str:
         """Generate hash of processing settings to detect changes."""
