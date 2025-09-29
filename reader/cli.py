@@ -357,21 +357,20 @@ class ReaderApp:
         # Split into sentences for better emotion analysis
         sentences = self._split_into_sentences(parsed_content.content)
         
-        with click.progressbar(sentences, label="Converting with emotion analysis") as bar:
-            for sentence in bar:
-                if sentence.strip():
-                    # Analyze emotion
-                    emotion_analysis = self.emotion_detector.analyze_emotion(sentence)
-                    
-                    # Generate SSML if supported
-                    tts_engine = self.get_tts_engine()
-                    if hasattr(tts_engine, 'supports_ssml') and tts_engine.supports_ssml():
-                        # Generate SSML with emotion-based prosody
-                        ssml_text = self.ssml_generator.generate_ssml(sentence, emotion_analysis)
-                        text_to_synthesize = ssml_text
-                    else:
-                        # Apply prosody hints to TTS parameters
-                        text_to_synthesize = sentence
+        for sentence in sentences:
+            if sentence.strip():
+                # Analyze emotion
+                emotion_analysis = self.emotion_detector.analyze_emotion(sentence)
+                
+                # Generate SSML if supported
+                tts_engine = self.get_tts_engine()
+                if hasattr(tts_engine, 'supports_ssml') and tts_engine.supports_ssml():
+                    # Generate SSML with emotion-based prosody
+                    ssml_text = self.ssml_generator.generate_ssml(sentence, emotion_analysis)
+                    text_to_synthesize = ssml_text
+                else:
+                    # Apply prosody hints to TTS parameters
+                    text_to_synthesize = sentence
                         # Adjust speed based on emotion
                         emotion_speed = tts_config.speed * emotion_analysis.prosody_hints.get('rate', 1.0)
                     
@@ -404,16 +403,15 @@ class ReaderApp:
         
         audio_segments = []
         
-        with click.progressbar(chunks, label="Converting to speech") as bar:
-            for chunk in bar:
-                if chunk.strip():
-                    audio_data = self.get_tts_engine().synthesize(
-                        text=chunk,
-                        voice=tts_config.voice,
-                        speed=tts_config.speed,
-                        volume=tts_config.volume
-                    )
-                    audio_segments.append(audio_data)
+        for chunk in chunks:
+            if chunk.strip():
+                audio_data = self.get_tts_engine().synthesize(
+                    text=chunk,
+                    voice=tts_config.voice,
+                    speed=tts_config.speed,
+                    volume=tts_config.volume
+                )
+                audio_segments.append(audio_data)
         
         return audio_segments
     
