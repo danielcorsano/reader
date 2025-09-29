@@ -292,6 +292,43 @@ class ReaderApp:
         click.echo(f"Audiobook saved to: {output_path}")
         return output_path
     
+    def _get_expected_output_path(self, file_path: Path, voice=None, speed=None, format=None, 
+                                emotion=None, characters=None, chapters=None, dialogue=None, 
+                                processing_level=None, turbo_mode=False) -> Path:
+        """Get expected output path for a file with given settings."""
+        # Get parser and parse just the title
+        parser = self.get_parser_for_file(file_path)
+        if not parser:
+            raise ValueError(f"No parser available for file: {file_path}")
+        
+        parsed_content = parser.parse(file_path)
+        
+        # Get configurations with overrides
+        tts_config = self.config_manager.get_tts_config()
+        audio_config = self.config_manager.get_audio_config()
+        processing_config = self.config_manager.get_processing_config()
+        
+        # Apply overrides
+        if voice:
+            tts_config.voice = voice
+        if speed:
+            tts_config.speed = speed
+        if format:
+            audio_config.format = format
+        if emotion is not None:
+            processing_config.emotion_analysis = emotion
+        if characters is not None:
+            processing_config.character_voices = characters
+        if chapters is not None:
+            processing_config.auto_detect_chapters = chapters
+        if dialogue is not None:
+            processing_config.dialogue_detection = dialogue
+        if processing_level:
+            processing_config.level = processing_level
+        
+        # Generate the same output path that would be created
+        return self._create_output_path(parsed_content.title, tts_config, audio_config, processing_config)
+    
     def _convert_with_emotion_analysis(self, parsed_content, tts_config, processing_config):
         """Convert content with emotion analysis and smart acting."""
         audio_segments = []
@@ -567,11 +604,23 @@ def convert(voice, speed, format, file, engine, emotion, characters, chapters, d
         for file_path in text_files:
             click.echo(f"  - {file_path.name}")
         
-        # Convert each file
+        # Convert each file (skip if already converted, continue if partial)
         for file_path in text_files:
+            # Check if already converted with same settings
+            expected_output = app._get_expected_output_path(file_path, voice, speed, format, emotion, characters, chapters, dialogue, processing_level, turbo_mode)
+            checkpoint_path = expected_output.with_suffix('.checkpoint')
+            
+            if expected_output.exists() and not checkpoint_path.exists():
+                click.echo(f"⏭️ Skipping {file_path.name} (already converted: {expected_output.name})")
+                continue
+            elif checkpoint_path.exists():
+                click.echo(f"📂 Resuming {file_path.name} from checkpoint...")
+                
             try:
                 output_path = app.convert_file(
-                    file_path, voice, speed, format, emotion, characters, chapters, dialogue
+                    file_path, voice, speed, format, emotion, characters, chapters, dialogue,
+                    batch_mode=batch_mode, checkpoint_interval=checkpoint_interval,
+                    turbo_mode=turbo_mode
                 )
                 click.echo(f"✓ {file_path.name} -> {output_path.name}")
             except Exception as e:
