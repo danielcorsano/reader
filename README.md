@@ -18,6 +18,7 @@ A powerful, modular Python application that converts text files into audiobooks 
 ✅ **Phase 3: Professional Production**
 - **Advanced audio formats**: MP3, M4A, M4B with metadata
 - **Dialogue detection**: Smart character voice assignment
+- **Real-time progress visualization**: 4 display styles with ASCII charts
 - **Optimized for audiobooks**: Smaller file sizes, better quality
 - **Batch processing**: Robust processing with checkpoint recovery
 
@@ -33,8 +34,25 @@ echo "Hello world! This is my first audiobook." > text/hello.txt
 # 3. Convert to audiobook
 poetry run reader convert
 
-# 4. Listen to audio/hello.wav
+# 4. Listen to audio/hello_phase3_kokoro_am_michael_speed1p0_emotion_characters_dialogue.mp3
 ```
+
+## 🔧 Optional Progress Dependencies
+
+For enhanced progress visualization, install these optional packages:
+
+```bash
+# For professional progress bars with ETA and speed metrics
+poetry add tqdm
+
+# For beautiful terminal formatting and enhanced displays  
+poetry add rich
+
+# For ASCII timeseries charts and real-time speed visualization
+poetry add plotext
+```
+
+All progress styles gracefully fall back to simple display if dependencies are missing.
 
 ## 📖 Documentation
 
@@ -57,6 +75,22 @@ poetry run reader convert --engine pyttsx3 --processing-level phase1
 
 # Batch processing with checkpoints (for very large books)
 poetry run reader convert --batch-mode --checkpoint-interval 100
+```
+
+### 📊 Progress Visualization Options
+
+```bash
+# Simple text progress (default)
+poetry run reader convert --progress-style simple --file "book.epub"
+
+# Professional progress bars with speed metrics  
+poetry run reader convert --progress-style tqdm --file "book.epub"
+
+# Beautiful Rich formatted displays with colors
+poetry run reader convert --progress-style rich --file "book.epub"
+
+# Real-time ASCII charts showing processing speed
+poetry run reader convert --progress-style timeseries --file "book.epub"
 ```
 
 ### Configuration Management
