@@ -37,6 +37,18 @@ This is a Python project called "reader" managed with Poetry for dependency mana
 - `poetry run python -m reader convert --no-emotion` - Disable emotion analysis
 - `poetry run python -m reader convert --batch-mode` - Enable checkpointing
 
+**Progress Display Options:**
+- `poetry run python -m reader convert --progress-style simple` - Default text progress (default)
+- `poetry run python -m reader convert --progress-style tqdm` - TQDM progress bar with speed metrics
+- `poetry run python -m reader convert --progress-style rich` - Rich enhanced display with beautiful formatting  
+- `poetry run python -m reader convert --progress-style timeseries` - Real-time ASCII charts of processing speed
+
+**Optional Progress Dependencies:**
+- `poetry add tqdm` - For enhanced progress bars with ETA and speed metrics
+- `poetry add rich` - For beautiful terminal formatting and enhanced progress displays
+- `poetry add plotext` - For ASCII timeseries charts and real-time speed visualization
+- All progress styles gracefully fall back to simple display if dependencies are missing
+
 **Character Management:**
 - `poetry run python -m reader characters add NAME VOICE` - Map character to voice
 - `poetry run python -m reader characters list` - Show character mappings

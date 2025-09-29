@@ -6,8 +6,9 @@ import wave
 import io
 import tempfile
 from pathlib import Path
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Protocol
 from dataclasses import dataclass, asdict
+from abc import ABC, abstractmethod
 
 # Constants
 DEFAULT_SAMPLE_RATE = 22050
@@ -27,15 +28,92 @@ class NeuralCheckpoint:
     timestamp: float
 
 
+class ProgressDisplay(ABC):
+    """Abstract base class for progress display implementations."""
+    
+    @abstractmethod
+    def start(self, total_chunks: int, file_name: str):
+        """Initialize progress display."""
+        pass
+    
+    @abstractmethod
+    def update(self, current_chunk: int, total_chunks: int, elapsed_time: float, eta_seconds: float):
+        """Update progress display."""
+        pass
+    
+    @abstractmethod
+    def finish(self):
+        """Finalize progress display."""
+        pass
+
+
+class SimpleProgressDisplay(ProgressDisplay):
+    """Simple text-based progress display (current default)."""
+    
+    def __init__(self):
+        self.start_time = None
+    
+    def start(self, total_chunks: int, file_name: str):
+        self.start_time = time.time()
+        print(f"🎯 Neural Engine stream processing {file_name} ({total_chunks} chunks, 48k mono MP3)")
+    
+    def update(self, current_chunk: int, total_chunks: int, elapsed_time: float, eta_seconds: float):
+        progress = (current_chunk / total_chunks) * 100
+        
+        if current_chunk > 1:  # Show ETA after first chunk
+            eta_mins = int(eta_seconds // 60)
+            eta_secs = int(eta_seconds % 60)
+            eta_str = f" ETA: {eta_mins:02d}:{eta_secs:02d}"
+        else:
+            eta_str = ""
+        
+        print(f"🧠 Chunk {current_chunk}/{total_chunks} ({progress:.1f}%){eta_str}", flush=True)
+    
+    def finish(self):
+        pass
+
+
+def create_progress_display(style: str) -> ProgressDisplay:
+    """Factory function to create progress display instances."""
+    if style == "simple":
+        return SimpleProgressDisplay()
+    elif style == "tqdm":
+        try:
+            from .tqdm_progress import TQDMProgressDisplay
+            return TQDMProgressDisplay()
+        except ImportError:
+            print("⚠️ TQDM not available, falling back to simple display")
+            return SimpleProgressDisplay()
+    elif style == "rich":
+        try:
+            from .rich_progress import RichProgressDisplay
+            return RichProgressDisplay()
+        except ImportError:
+            print("⚠️ Rich not available, falling back to simple display")
+            return SimpleProgressDisplay()
+    elif style == "timeseries":
+        try:
+            from .timeseries_progress import TimeseriesProgressDisplay
+            return TimeseriesProgressDisplay()
+        except ImportError:
+            print("⚠️ Plotext not available, falling back to simple display")
+            return SimpleProgressDisplay()
+    else:
+        print(f"⚠️ Unknown progress style '{style}', using simple display")
+        return SimpleProgressDisplay()
+
+
 class NeuralProcessor:
     """Neural Engine optimized processor with streaming output and checkpoints."""
     
-    def __init__(self, output_path: Path, checkpoint_interval: int = DEFAULT_CHECKPOINT_INTERVAL):
+    def __init__(self, output_path: Path, checkpoint_interval: int = DEFAULT_CHECKPOINT_INTERVAL, progress_style: str = "simple"):
         self.output_path = output_path
         self.checkpoint_interval = checkpoint_interval
         self.checkpoint_path = output_path.with_suffix('.checkpoint')
         self.mp3_batch_size = DEFAULT_MP3_BATCH_SIZE
         self.audio_buffer = []
+        self.progress_style = progress_style
+        self.progress_display = create_progress_display(progress_style)
         
     def process_chunks(self, file_path: Path, text_chunks: List[str],
                       tts_engine, voice_blend: Dict[str, float], speed: float,
@@ -47,7 +125,8 @@ class NeuralProcessor:
         # Check for existing checkpoint
         start_chunk, output_size = self._load_checkpoint(file_path, total_chunks, settings_hash)
         
-        print(f"🎯 Neural Engine stream processing {file_path.name} ({total_chunks} chunks, 48k mono MP3)")
+        # Initialize progress display
+        self.progress_display.start(total_chunks, file_path.name)
         if start_chunk > 0:
             print(f"📂 Resuming from chunk {start_chunk} (file size: {output_size/1024/1024:.1f}MB)")
         
@@ -65,6 +144,9 @@ class NeuralProcessor:
         
         # Clean up checkpoint on completion
         self._cleanup_checkpoint()
+        
+        # Finalize progress display
+        self.progress_display.finish()
         
         print(f"✅ Neural Engine processing complete: {self.output_path}")
         return self.output_path
@@ -94,7 +176,8 @@ class NeuralProcessor:
             else:
                 eta_str = ""
             
-            print(f"🧠 Chunk {i+1}/{total_chunks} ({progress:.1f}%){eta_str}", flush=True)
+            # Update progress display
+            self.progress_display.update(i + 1, total_chunks, elapsed if i > start_chunk else 0, eta_seconds if i > start_chunk else 0)
             
             # Process chunk with Neural Engine
             try:

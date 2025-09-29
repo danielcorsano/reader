@@ -39,6 +39,8 @@ try:
     from .chapters.chapter_manager import ChapterManager
     from .batch.neural_processor import NeuralProcessor
     from .batch.batch_processor import create_batch_processor
+    from .processors.ffmpeg_processor import get_audio_processor
+    from .voices.voice_previewer import get_voice_previewer
     PHASE3_AVAILABLE = True
 except ImportError:
     PHASE3_AVAILABLE = False
@@ -187,7 +189,8 @@ class ReaderApp:
         batch_mode: bool = False,
         checkpoint_interval: int = 50,
         turbo_mode: bool = False,
-        debug: bool = False
+        debug: bool = False,
+        progress_style: str = "simple"
     ) -> Path:
         """Convert a single file to audiobook."""
         # Get parser
@@ -256,12 +259,59 @@ class ReaderApp:
         
         # Use Neural Engine processing for Phase 3 (default)
         if PHASE3_AVAILABLE:
-            # Use Neural Engine processing with streaming and checkpoints
-            audio_segments = self._convert_with_robust_processing(
-                file_path, parsed_content, tts_config, processing_config, 
-                checkpoint_interval=25, thermal_management=False, chunk_delay=0.0, 
-                parallel=False, max_workers=8
+            # Create output file path  
+            audio_config = self.config_manager.get_audio_config()
+            output_path = self._create_output_path(parsed_content.title, tts_config, audio_config, processing_config)
+            
+            # Create Neural Engine processor with optimized settings
+            processor = NeuralProcessor(
+                output_path=output_path,
+                checkpoint_interval=checkpoint_interval,
+                progress_style=progress_style
             )
+            
+            # Split content into optimized chunks aligned with Kokoro's processing
+            if tts_config.engine == "kokoro" and KOKORO_AVAILABLE:
+                # Use 400-char chunks to match Kokoro's optimal size (no re-chunking)
+                kokoro_engine = self.get_tts_engine()
+                text_chunks = kokoro_engine._chunk_text_intelligently(parsed_content.content, max_length=400)
+            else:
+                # Use basic chunking for other engines
+                chunk_size = min(400, processing_config.chunk_size)
+                text_chunks = [parsed_content.content[i:i+chunk_size] 
+                              for i in range(0, len(parsed_content.content), chunk_size)]
+            
+            # Get voice blend configuration
+            voice_blend = {}
+            if tts_config.voice:
+                voice_blend = {tts_config.voice: 1.0}
+            else:
+                # Default voice
+                if tts_config.engine == "kokoro":
+                    voice_blend = {"am_michael": 1.0}
+                else:
+                    voice_blend = {"default": 1.0}
+            
+            # Processing configuration for checkpoints
+            proc_config = {
+                'engine': tts_config.engine,
+                'voice': tts_config.voice,
+                'speed': tts_config.speed,
+                'processing_level': processing_config.level,
+                'format': self.config_manager.get_audio_config().format
+            }
+            
+            # Process chunks with Neural Engine
+            final_output = processor.process_chunks(
+                file_path=file_path,
+                text_chunks=text_chunks,
+                tts_engine=self.get_tts_engine(),
+                voice_blend=voice_blend,
+                speed=tts_config.speed,
+                processing_config=proc_config
+            )
+            
+            return final_output
         elif processing_config.emotion_analysis and self.ssml_generator:
             # Fallback: Process with emotion and character awareness
             audio_segments = self._convert_with_emotion_analysis(
@@ -418,64 +468,6 @@ class ReaderApp:
         
         return audio_segments
     
-    def _convert_with_robust_processing(self, file_path, parsed_content, tts_config, processing_config, checkpoint_interval, thermal_management, chunk_delay, parallel=False, max_workers=8):
-        """Convert using simple streaming processor with checkpoints."""
-        if not PHASE3_AVAILABLE:
-            raise RuntimeError("Batch processing requires Phase 3 components")
-        
-        # Create output file path  
-        audio_config = self.config_manager.get_audio_config()
-        output_path = self._create_output_path(parsed_content.title, tts_config, audio_config, processing_config)
-        
-        # Create Neural Engine processor with optimized settings
-        processor = NeuralProcessor(
-            output_path=output_path,
-            checkpoint_interval=checkpoint_interval
-        )
-        
-        # Split content into optimized chunks aligned with Kokoro's processing
-        if tts_config.engine == "kokoro" and KOKORO_AVAILABLE:
-            # Use 400-char chunks to match Kokoro's optimal size (no re-chunking)
-            kokoro_engine = self.get_tts_engine()
-            text_chunks = kokoro_engine._chunk_text_intelligently(parsed_content.content, max_length=400)
-        else:
-            # Use basic chunking for other engines
-            chunk_size = min(400, processing_config.chunk_size)
-            text_chunks = [parsed_content.content[i:i+chunk_size] 
-                          for i in range(0, len(parsed_content.content), chunk_size)]
-        
-        # Get voice blend configuration
-        voice_blend = {}
-        if tts_config.voice:
-            voice_blend = {tts_config.voice: 1.0}
-        else:
-            # Default voice
-            if tts_config.engine == "kokoro":
-                voice_blend = {"am_michael": 1.0}
-            else:
-                voice_blend = {"default": 1.0}
-        
-        # Processing configuration for checkpoints
-        proc_config = {
-            'engine': tts_config.engine,
-            'voice': tts_config.voice,
-            'speed': tts_config.speed,
-            'processing_level': processing_config.level,
-            'format': self.config_manager.get_audio_config().format
-        }
-        
-        # Process with Neural Engine optimization
-        result_path = processor.process_chunks(
-            file_path=file_path,
-            text_chunks=text_chunks,
-            tts_engine=self.get_tts_engine(),
-            voice_blend=voice_blend,
-            speed=tts_config.speed,
-            processing_config=proc_config
-        )
-        
-        # Return empty list since audio is already written to file
-        return []
     
     def _split_into_sentences(self, text):
         """Split text into sentences for emotion analysis."""
@@ -565,7 +557,8 @@ def cli():
 @click.option('--checkpoint-interval', type=int, default=50, help='Save checkpoint every N chunks (default: 50)')
 @click.option('--turbo-mode', is_flag=True, default=False, help='Enable maximum performance mode (minimal delays, 95% CPU)')
 @click.option('--debug', is_flag=True, default=False, help='Enable detailed debug output')
-def convert(voice, speed, format, file, engine, emotion, characters, chapters, dialogue, processing_level, batch_mode, checkpoint_interval, turbo_mode, debug):
+@click.option('--progress-style', type=click.Choice(['simple', 'tqdm', 'rich', 'timeseries']), default='simple', help='Progress display style (simple/tqdm/rich/timeseries)')
+def convert(voice, speed, format, file, engine, emotion, characters, chapters, dialogue, processing_level, batch_mode, checkpoint_interval, turbo_mode, debug, progress_style):
     """Convert text files in text/ folder to audiobooks.
     
     All options are temporary overrides and won't be saved to config.
@@ -596,12 +589,12 @@ def convert(voice, speed, format, file, engine, emotion, characters, chapters, d
                 click.echo(f"🔍 DEBUG: CLI parameters passed to convert_file:")
                 click.echo(f"   voice={voice}, speed={speed}, format={format}")
                 click.echo(f"   emotion={emotion}, characters={characters}, chapters={chapters}, dialogue={dialogue}")
-                click.echo(f"   batch_mode={batch_mode}, turbo_mode={turbo_mode}")
+                click.echo(f"   batch_mode={batch_mode}, turbo_mode={turbo_mode}, progress_style={progress_style}")
             
             output_path = app.convert_file(
                 file_path, voice, speed, format, emotion, characters, chapters, dialogue,
                 batch_mode=batch_mode, checkpoint_interval=checkpoint_interval,
-                turbo_mode=turbo_mode, debug=debug
+                turbo_mode=turbo_mode, debug=debug, progress_style=progress_style
             )
             click.echo(f"✓ Conversion complete: {output_path}")
         except Exception as e:
@@ -636,7 +629,7 @@ def convert(voice, speed, format, file, engine, emotion, characters, chapters, d
                 output_path = app.convert_file(
                     file_path, voice, speed, format, emotion, characters, chapters, dialogue,
                     batch_mode=batch_mode, checkpoint_interval=checkpoint_interval,
-                    turbo_mode=turbo_mode
+                    turbo_mode=turbo_mode, progress_style=progress_style
                 )
                 click.echo(f"✓ {file_path.name} -> {output_path.name}")
             except Exception as e:
