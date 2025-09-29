@@ -67,11 +67,25 @@ class ConfigManager:
                 with open(self.config_path, 'r') as f:
                     config_data = yaml.safe_load(f)
                 
-                # Convert dict to config objects
+                # Convert dict to config objects with backward compatibility
+                tts_data = config_data.get('tts', {})
+                # Remove old fields that no longer exist
+                tts_data = {k: v for k, v in tts_data.items() if k in ['engine', 'voice', 'speed', 'volume']}
+                
+                audio_data = config_data.get('audio', {})
+                # Remove old fields that no longer exist  
+                audio_data = {k: v for k, v in audio_data.items() if k in ['format', 'add_metadata']}
+                
+                processing_data = config_data.get('processing', {})
+                # Remove old fields that no longer exist
+                valid_fields = ['chunk_size', 'pause_between_chapters', 'auto_detect_chapters', 'level', 
+                               'emotion_analysis', 'character_voices', 'dialogue_detection', 'chapter_metadata', 'batch_processing']
+                processing_data = {k: v for k, v in processing_data.items() if k in valid_fields}
+                
                 return AppConfig(
-                    tts=TTSConfig(**config_data.get('tts', {})),
-                    audio=AudioConfig(**config_data.get('audio', {})),
-                    processing=ProcessingConfig(**config_data.get('processing', {})),
+                    tts=TTSConfig(**tts_data),
+                    audio=AudioConfig(**audio_data),
+                    processing=ProcessingConfig(**processing_data),
                     text_dir=config_data.get('text_dir', 'text'),
                     audio_dir=config_data.get('audio_dir', 'audio'),
                     config_dir=config_data.get('config_dir', 'config')
