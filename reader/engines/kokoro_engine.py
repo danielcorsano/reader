@@ -102,7 +102,7 @@ class KokoroEngine(TTSEngine):
                 # Check if CoreML acceleration worked
                 if platform.system() == "Darwin" and platform.machine() == "arm64":
                     print("✅ Kokoro initialized with Neural Engine acceleration (CoreML)", flush=True)
-                    print(f"🚀 Optimized settings: 64k mono MP3, 0.1s delays, 85% CPU threshold", flush=True)
+                    print(f"🚀 Optimized settings: 48k mono MP3, Neural Engine acceleration", flush=True)
                     
                     # Test inference speed
                     if self.debug:

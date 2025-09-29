@@ -33,7 +33,7 @@ class StreamProcessor:
         self.audio_buffer = []  # Buffer for batch MP3 conversion
         
     def process_with_stream(self, file_path: Path, text_chunks: List[str],
-                           chunk_processor: Callable[[str, int, int], bytes],
+                           tts_engine, voice: str, speed: float,
                            processing_config: Dict[str, Any]) -> Path:
         """Process chunks and stream directly to output file."""
         total_chunks = len(text_chunks)

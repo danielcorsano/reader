@@ -23,10 +23,10 @@ class BatchConfig:
     max_checkpoint_segments: int = 50   # Keep only last 50 segments in checkpoint for recovery
     keep_checkpoint_history: int = 2    # Keep only last 2 checkpoint intervals
     # Resource management - Optimized for Neural Engine acceleration
-    thermal_management: bool = True  # Enable thermal throttling
-    chunk_delay_seconds: float = 0.1  # Minimal delay for Neural Engine efficiency
-    cool_down_interval: int = 20  # Cool down every 20 chunks (less frequent)
-    cool_down_seconds: float = 2.0  # Shorter cool down duration
+    thermal_management: bool = False  # Disabled for Neural Engine optimization
+    chunk_delay_seconds: float = 0.0  # No delays for Neural Engine
+    cool_down_interval: int = 999999  # Effectively disabled
+    cool_down_seconds: float = 0.0  # No cool down for Neural Engine
     max_cpu_usage_percent: float = 85.0  # Higher threshold for Neural Engine
     cpu_check_interval: int = 10  # Check CPU usage less frequently
 
@@ -123,15 +123,19 @@ class RobustProcessor:
                     else:
                         total_size_mb = 0
                     
-                    print(f"🔄 Processing chunk {i+1}/{total_chunks} ({progress_percent:.1f}%)", flush=True)
-                    print(f"   📊 ETA: ~{estimated_minutes:.0f}min | Audio: {total_size_mb:.1f}MB | Memory: {memory_gb:.1f}GB", flush=True)
-                    print(f"   💻 CPU: {cpu_usage:.1f}% | Chunk: {eta_chunks} remaining", flush=True)
+                    # Calculate ETA
+                    if i > 0:
+                        elapsed = time.time() - start_time
+                        chunks_done = i + 1
+                        chunks_remaining = total_chunks - chunks_done
+                        eta_seconds = (elapsed / chunks_done) * chunks_remaining
+                        eta_mins = int(eta_seconds // 60)
+                        eta_secs = int(eta_seconds % 60)
+                        eta_str = f" ETA: {eta_mins:02d}:{eta_secs:02d}"
+                    else:
+                        eta_str = ""
                     
-                    # Show chunk text preview (first 50 chars)
-                    preview = chunk_text.strip()[:50]
-                    if len(chunk_text.strip()) > 50:
-                        preview += "..."
-                    print(f"   📝 Text: {preview}", flush=True)
+                    print(f"🧠 Chunk {i+1}/{total_chunks} ({progress_percent:.1f}%){eta_str}", flush=True)
                     
                     # Process the chunk
                     chunk_start_time = time.time()
