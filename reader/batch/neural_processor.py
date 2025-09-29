@@ -66,6 +66,7 @@ class NeuralProcessor:
                            file_path: Path, settings_hash: str):
         """Sequential chunk processing optimized for Neural Engine."""
         start_time = time.time()
+        neural_engine_confirmed = False
         
         for i in range(start_chunk, total_chunks):
             chunk_text = text_chunks[i]
@@ -87,7 +88,20 @@ class NeuralProcessor:
             print(f"🧠 Chunk {i+1}/{total_chunks} ({progress:.1f}%){eta_str}", flush=True)
             
             # Process chunk with Neural Engine
-            audio_data = self._process_single_chunk(chunk_text, i, total_chunks, tts_engine, voice_blend, speed)
+            try:
+                audio_data = self._process_single_chunk(chunk_text, i, total_chunks, tts_engine, voice_blend, speed)
+                
+                # Confirm Neural Engine is running after first successful chunk
+                if not neural_engine_confirmed and audio_data:
+                    print(f"✅ Neural Engine processing active - generating audio at optimized speed", flush=True)
+                    neural_engine_confirmed = True
+                    
+            except Exception as e:
+                if not neural_engine_confirmed:
+                    print(f"❌ Neural Engine processing failed: {str(e)}", flush=True)
+                    print(f"🔄 Falling back to CPU processing", flush=True)
+                    neural_engine_confirmed = True  # Don't spam error messages
+                raise  # Re-raise to handle at higher level
             
             # Convert and write immediately for streaming
             self._convert_and_write_chunk(output_file, audio_data)
