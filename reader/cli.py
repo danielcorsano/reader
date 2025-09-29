@@ -373,21 +373,33 @@ class ReaderApp:
         
         # Create simple stream processor
         from .batch.stream_processor import StreamProcessor
+        # Adjust CPU threshold based on thermal management
+        max_cpu_percent = 95.0 if not thermal_management else 85.0
+        
+        # Determine parallel workers based on engine and settings
+        parallel_workers = 1  # Default: sequential for Neural Engine
+        if parallel and tts_config.engine != "kokoro":
+            # Only use parallel for non-Neural Engine TTS
+            parallel_workers = min(max_workers, 4)  # Cap for stability
+        elif parallel and tts_config.engine == "kokoro":
+            print("⚠️ Parallel processing disabled for Kokoro (Neural Engine optimization)")
+        
         processor = StreamProcessor(
             output_path=output_path,
-            chunk_delay=max(chunk_delay, 0.5),  # Minimum 0.5s for thermal safety
-            max_cpu_percent=75.0,
-            checkpoint_interval=checkpoint_interval
+            chunk_delay=chunk_delay,  # Use actual requested delay for Neural Engine
+            max_cpu_percent=max_cpu_percent,  # Higher threshold for turbo mode
+            checkpoint_interval=checkpoint_interval,
+            parallel_workers=parallel_workers
         )
         
-        # Split content into chunks using Kokoro's intelligent chunking
+        # Split content into optimized chunks for maximum performance
         if tts_config.engine == "kokoro" and KOKORO_AVAILABLE:
-            # Use Kokoro's optimized chunking
+            # Use Kokoro's optimized chunking with much larger chunks
             kokoro_engine = self.get_tts_engine()
-            text_chunks = kokoro_engine._chunk_text_intelligently(parsed_content.content, max_length=400)
+            text_chunks = kokoro_engine._chunk_text_intelligently(parsed_content.content, max_length=1200)  # 3x larger for speed
         else:
             # Use basic chunking for other engines
-            chunk_size = min(400, processing_config.chunk_size)  # Smaller chunks for robustness
+            chunk_size = min(1200, processing_config.chunk_size * 3)  # Much larger chunks for speed
             text_chunks = [parsed_content.content[i:i+chunk_size] 
                           for i in range(0, len(parsed_content.content), chunk_size)]
         
@@ -519,7 +531,8 @@ def cli():
 @click.option('--chunk-delay', type=float, default=1.0, help='Delay between chunks in seconds (default: 1.0)')
 @click.option('--parallel/--no-parallel', default=False, help='Enable parallel processing for faster conversion (default: disabled)')
 @click.option('--max-workers', type=int, default=8, help='Maximum parallel workers (default: 8)')
-def convert(voice, speed, format, file, engine, emotion, characters, chapters, dialogue, processing_level, batch_mode, checkpoint_interval, thermal_management, chunk_delay, parallel, max_workers):
+@click.option('--turbo-mode', is_flag=True, default=False, help='Enable maximum performance mode (disables thermal management, removes delays)')
+def convert(voice, speed, format, file, engine, emotion, characters, chapters, dialogue, processing_level, batch_mode, checkpoint_interval, thermal_management, chunk_delay, parallel, max_workers, turbo_mode):
     """Convert text files in text/ folder to audiobooks.
     
     All options are temporary overrides and won't be saved to config.
@@ -541,6 +554,14 @@ def convert(voice, speed, format, file, engine, emotion, characters, chapters, d
     if file:
         # Convert specific file
         file_path = Path(file)
+        # Apply turbo mode settings
+        if turbo_mode:
+            thermal_management = False
+            chunk_delay = 0.0
+            parallel = True
+            max_workers = min(max_workers, 8)  # Cap for stability
+            click.echo("🚀 Turbo mode enabled: Maximum performance settings active")
+        
         try:
             output_path = app.convert_file(
                 file_path, voice, speed, format, emotion, characters, chapters, dialogue,
