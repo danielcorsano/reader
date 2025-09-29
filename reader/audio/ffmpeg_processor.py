@@ -86,7 +86,7 @@ class FFmpegAudioProcessor(AudioProcessor):
         
         if format == 'mp3':
             return {
-                'bitrate': '64k',  # Lower bitrate for faster processing and smaller files
+                'bitrate': '48k',  # Ultra-low bitrate for maximum compression and speed
                 'parameters': ['-q:a', '6', '-ac', '1']  # VBR quality 6 (higher compression), mono for speed
             }
         elif format in ['m4a', 'm4b']:

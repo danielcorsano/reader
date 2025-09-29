@@ -18,6 +18,16 @@ except ImportError:
 class KokoroEngine(TTSEngine):
     """TTS engine implementation using Kokoro ONNX."""
     
+    def __init__(self, debug: bool = False):
+        """Initialize the Kokoro engine."""
+        self.debug = debug
+        if not KOKORO_AVAILABLE:
+            raise ImportError("Kokoro ONNX not available. Install with: poetry add kokoro-onnx")
+        
+        self.kokoro = None
+        self._initialized = False
+        self._init_error = None
+    
     # Kokoro voice mappings with language codes
     # Updated to match actual Kokoro library voice names
     VOICES = {
@@ -40,14 +50,6 @@ class KokoroEngine(TTSEngine):
         "fm_pierre": {"name": "Pierre (French)", "lang": "fr", "gender": "male"},
     }
     
-    def __init__(self):
-        """Initialize the Kokoro engine."""
-        if not KOKORO_AVAILABLE:
-            raise ImportError("Kokoro ONNX not available. Install with: poetry add kokoro-onnx")
-        
-        self.kokoro = None
-        self._initialized = False
-        self._init_error = None
     
     def _ensure_initialized(self) -> None:
         """Ensure Kokoro is initialized, initializing lazily if needed."""
@@ -70,18 +72,46 @@ class KokoroEngine(TTSEngine):
             # Try to initialize with CoreML for Apple Neural Engine acceleration
             try:
                 import platform
+                if self.debug:
+                    print(f"🔍 DEBUG: Platform: {platform.system()}, Machine: {platform.machine()}", flush=True)
+                
                 if platform.system() == "Darwin" and platform.machine() == "arm64":
                     # M1/M2/M3 Mac - try CoreML acceleration
                     import os
+                    if self.debug:
+                        print("🧠 Setting CoreML environment variables for Neural Engine...", flush=True)
                     os.environ["ORT_COREML_FLAGS"] = "COREML_FLAG_ENABLE_ON_SUBGRAPH"
+                    if self.debug:
+                        print(f"🔍 DEBUG: Set ORT_COREML_FLAGS={os.environ.get('ORT_COREML_FLAGS')}", flush=True)
                     print("🧠 Attempting Apple Neural Engine acceleration via CoreML...", flush=True)
+                else:
+                    print("⚠️ Not an Apple Silicon Mac - Neural Engine not available", flush=True)
                 
+                if self.debug:
+                    print(f"🔍 DEBUG: Initializing Kokoro with model: {model_path}", flush=True)
+                    print(f"🔍 DEBUG: Using voices: {voices_path}", flush=True)
+                
+                import time
+                init_start = time.time()
                 self.kokoro = Kokoro(str(model_path), str(voices_path))
+                init_time = time.time() - init_start
+                
+                if self.debug:
+                    print(f"🔍 DEBUG: Kokoro initialization took {init_time:.2f} seconds", flush=True)
                 
                 # Check if CoreML acceleration worked
                 if platform.system() == "Darwin" and platform.machine() == "arm64":
                     print("✅ Kokoro initialized with Neural Engine acceleration (CoreML)", flush=True)
                     print(f"🚀 Optimized settings: 64k mono MP3, 0.1s delays, 85% CPU threshold", flush=True)
+                    
+                    # Test inference speed
+                    if self.debug:
+                        print("🔍 DEBUG: Testing Neural Engine inference speed...", flush=True)
+                        test_start = time.time()
+                        test_audio = self.kokoro.create("Hello world", "am_michael")
+                        test_time = time.time() - test_start
+                        print(f"🔍 DEBUG: Test inference took {test_time:.3f} seconds for 'Hello world'", flush=True)
+                        print(f"🔍 DEBUG: Generated {len(test_audio)} bytes of audio", flush=True)
                 else:
                     print("✅ Kokoro initialized with CPU inference", flush=True)
                     

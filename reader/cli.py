@@ -188,7 +188,8 @@ class ReaderApp:
         dialogue_detection: Optional[bool] = None,
         batch_mode: bool = False,
         checkpoint_interval: int = 50,
-        turbo_mode: bool = False
+        turbo_mode: bool = False,
+        debug: bool = False
     ) -> Path:
         """Convert a single file to audiobook."""
         # Get parser
@@ -205,21 +206,41 @@ class ReaderApp:
         audio_config = self.config_manager.get_audio_config()
         processing_config = self.config_manager.get_processing_config()
         
+        if debug:
+            print(f"🔍 DEBUG: Loaded config values:")
+            print(f"   TTS: engine={tts_config.engine}, voice={tts_config.voice}, speed={tts_config.speed}")
+            print(f"   Audio: format={audio_config.format}")
+            print(f"   Processing: level={processing_config.level}, emotion={processing_config.emotion_analysis}, characters={processing_config.character_voices}")
+            print(f"   Chunk size: {processing_config.chunk_size}")
+        
         # Override with command-line arguments
         if voice:
+            if debug: print(f"🔍 DEBUG: Overriding voice: {tts_config.voice} -> {voice}")
             tts_config.voice = voice
         if speed:
+            if debug: print(f"🔍 DEBUG: Overriding speed: {tts_config.speed} -> {speed}")
             tts_config.speed = speed
         if format:
+            if debug: print(f"🔍 DEBUG: Overriding format: {audio_config.format} -> {format}")
             audio_config.format = format
         if emotion_analysis is not None:
+            if debug: print(f"🔍 DEBUG: Overriding emotion: {processing_config.emotion_analysis} -> {emotion_analysis}")
             processing_config.emotion_analysis = emotion_analysis
         if character_voices is not None:
+            if debug: print(f"🔍 DEBUG: Overriding characters: {processing_config.character_voices} -> {character_voices}")
             processing_config.character_voices = character_voices
         if chapter_detection is not None:
+            if debug: print(f"🔍 DEBUG: Overriding chapters: {processing_config.auto_detect_chapters} -> {chapter_detection}")
             processing_config.auto_detect_chapters = chapter_detection
         if dialogue_detection is not None:
+            if debug: print(f"🔍 DEBUG: Overriding dialogue: {processing_config.dialogue_detection} -> {dialogue_detection}")
             processing_config.dialogue_detection = dialogue_detection
+            
+        if debug:
+            print(f"🔍 DEBUG: Final config after overrides:")
+            print(f"   TTS: engine={tts_config.engine}, voice={tts_config.voice}, speed={tts_config.speed}")
+            print(f"   Audio: format={audio_config.format}")
+            print(f"   Processing: level={processing_config.level}, emotion={processing_config.emotion_analysis}, characters={processing_config.character_voices}")
         
         # Phase 2: Character analysis
         if self.character_mapper and processing_config.character_voices:
@@ -555,7 +576,8 @@ def cli():
 @click.option('--batch-mode', is_flag=True, help='Enable robust batch processing with checkpoints')
 @click.option('--checkpoint-interval', type=int, default=50, help='Save checkpoint every N chunks (default: 50)')
 @click.option('--turbo-mode', is_flag=True, default=False, help='Enable maximum performance mode (minimal delays, 95% CPU)')
-def convert(voice, speed, format, file, engine, emotion, characters, chapters, dialogue, processing_level, batch_mode, checkpoint_interval, turbo_mode):
+@click.option('--debug', is_flag=True, default=False, help='Enable detailed debug output')
+def convert(voice, speed, format, file, engine, emotion, characters, chapters, dialogue, processing_level, batch_mode, checkpoint_interval, turbo_mode, debug):
     """Convert text files in text/ folder to audiobooks.
     
     All options are temporary overrides and won't be saved to config.
@@ -582,10 +604,16 @@ def convert(voice, speed, format, file, engine, emotion, characters, chapters, d
             click.echo("🚀 Turbo mode enabled: Maximum performance settings active")
         
         try:
+            if debug:
+                click.echo(f"🔍 DEBUG: CLI parameters passed to convert_file:")
+                click.echo(f"   voice={voice}, speed={speed}, format={format}")
+                click.echo(f"   emotion={emotion}, characters={characters}, chapters={chapters}, dialogue={dialogue}")
+                click.echo(f"   batch_mode={batch_mode}, turbo_mode={turbo_mode}")
+            
             output_path = app.convert_file(
                 file_path, voice, speed, format, emotion, characters, chapters, dialogue,
                 batch_mode=batch_mode, checkpoint_interval=checkpoint_interval,
-                turbo_mode=turbo_mode
+                turbo_mode=turbo_mode, debug=debug
             )
             click.echo(f"✓ Conversion complete: {output_path}")
         except Exception as e:

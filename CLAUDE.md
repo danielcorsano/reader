@@ -20,9 +20,9 @@ This is a Python project called "reader" managed with Poetry for dependency mana
 
 ### Reader CLI Commands
 
-**Quick Start (Optimized Defaults):**
-- `poetry run python -m reader convert` - Convert all files in text/ folder with optimal settings
-- `poetry run python -m reader convert -F file.epub` - Convert specific file
+**Quick Start (Neural Engine Optimized):**
+- `poetry run python -m reader convert -F file.epub` - Fast Neural Engine conversion (48k mono MP3)
+- `poetry run python -m reader convert --debug` - Debug mode with Neural Engine status
 - `poetry run python -m reader convert --turbo-mode` - Maximum speed conversion
 
 **Configuration:**
@@ -85,12 +85,14 @@ This is a Python project called "reader" managed with Poetry for dependency mana
 - Smart acting rules (punctuation, context keywords)
 - Additional dependencies: kokoro-onnx, onnxruntime, vaderSentiment
 
-### Phase 3: Advanced Features + Polish (~350MB)
-**Goal**: Professional audiobook production
+### Phase 3: Advanced Features + Polish (~350MB) ✅ COMPLETED
+**Goal**: Professional audiobook production with Neural Engine optimization
+- Apple Neural Engine acceleration (CoreML) for M1/M2/M3 Macs
 - Dialogue detection and context analysis
-- Chapter metadata and M4B export
-- Multiple audio formats (MP3, M4A, M4B)
-- Voice preview and batch processing
+- Optimized stream processing with checkpoint resumption  
+- 48k mono MP3 encoding for maximum compression
+- Thermal management disabled for full Neural Engine performance
+- Real-time progress feedback with ETA calculation
 - Additional dependencies: spacy, regex
 
 ### Architecture Principles

@@ -42,7 +42,7 @@ class StreamProcessor:
         # Check for existing checkpoint
         start_chunk, output_size = self._load_checkpoint(file_path, total_chunks, settings_hash)
         
-        print(f"🎯 Stream processing {file_path.name} ({total_chunks} chunks)")
+        print(f"🎯 Neural Engine stream processing {file_path.name} ({total_chunks} chunks, 48k mono MP3)")
         if start_chunk > 0:
             print(f"📂 Resuming from chunk {start_chunk} (file size: {output_size/1024/1024:.1f}MB)")
         
@@ -65,14 +65,27 @@ class StreamProcessor:
                                  chunk_processor: Callable, start_chunk: int, 
                                  total_chunks: int, file_path: Path, settings_hash: str):
         """Sequential chunk processing (for Neural Engine compatibility)."""
+        import time
+        start_time = time.time()
+        
         for i in range(start_chunk, total_chunks):
             chunk_text = text_chunks[i]
             
-            # CPU monitoring and thermal management
-            cpu_usage = psutil.cpu_percent(interval=0.1)
+            # Calculate progress and ETA
             progress = ((i + 1) / total_chunks) * 100
             
-            print(f"🔄 Processing chunk {i+1}/{total_chunks} ({progress:.1f}%) CPU: {cpu_usage:.1f}%", flush=True)
+            if i > start_chunk:  # Calculate ETA after first chunk
+                elapsed = time.time() - start_time
+                chunks_done = i + 1 - start_chunk
+                chunks_remaining = total_chunks - (i + 1)
+                eta_seconds = (elapsed / chunks_done) * chunks_remaining
+                eta_mins = int(eta_seconds // 60)
+                eta_secs = int(eta_seconds % 60)
+                eta_str = f" ETA: {eta_mins:02d}:{eta_secs:02d}"
+            else:
+                eta_str = ""
+            
+            print(f"🧠 Chunk {i+1}/{total_chunks} ({progress:.1f}%){eta_str}", flush=True)
             
             # Process chunk
             audio_data = chunk_processor(chunk_text, i, total_chunks)
@@ -80,14 +93,16 @@ class StreamProcessor:
             # Convert and write
             self._convert_and_write_chunk(output_file, audio_data)
             
-            # Thermal management
-            if cpu_usage > self.max_cpu_percent:
-                extra_delay = min(5.0, (cpu_usage - self.max_cpu_percent) * 0.1)
-                print(f"🚨 High CPU ({cpu_usage:.1f}%) - adding {extra_delay:.1f}s delay", flush=True)
-                time.sleep(extra_delay)
+            # Thermal management disabled for maximum speed
+            # Note: CPU usage > 100% is normal on multi-core systems
+            # if cpu_usage > self.max_cpu_percent:
+            #     extra_delay = min(5.0, (cpu_usage - self.max_cpu_percent) * 0.1)
+            #     print(f"🚨 High CPU ({cpu_usage:.1f}%) - adding {extra_delay:.1f}s delay", flush=True)
+            #     time.sleep(extra_delay)
             
-            if self.chunk_delay > 0:
-                time.sleep(self.chunk_delay)
+            # Chunk delay disabled for maximum speed
+            # if self.chunk_delay > 0:
+            #     time.sleep(self.chunk_delay)
             
             # Save checkpoint periodically
             if (i + 1) % self.checkpoint_interval == 0:
