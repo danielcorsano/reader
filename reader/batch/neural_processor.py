@@ -1,7 +1,6 @@
-"""Simple streaming processor with efficient checkpoints."""
+"""Neural Engine optimized processor with streaming and checkpoint support."""
 import json
 import time
-import psutil
 import hashlib
 from pathlib import Path
 from typing import List, Dict, Any, Callable
@@ -9,8 +8,8 @@ from dataclasses import dataclass, asdict
 
 
 @dataclass
-class StreamCheckpoint:
-    """Simple checkpoint for streaming conversion."""
+class NeuralCheckpoint:
+    """Simple checkpoint for Neural Engine streaming conversion."""
     file_path: str
     current_chunk: int
     total_chunks: int
@@ -19,23 +18,20 @@ class StreamCheckpoint:
     timestamp: float
 
 
-class StreamProcessor:
-    """Simple streaming processor that writes directly to output file."""
+class NeuralProcessor:
+    """Neural Engine optimized processor with streaming output and checkpoints."""
     
-    def __init__(self, output_path: Path, chunk_delay: float = 0.1, 
-                 max_cpu_percent: float = 85.0, checkpoint_interval: int = 25):
+    def __init__(self, output_path: Path, checkpoint_interval: int = 25):
         self.output_path = output_path
-        self.chunk_delay = chunk_delay
-        self.max_cpu_percent = max_cpu_percent
         self.checkpoint_interval = checkpoint_interval
         self.checkpoint_path = output_path.with_suffix('.checkpoint')
         self.mp3_batch_size = 4  # Process 4 chunks per MP3 conversion batch
         self.audio_buffer = []  # Buffer for batch MP3 conversion
         
-    def process_with_stream(self, file_path: Path, text_chunks: List[str],
-                           tts_engine, voice: str, speed: float,
-                           processing_config: Dict[str, Any]) -> Path:
-        """Process chunks and stream directly to output file."""
+    def process_chunks(self, file_path: Path, text_chunks: List[str],
+                      tts_engine, voice_blend: Dict[str, float], speed: float,
+                      processing_config: Dict[str, Any]) -> Path:
+        """Process chunks with Neural Engine optimization and stream to output."""
         total_chunks = len(text_chunks)
         settings_hash = self._get_settings_hash(processing_config)
         
@@ -49,8 +45,11 @@ class StreamProcessor:
         # Open output file for appending
         mode = 'ab' if start_chunk > 0 else 'wb'
         with open(self.output_path, mode) as output_file:
-            # Sequential processing optimized for Neural Engine
-            self._process_chunks_sequential(output_file, text_chunks, chunk_processor, start_chunk, total_chunks, file_path, settings_hash)
+            # Process chunks with Neural Engine
+            self._process_all_chunks(
+                output_file, text_chunks, tts_engine, voice_blend, speed,
+                start_chunk, total_chunks, file_path, settings_hash
+            )
             
             # Finalize any remaining MP3 batches
             self._finalize_mp3_processing(output_file)
@@ -58,14 +57,14 @@ class StreamProcessor:
         # Clean up checkpoint on completion
         self._cleanup_checkpoint()
         
-        print(f"✅ Stream processing complete: {self.output_path}")
+        print(f"✅ Neural Engine processing complete: {self.output_path}")
         return self.output_path
     
-    def _process_chunks_sequential(self, output_file, text_chunks: List[str], 
-                                 chunk_processor: Callable, start_chunk: int, 
-                                 total_chunks: int, file_path: Path, settings_hash: str):
-        """Sequential chunk processing (for Neural Engine compatibility)."""
-        import time
+    def _process_all_chunks(self, output_file, text_chunks: List[str], 
+                           tts_engine, voice_blend: Dict[str, float], speed: float,
+                           start_chunk: int, total_chunks: int, 
+                           file_path: Path, settings_hash: str):
+        """Sequential chunk processing optimized for Neural Engine."""
         start_time = time.time()
         
         for i in range(start_chunk, total_chunks):
@@ -87,30 +86,69 @@ class StreamProcessor:
             
             print(f"🧠 Chunk {i+1}/{total_chunks} ({progress:.1f}%){eta_str}", flush=True)
             
-            # Process chunk
-            audio_data = chunk_processor(chunk_text, i, total_chunks)
+            # Process chunk with Neural Engine
+            audio_data = self._process_single_chunk(chunk_text, i, total_chunks, tts_engine, voice_blend, speed)
             
-            # Convert and write
+            # Convert and write immediately for streaming
             self._convert_and_write_chunk(output_file, audio_data)
-            
-            # Thermal management disabled for maximum speed
-            # Note: CPU usage > 100% is normal on multi-core systems
-            # if cpu_usage > self.max_cpu_percent:
-            #     extra_delay = min(5.0, (cpu_usage - self.max_cpu_percent) * 0.1)
-            #     print(f"🚨 High CPU ({cpu_usage:.1f}%) - adding {extra_delay:.1f}s delay", flush=True)
-            #     time.sleep(extra_delay)
-            
-            # Chunk delay disabled for maximum speed
-            # if self.chunk_delay > 0:
-            #     time.sleep(self.chunk_delay)
             
             # Save checkpoint periodically
             if (i + 1) % self.checkpoint_interval == 0:
                 current_size = output_file.tell()
                 self._save_checkpoint(file_path, i + 1, total_chunks, current_size, settings_hash)
     
+    def _process_single_chunk(self, chunk_text: str, chunk_idx: int, total_chunks: int,
+                             tts_engine, voice_blend: Dict[str, float], speed: float) -> bytes:
+        """Process a single text chunk to audio with Neural Engine."""
+        if not chunk_text.strip():
+            # Return silence for empty chunks
+            import wave
+            import io
+            
+            # Create 0.1 second of silence
+            sample_rate = 22050
+            silence_samples = int(0.1 * sample_rate)
+            silence_data = b'\\x00\\x00' * silence_samples
+            
+            wav_buffer = io.BytesIO()
+            with wave.open(wav_buffer, 'wb') as wav_file:
+                wav_file.setnchannels(1)
+                wav_file.setsampwidth(2)
+                wav_file.setframerate(sample_rate)
+                wav_file.writeframes(silence_data)
+            
+            wav_buffer.seek(0)
+            return wav_buffer.read()
+        
+        try:
+            # Determine voice for synthesis
+            if len(voice_blend) == 1:
+                # Single voice
+                voice_id, _ = list(voice_blend.items())[0]
+                voice_str = voice_id
+            else:
+                # Voice blending - create voice spec string
+                voice_parts = [f"{voice}:{int(weight*100)}" for voice, weight in voice_blend.items()]
+                voice_str = ",".join(voice_parts)
+            
+            # Clean the text to prevent TTS issues
+            clean_text = chunk_text.strip()
+            
+            # Replace problematic characters
+            clean_text = clean_text.replace('\\u00a0', ' ')  # Non-breaking space
+            clean_text = clean_text.replace('\\u2013', '-')  # En dash
+            clean_text = clean_text.replace('\\u2014', '-')  # Em dash
+            clean_text = clean_text.replace('\\u2019', "'")  # Right single quote
+            clean_text = clean_text.replace('\\u201c', '"')  # Left double quote
+            clean_text = clean_text.replace('\\u201d', '"')  # Right double quote
+            
+            return tts_engine.synthesize(clean_text, voice_str, speed)
+            
+        except Exception as e:
+            raise RuntimeError(f"Neural Engine processing failed on chunk {chunk_idx + 1}: {str(e)}") from e
+    
     def _convert_and_write_chunk(self, output_file, audio_data: bytes):
-        """Convert chunk to MP3 and write to file (with batching optimization)."""
+        """Convert chunk to MP3 and write to file with batching optimization."""
         if self.output_path.suffix.lower() == '.mp3':
             # Add to batch buffer
             self.audio_buffer.append(audio_data)
@@ -191,7 +229,7 @@ class StreamProcessor:
             with open(self.checkpoint_path, 'r') as f:
                 data = json.load(f)
             
-            checkpoint = StreamCheckpoint(**data)
+            checkpoint = NeuralCheckpoint(**data)
             
             # Verify checkpoint is for same file and settings
             if (checkpoint.file_path != str(file_path) or 
@@ -217,7 +255,7 @@ class StreamProcessor:
     def _save_checkpoint(self, file_path: Path, current_chunk: int, 
                         total_chunks: int, output_size: int, settings_hash: str):
         """Save minimal checkpoint."""
-        checkpoint = StreamCheckpoint(
+        checkpoint = NeuralCheckpoint(
             file_path=str(file_path),
             current_chunk=current_chunk,
             total_chunks=total_chunks,
@@ -237,3 +275,5 @@ class StreamProcessor:
         """Remove checkpoint file."""
         if self.checkpoint_path.exists():
             self.checkpoint_path.unlink()
+
+

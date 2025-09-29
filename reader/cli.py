@@ -37,7 +37,7 @@ except ImportError:
 try:
     from .analysis.dialogue_detector import DialogueDetector
     from .chapters.chapter_manager import ChapterManager
-    from .batch.robust_processor import create_chunk_processor
+    from .batch.neural_processor import NeuralProcessor
     from .processors.ffmpeg_processor import get_audio_processor
     from .voices.voice_previewer import get_voice_previewer
     from .batch.batch_processor import create_batch_processor
@@ -256,14 +256,16 @@ class ReaderApp:
         # Generate audio with enhanced processing
         click.echo(f"Generating audio for '{parsed_content.title}'...")
         
-        # Choose processing method based on batch mode
-        if batch_mode and PHASE3_AVAILABLE:
-            # Use stream processing with checkpoint resumption
+        # Use Neural Engine processing for Phase 3 (default)
+        if PHASE3_AVAILABLE:
+            # Use Neural Engine processing with streaming and checkpoints
             audio_segments = self._convert_with_robust_processing(
-                file_path, parsed_content, tts_config, processing_config, checkpoint_interval, thermal_management, chunk_delay, parallel, max_workers
+                file_path, parsed_content, tts_config, processing_config, 
+                checkpoint_interval=25, thermal_management=False, chunk_delay=0.0, 
+                parallel=False, max_workers=8
             )
         elif processing_config.emotion_analysis and self.ssml_generator:
-            # Process with emotion and character awareness
+            # Fallback: Process with emotion and character awareness
             audio_segments = self._convert_with_emotion_analysis(
                 parsed_content, tts_config, processing_config
             )
@@ -297,7 +299,10 @@ class ReaderApp:
         output_path = audio_dir / output_filename
         
         # Combine audio segments into final audiobook
-        if len(audio_segments) == 1:
+        if len(audio_segments) == 0:
+            # Neural Engine processor already wrote the file directly
+            click.echo("Audio file already written by Neural Engine processor")
+        elif len(audio_segments) == 1:
             self.get_tts_engine().save_audio(audio_segments[0], output_path, audio_config.format)
         else:
             # Merge all segments into a single audio file
@@ -424,17 +429,9 @@ class ReaderApp:
         audio_config = self.config_manager.get_audio_config()
         output_path = self._create_output_path(parsed_content.title, tts_config, audio_config, processing_config)
         
-        # Create stream processor with optimized settings
-        from .batch.stream_processor import StreamProcessor
-        
-        # Set performance parameters based on turbo mode
-        chunk_delay = 0.0 if turbo_mode else 0.1  # Minimal delay for Neural Engine
-        max_cpu_percent = 95.0 if turbo_mode else 85.0
-        
-        processor = StreamProcessor(
+        # Create Neural Engine processor with optimized settings
+        processor = NeuralProcessor(
             output_path=output_path,
-            chunk_delay=chunk_delay,
-            max_cpu_percent=max_cpu_percent,
             checkpoint_interval=checkpoint_interval
         )
         
@@ -460,13 +457,6 @@ class ReaderApp:
             else:
                 voice_blend = {"default": 1.0}
         
-        # Create chunk processor
-        chunk_processor = create_chunk_processor(
-            self.get_tts_engine(), 
-            voice_blend, 
-            tts_config.speed
-        )
-        
         # Processing configuration for checkpoints
         proc_config = {
             'engine': tts_config.engine,
@@ -476,11 +466,13 @@ class ReaderApp:
             'format': self.config_manager.get_audio_config().format
         }
         
-        # Process with stream checkpointing
-        result_path = processor.process_with_stream(
+        # Process with Neural Engine optimization
+        result_path = processor.process_chunks(
             file_path=file_path,
             text_chunks=text_chunks,
-            chunk_processor=chunk_processor,
+            tts_engine=self.get_tts_engine(),
+            voice_blend=voice_blend,
+            speed=tts_config.speed,
             processing_config=proc_config
         )
         
