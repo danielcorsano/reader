@@ -188,10 +188,7 @@ class ReaderApp:
         dialogue_detection: Optional[bool] = None,
         batch_mode: bool = False,
         checkpoint_interval: int = 50,
-        thermal_management: bool = True,
-        chunk_delay: float = 1.0,
-        parallel: bool = False,
-        max_workers: int = 8
+        turbo_mode: bool = False
     ) -> Path:
         """Convert a single file to audiobook."""
         # Get parser
@@ -371,25 +368,18 @@ class ReaderApp:
         audio_config = self.config_manager.get_audio_config()
         output_path = self._create_output_path(parsed_content.title, tts_config, audio_config, processing_config)
         
-        # Create simple stream processor
+        # Create stream processor with optimized settings
         from .batch.stream_processor import StreamProcessor
-        # Adjust CPU threshold based on thermal management
-        max_cpu_percent = 95.0 if not thermal_management else 85.0
         
-        # Determine parallel workers based on engine and settings
-        parallel_workers = 1  # Default: sequential for Neural Engine
-        if parallel and tts_config.engine != "kokoro":
-            # Only use parallel for non-Neural Engine TTS
-            parallel_workers = min(max_workers, 4)  # Cap for stability
-        elif parallel and tts_config.engine == "kokoro":
-            print("⚠️ Parallel processing disabled for Kokoro (Neural Engine optimization)")
+        # Set performance parameters based on turbo mode
+        chunk_delay = 0.0 if turbo_mode else 0.1  # Minimal delay for Neural Engine
+        max_cpu_percent = 95.0 if turbo_mode else 85.0
         
         processor = StreamProcessor(
             output_path=output_path,
-            chunk_delay=chunk_delay,  # Use actual requested delay for Neural Engine
-            max_cpu_percent=max_cpu_percent,  # Higher threshold for turbo mode
-            checkpoint_interval=checkpoint_interval,
-            parallel_workers=parallel_workers
+            chunk_delay=chunk_delay,
+            max_cpu_percent=max_cpu_percent,
+            checkpoint_interval=checkpoint_interval
         )
         
         # Split content into optimized chunks for maximum performance
@@ -527,12 +517,8 @@ def cli():
 @click.option('--processing-level', type=click.Choice(['phase1', 'phase2', 'phase3']), help='Set processing level (temporary override)')
 @click.option('--batch-mode', is_flag=True, help='Enable robust batch processing with checkpoints')
 @click.option('--checkpoint-interval', type=int, default=50, help='Save checkpoint every N chunks (default: 50)')
-@click.option('--thermal-management/--no-thermal-management', default=True, help='Enable thermal management to prevent overheating (default: enabled)')
-@click.option('--chunk-delay', type=float, default=1.0, help='Delay between chunks in seconds (default: 1.0)')
-@click.option('--parallel/--no-parallel', default=False, help='Enable parallel processing for faster conversion (default: disabled)')
-@click.option('--max-workers', type=int, default=8, help='Maximum parallel workers (default: 8)')
-@click.option('--turbo-mode', is_flag=True, default=False, help='Enable maximum performance mode (disables thermal management, removes delays)')
-def convert(voice, speed, format, file, engine, emotion, characters, chapters, dialogue, processing_level, batch_mode, checkpoint_interval, thermal_management, chunk_delay, parallel, max_workers, turbo_mode):
+@click.option('--turbo-mode', is_flag=True, default=False, help='Enable maximum performance mode (minimal delays, 95% CPU)')
+def convert(voice, speed, format, file, engine, emotion, characters, chapters, dialogue, processing_level, batch_mode, checkpoint_interval, turbo_mode):
     """Convert text files in text/ folder to audiobooks.
     
     All options are temporary overrides and won't be saved to config.
@@ -556,18 +542,13 @@ def convert(voice, speed, format, file, engine, emotion, characters, chapters, d
         file_path = Path(file)
         # Apply turbo mode settings
         if turbo_mode:
-            thermal_management = False
-            chunk_delay = 0.0
-            parallel = True
-            max_workers = min(max_workers, 8)  # Cap for stability
             click.echo("🚀 Turbo mode enabled: Maximum performance settings active")
         
         try:
             output_path = app.convert_file(
                 file_path, voice, speed, format, emotion, characters, chapters, dialogue,
                 batch_mode=batch_mode, checkpoint_interval=checkpoint_interval,
-                thermal_management=thermal_management, chunk_delay=chunk_delay,
-                parallel=parallel, max_workers=max_workers
+                turbo_mode=turbo_mode
             )
             click.echo(f"✓ Conversion complete: {output_path}")
         except Exception as e:

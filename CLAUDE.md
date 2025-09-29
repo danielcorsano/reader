@@ -19,18 +19,27 @@ This is a Python project called "reader" managed with Poetry for dependency mana
 - `poetry show` - List installed packages
 
 ### Reader CLI Commands
-**Main Commands:**
-- `poetry run python -m reader info` - Show application information and quick start
-- `poetry run python -m reader convert` - Convert text files to audiobooks
-- `poetry run python -m reader voices` - List available TTS voices
-- `poetry run python -m reader config` - Configure default settings
 
-**Phase 2 Commands (Neural TTS + Emotion Analysis):**
-- `poetry run python -m reader convert --engine kokoro --emotion --characters` - Advanced conversion
+**Quick Start (Optimized Defaults):**
+- `poetry run python -m reader convert` - Convert all files in text/ folder with optimal settings
+- `poetry run python -m reader convert -F file.epub` - Convert specific file
+- `poetry run python -m reader convert --turbo-mode` - Maximum speed conversion
+
+**Configuration:**
+- `poetry run python -m reader config` - Configure default settings  
+- `poetry run python -m reader voices` - List available TTS voices
+- `poetry run python -m reader info` - Show application information
+
+**Advanced Options:**
+- `poetry run python -m reader convert -v voice_name` - Use specific voice
+- `poetry run python -m reader convert -s 1.2` - Adjust speech speed  
+- `poetry run python -m reader convert -f wav` - Different output format
+- `poetry run python -m reader convert --no-emotion` - Disable emotion analysis
+- `poetry run python -m reader convert --batch-mode` - Enable checkpointing
+
+**Character Management:**
 - `poetry run python -m reader characters add NAME VOICE` - Map character to voice
 - `poetry run python -m reader characters list` - Show character mappings
-- `poetry run python -m reader blend create NAME SPEC` - Create voice blend (e.g., "voice1:60,voice2:40")
-- `poetry run python -m reader blend list` - Show voice blends
 
 ### Testing and Code Quality
 - `poetry run pytest` - Run tests

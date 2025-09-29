@@ -8,40 +8,30 @@ from dataclasses import dataclass, asdict
 @dataclass
 class TTSConfig:
     """TTS engine configuration."""
-    engine: str = "pyttsx3"  # "pyttsx3" or "kokoro"
+    engine: str = "kokoro"  # Default to Neural Engine for best performance
     voice: Optional[str] = None
     speed: float = 1.0
     volume: float = 1.0
-    # Phase 2 options
-    fallback_engine: str = "pyttsx3"  # Fallback if primary engine fails
-    fallback_voice: str = "af_sarah"  # Default voice when engine fails to auto-assign
 
 
 @dataclass
 class AudioConfig:
     """Audio output configuration."""
-    format: str = "mp3"  # MP3 default for smaller audiobook files, WAV also supported
-    add_metadata: bool = False  # Phase 3+ feature
+    format: str = "mp3"  # Optimized mono MP3 for audiobooks
+    add_metadata: bool = True
 
 
 @dataclass
 class ProcessingConfig:
     """Text processing configuration."""
-    chunk_size: int = 1000
+    chunk_size: int = 1200  # Optimized for Neural Engine
     pause_between_chapters: float = 1.0
     auto_detect_chapters: bool = True
-    # Phase selection
-    level: str = "phase1"  # "phase1", "phase2", "phase3"
-    # Phase 2 options
+    level: str = "phase3"  # Use all available features by default
     emotion_analysis: bool = True
-    smart_acting: bool = True
     character_voices: bool = True
-    voice_blending: bool = False  # Advanced feature
-    # Phase 3 options
     dialogue_detection: bool = True
-    advanced_audio_formats: bool = True
     chapter_metadata: bool = True
-    voice_preview: bool = True
     batch_processing: bool = True
 
 

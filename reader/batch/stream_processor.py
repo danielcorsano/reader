@@ -6,8 +6,6 @@ import hashlib
 from pathlib import Path
 from typing import List, Dict, Any, Callable
 from dataclasses import dataclass, asdict
-from concurrent.futures import ThreadPoolExecutor, as_completed
-import threading
 
 
 @dataclass
@@ -24,16 +22,13 @@ class StreamCheckpoint:
 class StreamProcessor:
     """Simple streaming processor that writes directly to output file."""
     
-    def __init__(self, output_path: Path, chunk_delay: float = 1.0, 
-                 max_cpu_percent: float = 75.0, checkpoint_interval: int = 25,
-                 parallel_workers: int = 1):
+    def __init__(self, output_path: Path, chunk_delay: float = 0.1, 
+                 max_cpu_percent: float = 85.0, checkpoint_interval: int = 25):
         self.output_path = output_path
         self.chunk_delay = chunk_delay
         self.max_cpu_percent = max_cpu_percent
         self.checkpoint_interval = checkpoint_interval
         self.checkpoint_path = output_path.with_suffix('.checkpoint')
-        self.parallel_workers = parallel_workers
-        self.write_lock = threading.Lock()  # Ensure ordered writing
         self.mp3_batch_size = 4  # Process 4 chunks per MP3 conversion batch
         self.audio_buffer = []  # Buffer for batch MP3 conversion
         
@@ -54,12 +49,8 @@ class StreamProcessor:
         # Open output file for appending
         mode = 'ab' if start_chunk > 0 else 'wb'
         with open(self.output_path, mode) as output_file:
-            if self.parallel_workers > 1:
-                # Parallel processing
-                self._process_chunks_parallel(output_file, text_chunks, chunk_processor, start_chunk, total_chunks)
-            else:
-                # Sequential processing (Neural Engine compatibility)
-                self._process_chunks_sequential(output_file, text_chunks, chunk_processor, start_chunk, total_chunks, file_path, settings_hash)
+            # Sequential processing optimized for Neural Engine
+            self._process_chunks_sequential(output_file, text_chunks, chunk_processor, start_chunk, total_chunks, file_path, settings_hash)
             
             # Finalize any remaining MP3 batches
             self._finalize_mp3_processing(output_file)
@@ -102,44 +93,6 @@ class StreamProcessor:
             if (i + 1) % self.checkpoint_interval == 0:
                 current_size = output_file.tell()
                 self._save_checkpoint(file_path, i + 1, total_chunks, current_size, settings_hash)
-    
-    def _process_chunks_parallel(self, output_file, text_chunks: List[str], 
-                               chunk_processor: Callable, start_chunk: int, total_chunks: int):
-        """Parallel chunk processing for maximum speed."""
-        print(f"🚀 Parallel processing with {self.parallel_workers} workers")
-        
-        # Process chunks in batches to maintain memory control
-        batch_size = self.parallel_workers * 2
-        for batch_start in range(start_chunk, total_chunks, batch_size):
-            batch_end = min(batch_start + batch_size, total_chunks)
-            batch_chunks = text_chunks[batch_start:batch_end]
-            
-            # Process batch in parallel
-            results = {}
-            with ThreadPoolExecutor(max_workers=self.parallel_workers) as executor:
-                future_to_index = {
-                    executor.submit(chunk_processor, chunk_text, batch_start + i, total_chunks): i
-                    for i, chunk_text in enumerate(batch_chunks)
-                }
-                
-                for future in as_completed(future_to_index):
-                    index = future_to_index[future]
-                    try:
-                        audio_data = future.result()
-                        results[index] = audio_data
-                        
-                        progress = ((batch_start + index + 1) / total_chunks) * 100
-                        print(f"🔄 Completed chunk {batch_start + index + 1}/{total_chunks} ({progress:.1f}%)", flush=True)
-                        
-                    except Exception as e:
-                        print(f"❌ Error processing chunk {batch_start + index}: {e}", flush=True)
-                        results[index] = b''  # Empty audio for failed chunks
-            
-            # Write results in order
-            with self.write_lock:
-                for i in range(len(batch_chunks)):
-                    if i in results:
-                        self._convert_and_write_chunk(output_file, results[i])
     
     def _convert_and_write_chunk(self, output_file, audio_data: bytes):
         """Convert chunk to MP3 and write to file (with batching optimization)."""

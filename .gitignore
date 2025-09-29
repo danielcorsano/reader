@@ -132,4 +132,7 @@ reader_previews/
 sample_chapters.json
 
 # FFmpeg temporary files
-*.ffmpeg_tmpCLAUDE.md
+*.ffmpeg_tmp
+
+# Claude Code instructions
+CLAUDE.md
