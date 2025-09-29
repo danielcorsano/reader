@@ -101,12 +101,13 @@ tmp/
 *.wav.tmp
 *.mp3.tmp
 
-# Batch processing checkpoints and state
+# Neural Engine processing checkpoints and temporary files
 checkpoints/
 batch_state/
 processing_queue/
 *.checkpoint
 *.batch_state
+*.neural_checkpoint
 
 # Application-specific: Downloaded models (for future phases)
 models/

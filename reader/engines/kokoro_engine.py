@@ -156,13 +156,13 @@ class KokoroEngine(TTSEngine):
         
         # Default voice
         if not voice:
-            voice = "af_sarah"
+            voice = "am_michael"
         
         # Handle voice blending
         voice_blend = self._parse_voice_blend(voice)
         
-        # Check text length and chunk if necessary to avoid phoneme limits
-        if len(text) > 400:  # Optimized limit for better performance while avoiding 510 phoneme limit
+        # Check text length and chunk if necessary (should rarely happen with optimized input)
+        if len(text) > 450:  # Slightly higher limit since we pre-chunk at 400
             return self._synthesize_long_text(text, voice_blend, speed)
         
         try:

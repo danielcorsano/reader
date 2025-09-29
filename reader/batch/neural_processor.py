@@ -2,9 +2,18 @@
 import json
 import time
 import hashlib
+import wave
+import io
+import tempfile
 from pathlib import Path
-from typing import List, Dict, Any, Callable
+from typing import List, Dict, Any
 from dataclasses import dataclass, asdict
+
+# Constants
+DEFAULT_SAMPLE_RATE = 22050
+SILENCE_DURATION = 0.1
+DEFAULT_MP3_BATCH_SIZE = 4
+DEFAULT_CHECKPOINT_INTERVAL = 25
 
 
 @dataclass
@@ -21,12 +30,12 @@ class NeuralCheckpoint:
 class NeuralProcessor:
     """Neural Engine optimized processor with streaming output and checkpoints."""
     
-    def __init__(self, output_path: Path, checkpoint_interval: int = 25):
+    def __init__(self, output_path: Path, checkpoint_interval: int = DEFAULT_CHECKPOINT_INTERVAL):
         self.output_path = output_path
         self.checkpoint_interval = checkpoint_interval
         self.checkpoint_path = output_path.with_suffix('.checkpoint')
-        self.mp3_batch_size = 4  # Process 4 chunks per MP3 conversion batch
-        self.audio_buffer = []  # Buffer for batch MP3 conversion
+        self.mp3_batch_size = DEFAULT_MP3_BATCH_SIZE
+        self.audio_buffer = []
         
     def process_chunks(self, file_path: Path, text_chunks: List[str],
                       tts_engine, voice_blend: Dict[str, float], speed: float,
@@ -116,19 +125,14 @@ class NeuralProcessor:
         """Process a single text chunk to audio with Neural Engine."""
         if not chunk_text.strip():
             # Return silence for empty chunks
-            import wave
-            import io
-            
-            # Create 0.1 second of silence
-            sample_rate = 22050
-            silence_samples = int(0.1 * sample_rate)
+            silence_samples = int(SILENCE_DURATION * DEFAULT_SAMPLE_RATE)
             silence_data = b'\\x00\\x00' * silence_samples
             
             wav_buffer = io.BytesIO()
             with wave.open(wav_buffer, 'wb') as wav_file:
                 wav_file.setnchannels(1)
                 wav_file.setsampwidth(2)
-                wav_file.setframerate(sample_rate)
+                wav_file.setframerate(DEFAULT_SAMPLE_RATE)
                 wav_file.writeframes(silence_data)
             
             wav_buffer.seek(0)
@@ -182,7 +186,6 @@ class NeuralProcessor:
             
         try:
             from ..processors.ffmpeg_processor import FFmpegAudioProcessor
-            import tempfile
             
             # Combine all buffered audio data
             combined_audio = b''.join(self.audio_buffer)

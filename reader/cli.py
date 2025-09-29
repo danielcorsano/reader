@@ -38,8 +38,6 @@ try:
     from .analysis.dialogue_detector import DialogueDetector
     from .chapters.chapter_manager import ChapterManager
     from .batch.neural_processor import NeuralProcessor
-    from .processors.ffmpeg_processor import get_audio_processor
-    from .voices.voice_previewer import get_voice_previewer
     from .batch.batch_processor import create_batch_processor
     PHASE3_AVAILABLE = True
 except ImportError:
@@ -435,14 +433,14 @@ class ReaderApp:
             checkpoint_interval=checkpoint_interval
         )
         
-        # Split content into optimized chunks for maximum performance
+        # Split content into optimized chunks aligned with Kokoro's processing
         if tts_config.engine == "kokoro" and KOKORO_AVAILABLE:
-            # Use Kokoro's optimized chunking with much larger chunks
+            # Use 400-char chunks to match Kokoro's optimal size (no re-chunking)
             kokoro_engine = self.get_tts_engine()
-            text_chunks = kokoro_engine._chunk_text_intelligently(parsed_content.content, max_length=1200)  # 3x larger for speed
+            text_chunks = kokoro_engine._chunk_text_intelligently(parsed_content.content, max_length=400)
         else:
             # Use basic chunking for other engines
-            chunk_size = min(1200, processing_config.chunk_size * 3)  # Much larger chunks for speed
+            chunk_size = min(400, processing_config.chunk_size)
             text_chunks = [parsed_content.content[i:i+chunk_size] 
                           for i in range(0, len(parsed_content.content), chunk_size)]
         

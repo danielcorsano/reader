@@ -23,7 +23,7 @@ This is a Python project called "reader" managed with Poetry for dependency mana
 **Quick Start (Neural Engine Optimized):**
 - `poetry run python -m reader convert -F file.epub` - Fast Neural Engine conversion (48k mono MP3)
 - `poetry run python -m reader convert --debug` - Debug mode with Neural Engine status
-- `poetry run python -m reader convert --turbo-mode` - Maximum speed conversion
+- Features: Emotion analysis, character voices, dialogue detection, checkpoint resumption
 
 **Configuration:**
 - `poetry run python -m reader config` - Configure default settings  
@@ -88,12 +88,13 @@ This is a Python project called "reader" managed with Poetry for dependency mana
 ### Phase 3: Advanced Features + Polish (~350MB) ✅ COMPLETED
 **Goal**: Professional audiobook production with Neural Engine optimization
 - Apple Neural Engine acceleration (CoreML) for M1/M2/M3 Macs
-- Dialogue detection and context analysis
-- Optimized stream processing with checkpoint resumption  
-- 48k mono MP3 encoding for maximum compression
-- Thermal management disabled for full Neural Engine performance
-- Real-time progress feedback with ETA calculation
-- Additional dependencies: spacy, regex
+- Consolidated NeuralProcessor with streamlined processing pipeline
+- Emotion analysis, character voice mapping, dialogue detection
+- Optimized 400-character chunking (no double-chunking)
+- 48k mono MP3 encoding with batch conversion
+- Real-time progress feedback with chunk-by-chunk ETA
+- Checkpoint resumption for interrupted conversions
+- Default voice: am_michael, all redundancies eliminated
 
 ### Architecture Principles
 - **Swappable Components**: Abstract base classes for TTS engines, parsers, processors
