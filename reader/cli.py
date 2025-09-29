@@ -38,7 +38,7 @@ try:
     from .analysis.dialogue_detector import DialogueDetector
     from .chapters.chapter_manager import ChapterManager
     from .batch.robust_processor import create_chunk_processor
-    from .audio.ffmpeg_processor import get_audio_processor
+    from .processors.ffmpeg_processor import get_audio_processor
     from .voices.voice_previewer import get_voice_previewer
     from .batch.batch_processor import create_batch_processor
     PHASE3_AVAILABLE = True

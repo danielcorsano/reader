@@ -100,7 +100,7 @@ class PyTTSX3Engine(TTSEngine):
         
         # Try to use Phase 3 audio processor for format conversion
         try:
-            from ..audio.ffmpeg_processor import get_audio_processor
+            from ..processors.ffmpeg_processor import get_audio_processor
             audio_processor = get_audio_processor()
             
             if format.lower() != "wav":

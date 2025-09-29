@@ -129,7 +129,7 @@ class StreamProcessor:
             return
             
         try:
-            from ..audio.ffmpeg_processor import FFmpegAudioProcessor
+            from ..processors.ffmpeg_processor import FFmpegAudioProcessor
             import tempfile
             
             # Combine all buffered audio data

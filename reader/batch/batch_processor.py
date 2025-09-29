@@ -26,7 +26,7 @@ try:
     from ..analysis.ssml_generator import SSMLGenerator
     from ..voices.character_mapper import CharacterVoiceMapper
     from ..chapters.chapter_manager import ChapterManager
-    from ..audio.ffmpeg_processor import get_audio_processor
+    from ..processors.ffmpeg_processor import get_audio_processor
     PHASE_3_AVAILABLE = True
 except ImportError:
     PHASE_3_AVAILABLE = False
