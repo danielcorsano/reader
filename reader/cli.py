@@ -240,13 +240,7 @@ class ReaderApp:
         
         # Choose processing method based on batch mode
         if batch_mode and PHASE3_AVAILABLE:
-            # Clear existing audio files if they exist to force fresh conversion
-            expected_audio_path = self._create_output_path(parsed_content.title, tts_config, self.config_manager.get_audio_config(), processing_config)
-            if expected_audio_path.exists():
-                expected_audio_path.unlink()
-                click.echo(f"🗑️ Removed existing audio file to force fresh conversion")
-            
-            # Use robust batch processing with checkpoints
+            # Use stream processing with checkpoint resumption
             audio_segments = self._convert_with_robust_processing(
                 file_path, parsed_content, tts_config, processing_config, checkpoint_interval, thermal_management, chunk_delay, parallel, max_workers
             )

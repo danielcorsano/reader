@@ -22,13 +22,13 @@ class BatchConfig:
     # Rolling checkpoint settings - minimal for recovery only
     max_checkpoint_segments: int = 50   # Keep only last 50 segments in checkpoint for recovery
     keep_checkpoint_history: int = 2    # Keep only last 2 checkpoint intervals
-    # Resource management - Conservative settings for CPU-intensive TTS
+    # Resource management - Optimized for Neural Engine acceleration
     thermal_management: bool = True  # Enable thermal throttling
-    chunk_delay_seconds: float = 3.0  # Long delay between chunks to reduce heat
-    cool_down_interval: int = 5  # Cool down every N chunks
-    cool_down_seconds: float = 5.0  # Long cool down duration
-    max_cpu_usage_percent: float = 75.0  # Never exceed 75% CPU usage
-    cpu_check_interval: int = 3  # Check CPU usage every N chunks
+    chunk_delay_seconds: float = 0.1  # Minimal delay for Neural Engine efficiency
+    cool_down_interval: int = 20  # Cool down every 20 chunks (less frequent)
+    cool_down_seconds: float = 2.0  # Shorter cool down duration
+    max_cpu_usage_percent: float = 85.0  # Higher threshold for Neural Engine
+    cpu_check_interval: int = 10  # Check CPU usage less frequently
 
 
 class RobustProcessor:
@@ -99,17 +99,33 @@ class RobustProcessor:
             
             while retry_count <= self.config.max_retries:
                 try:
-                    # Real-time progress readout with CPU monitoring
+                    # Calculate accurate progress and ETA
                     progress_percent = ((i+1)/total_chunks)*100
                     eta_chunks = total_chunks - (i+1)
-                    estimated_minutes = (eta_chunks * (self.config.chunk_delay_seconds + 3)) / 60  # Conservative estimate
                     
-                    # Get current CPU usage
+                    # Dynamic ETA calculation based on actual processing time
+                    if hasattr(self, '_chunk_times') and self._chunk_times:
+                        avg_chunk_time = sum(self._chunk_times) / len(self._chunk_times)
+                        estimated_seconds = eta_chunks * avg_chunk_time
+                        estimated_minutes = estimated_seconds / 60
+                    else:
+                        # Fallback conservative estimate
+                        estimated_minutes = (eta_chunks * (self.config.chunk_delay_seconds + 3)) / 60
+                    
+                    # Get current CPU usage and memory info
                     cpu_usage = psutil.cpu_percent(interval=0.1)
+                    memory_info = psutil.virtual_memory()
+                    memory_gb = memory_info.used / (1024**3)
+                    
+                    # Calculate total audio size so far
+                    if hasattr(self, '_total_audio_size'):
+                        total_size_mb = self._total_audio_size / (1024 * 1024)
+                    else:
+                        total_size_mb = 0
                     
                     print(f"🔄 Processing chunk {i+1}/{total_chunks} ({progress_percent:.1f}%)", flush=True)
-                    print(f"   📊 Remaining: {eta_chunks} chunks (~{estimated_minutes:.0f} min ETA)", flush=True)
-                    print(f"   💻 CPU Usage: {cpu_usage:.1f}%", flush=True)
+                    print(f"   📊 ETA: ~{estimated_minutes:.0f}min | Audio: {total_size_mb:.1f}MB | Memory: {memory_gb:.1f}GB", flush=True)
+                    print(f"   💻 CPU: {cpu_usage:.1f}% | Chunk: {eta_chunks} remaining", flush=True)
                     
                     # Show chunk text preview (first 50 chars)
                     preview = chunk_text.strip()[:50]
@@ -122,11 +138,24 @@ class RobustProcessor:
                     audio_data = chunk_processor(chunk_text, i, total_chunks)
                     chunk_duration = time.time() - chunk_start_time
                     
+                    # Track timing for accurate ETA
+                    if not hasattr(self, '_chunk_times'):
+                        self._chunk_times = []
+                        self._total_audio_size = 0
+                    
+                    self._chunk_times.append(chunk_duration + self.config.chunk_delay_seconds)
+                    # Keep only last 10 measurements for rolling average
+                    if len(self._chunk_times) > 10:
+                        self._chunk_times.pop(0)
+                    
                     audio_segments.append(audio_data)
                     
+                    # Update total audio size tracking
+                    chunk_size_mb = len(audio_data) / (1024 * 1024)
+                    self._total_audio_size += len(audio_data)
+                    
                     # Show processing stats
-                    audio_size_mb = len(audio_data) / (1024 * 1024)
-                    print(f"   ⏱️ Processed in {chunk_duration:.1f}s, generated {audio_size_mb:.1f}MB audio")
+                    print(f"   ⏱️ Processed in {chunk_duration:.1f}s, +{chunk_size_mb:.1f}MB audio", flush=True)
                     
                     # Thermal management - add delays to prevent overheating
                     if self.config.thermal_management:
