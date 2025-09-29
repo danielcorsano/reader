@@ -437,7 +437,7 @@ class ReaderApp:
         else:
             # Default voice
             if tts_config.engine == "kokoro":
-                voice_blend = {"af_sarah": 1.0}
+                voice_blend = {"am_michael": 1.0}
             else:
                 voice_blend = {"default": 1.0}
         
