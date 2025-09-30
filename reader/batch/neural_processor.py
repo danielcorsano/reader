@@ -265,12 +265,12 @@ class NeuralProcessor:
             try:
                 from ..processors.ffmpeg_processor import FFmpegAudioProcessor
                 
-                # Combine all WAV chunks into single audio stream
-                combined_audio = b''.join(self.audio_buffer)
+                # Properly combine WAV chunks by extracting audio data and creating new WAV
+                combined_wav = self._combine_wav_chunks_properly(self.audio_buffer)
                 
-                # Create temporary WAV file with all audio
+                # Create temporary WAV file with properly combined audio
                 with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as temp_wav:
-                    temp_wav.write(combined_audio)
+                    temp_wav.write(combined_wav)
                     temp_wav_path = Path(temp_wav.name)
                 
                 # Convert complete WAV to MP3
@@ -293,6 +293,60 @@ class NeuralProcessor:
                 
             # Clear the buffer
             self.audio_buffer.clear()
+    
+    def _combine_wav_chunks_properly(self, wav_chunks: List[bytes]) -> bytes:
+        """Properly combine WAV chunks by extracting audio data and creating a new WAV file."""
+        import wave
+        import struct
+        
+        if not wav_chunks:
+            return b''
+        
+        # Extract audio data from each WAV chunk (skip headers)
+        audio_data_chunks = []
+        sample_rate = DEFAULT_SAMPLE_RATE
+        channels = 1
+        sample_width = 2
+        
+        for i, wav_data in enumerate(wav_chunks):
+            try:
+                # Create temporary file to read WAV structure
+                with tempfile.NamedTemporaryFile(suffix='.wav') as temp_wav:
+                    temp_wav.write(wav_data)
+                    temp_wav.flush()
+                    
+                    # Read WAV file to extract parameters and audio data
+                    with wave.open(temp_wav.name, 'rb') as wav_file:
+                        if i == 0:  # Get parameters from first chunk
+                            sample_rate = wav_file.getframerate()
+                            channels = wav_file.getnchannels()
+                            sample_width = wav_file.getsampwidth()
+                        
+                        # Extract audio data (without header)
+                        audio_data = wav_file.readframes(wav_file.getnframes())
+                        audio_data_chunks.append(audio_data)
+                        
+            except Exception as e:
+                print(f"⚠️ Warning: Failed to process WAV chunk {i+1}: {e}")
+                continue
+        
+        if not audio_data_chunks:
+            raise RuntimeError("Failed to extract audio data from any WAV chunks")
+        
+        # Combine all audio data
+        combined_audio_data = b''.join(audio_data_chunks)
+        
+        # Create new WAV file with combined audio data
+        wav_buffer = io.BytesIO()
+        
+        with wave.open(wav_buffer, 'wb') as wav_file:
+            wav_file.setnchannels(channels)
+            wav_file.setsampwidth(sample_width)
+            wav_file.setframerate(sample_rate)
+            wav_file.writeframes(combined_audio_data)
+        
+        wav_buffer.seek(0)
+        return wav_buffer.read()
     
     def _get_settings_hash(self, config: Dict[str, Any]) -> str:
         """Generate hash of processing settings to detect changes."""
