@@ -112,6 +112,7 @@ processing_queue/
 *.checkpoint
 *.batch_state
 *.neural_checkpoint
+*.lock
 
 # Application-specific: Downloaded models (for future phases)
 models/

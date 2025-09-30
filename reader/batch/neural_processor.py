@@ -4,9 +4,8 @@ import time
 import hashlib
 import wave
 import io
-import tempfile
 from pathlib import Path
-from typing import List, Dict, Any, Protocol
+from typing import List, Dict, Any
 from dataclasses import dataclass, asdict
 from abc import ABC, abstractmethod
 
