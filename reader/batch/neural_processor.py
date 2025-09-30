@@ -112,6 +112,10 @@ class NeuralProcessor:
         self.audio_buffer = []
         self.progress_style = progress_style
         self.progress_display = create_progress_display(progress_style)
+
+        # For MP3 output, use intermediate WAV file for streaming
+        self.is_mp3_output = output_path.suffix.lower() == '.mp3'
+        self.temp_wav_path = output_path.with_suffix('.wav.tmp') if self.is_mp3_output else None
         
     def process_chunks(self, file_path: Path, text_chunks: List[str],
                       tts_engine, voice_blend: Dict[str, float], speed: float,
@@ -128,26 +132,32 @@ class NeuralProcessor:
         if start_chunk > 0:
             print(f"📂 Resuming from chunk {start_chunk} (file size: {output_size/1024/1024:.1f}MB)")
         
-        # Open output file for appending
+        # For MP3: stream to temp WAV, for WAV: stream directly
+        actual_output_path = self.temp_wav_path if self.is_mp3_output else self.output_path
         mode = 'ab' if start_chunk > 0 else 'wb'
-        with open(self.output_path, mode) as output_file:
+
+        with open(actual_output_path, mode) as output_file:
             # Process chunks with Neural Engine
             self._process_all_chunks(
                 output_file, text_chunks, tts_engine, voice_blend, speed,
                 start_chunk, total_chunks, file_path, settings_hash
             )
-            
-            # Finalize any remaining MP3 batches
-            self._finalize_mp3_processing(output_file)
-        
+
+        # Convert temp WAV to MP3 if needed
+        if self.is_mp3_output:
+            self._convert_wav_to_mp3()
+
         # Clean up checkpoint on completion
         self._cleanup_checkpoint()
-        
+
         # Finalize progress display
         self.progress_display.finish()
-        
-        print(f"✅ Neural Engine processing complete: {self.output_path}")
-        return self.output_path
+
+        # Move finished file to finished folder
+        finished_path = self._move_to_finished()
+
+        print(f"✅ Neural Engine processing complete: {finished_path}")
+        return finished_path
     
     def _process_all_chunks(self, output_file, text_chunks: List[str], 
                            tts_engine, voice_blend: Dict[str, float], speed: float,
@@ -194,7 +204,7 @@ class NeuralProcessor:
             
             # Save checkpoint periodically
             if (i + 1) % self.checkpoint_interval == 0:
-                current_size = output_file.tell()
+                current_size = output_file.tell()  # Actual file size (WAV or temp WAV)
                 self._save_checkpoint(file_path, i + 1, total_chunks, current_size, settings_hash)
     
     def _process_single_chunk(self, chunk_text: str, chunk_idx: int, total_chunks: int,
@@ -243,52 +253,55 @@ class NeuralProcessor:
             raise RuntimeError(f"Neural Engine processing failed on chunk {chunk_idx + 1}: {str(e)}") from e
     
     def _convert_and_write_chunk(self, output_file, audio_data: bytes):
-        """Collect audio data for final processing."""
-        if self.output_path.suffix.lower() == '.mp3':
-            # Collect WAV data for final MP3 conversion
-            self.audio_buffer.append(audio_data)
-        else:
-            # Direct write for WAV
-            output_file.write(audio_data)
+        """Stream WAV chunk data directly to disk."""
+        # Extract audio data from WAV chunk (skip header) and write to file
+        wav_buffer = io.BytesIO(audio_data)
+        with wave.open(wav_buffer, 'rb') as wav:
+            audio_frames = wav.readframes(wav.getnframes())
+            output_file.write(audio_frames)
             output_file.flush()
     
-    
-    def _finalize_mp3_processing(self, output_file):
-        """Convert all collected WAV chunks to final MP3."""
-        if self.audio_buffer and self.output_path.suffix.lower() == '.mp3':
-            print(f"🎵 Converting {len(self.audio_buffer)} chunks to final MP3", flush=True)
-            
-            try:
-                from ..processors.ffmpeg_processor import FFmpegAudioProcessor
-                
-                # Properly combine WAV chunks by extracting audio data and creating new WAV
-                combined_wav = self._combine_wav_chunks_properly(self.audio_buffer)
-                
-                # Create temporary WAV file with properly combined audio
-                with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as temp_wav:
-                    temp_wav.write(combined_wav)
-                    temp_wav_path = Path(temp_wav.name)
-                
-                # Convert complete WAV to MP3
-                processor = FFmpegAudioProcessor()
-                processor.convert_format(temp_wav_path, self.output_path, 'mp3')
-                
-                # Clean up temporary WAV file
-                temp_wav_path.unlink(missing_ok=True)
-                
-                print(f"✅ Final MP3 conversion complete", flush=True)
-                
-            except Exception as e:
-                print(f"⚠️ Final MP3 conversion failed: {e}, keeping as WAV", flush=True)
-                # Fallback: write all WAV data to output file
-                output_file.seek(0)  # Start from beginning
-                output_file.truncate()  # Clear any existing data
-                for audio_data in self.audio_buffer:
-                    output_file.write(audio_data)
-                output_file.flush()
-                
-            # Clear the buffer
-            self.audio_buffer.clear()
+
+    def _convert_wav_to_mp3(self):
+        """Convert streamed temp WAV file to final MP3."""
+        if not self.temp_wav_path or not self.temp_wav_path.exists():
+            return
+
+        print(f"🎵 Converting streamed WAV to final MP3", flush=True)
+
+        try:
+            from ..processors.ffmpeg_processor import FFmpegAudioProcessor
+
+            # Read the temp WAV file and create proper WAV header
+            with open(self.temp_wav_path, 'rb') as f:
+                raw_audio_data = f.read()
+
+            # Create properly formatted WAV file
+            wav_buffer = io.BytesIO()
+            with wave.open(wav_buffer, 'wb') as wav_file:
+                wav_file.setnchannels(1)  # Mono
+                wav_file.setsampwidth(2)  # 16-bit
+                wav_file.setframerate(DEFAULT_SAMPLE_RATE)  # 22050 Hz
+                wav_file.writeframes(raw_audio_data)
+
+            # Write to temp WAV with proper header
+            with open(self.temp_wav_path, 'wb') as f:
+                f.write(wav_buffer.getvalue())
+
+            # Convert to MP3
+            processor = FFmpegAudioProcessor()
+            processor.convert_format(self.temp_wav_path, self.output_path, 'mp3')
+
+            # Clean up temp WAV
+            self.temp_wav_path.unlink(missing_ok=True)
+
+            print(f"✅ MP3 conversion complete", flush=True)
+
+        except Exception as e:
+            print(f"⚠️ MP3 conversion failed: {e}, keeping as WAV", flush=True)
+            # Fallback: rename temp WAV to output
+            if self.temp_wav_path.exists():
+                self.temp_wav_path.rename(self.output_path.with_suffix('.wav'))
     
     def _combine_wav_chunks_properly(self, wav_chunks: List[bytes]) -> bytes:
         """Properly combine WAV chunks by extracting audio data and creating a new WAV file."""
@@ -361,19 +374,22 @@ class NeuralProcessor:
             checkpoint = NeuralCheckpoint(**data)
             
             # Verify checkpoint is for same file and settings
-            if (checkpoint.file_path != str(file_path) or 
+            if (checkpoint.file_path != str(file_path) or
                 checkpoint.total_chunks != total_chunks or
                 checkpoint.settings_hash != settings_hash):
                 print("🔄 Settings changed, starting fresh")
                 self._cleanup_checkpoint()
                 return 0, 0
-            
-            # Verify output file exists and has expected size
-            if not self.output_path.exists() or self.output_path.stat().st_size != checkpoint.output_size:
-                print("⚠️ Output file corrupted, starting fresh")
+
+            # For MP3: check temp WAV file, for WAV: check output file
+            actual_file = self.temp_wav_path if self.is_mp3_output else self.output_path
+
+            # Verify file exists and has expected size
+            if not actual_file.exists() or actual_file.stat().st_size != checkpoint.output_size:
+                print("⚠️ Output file corrupted or missing, starting fresh")
                 self._cleanup_checkpoint()
                 return 0, 0
-            
+
             return checkpoint.current_chunk, checkpoint.output_size
             
         except Exception as e:
@@ -398,20 +414,41 @@ class NeuralProcessor:
                 json.dump(asdict(checkpoint), f)
             
             # Provide informative checkpoint message based on output format
-            if self.output_path.suffix.lower() == '.mp3':
-                # For MP3, show buffer status instead of misleading file size
-                buffer_chunks = len(self.audio_buffer)
-                estimated_mb = buffer_chunks * 0.5  # Rough estimate: ~0.5MB per chunk
-                print(f"💾 Checkpoint: {current_chunk}/{total_chunks} chunks ({buffer_chunks} buffered, ~{estimated_mb:.1f}MB in memory)", flush=True)
+            size_mb = output_size / 1024 / 1024
+            if self.is_mp3_output:
+                print(f"💾 Checkpoint: {current_chunk}/{total_chunks} chunks ({size_mb:.1f}MB temp WAV)", flush=True)
             else:
-                # For WAV, show actual file size
-                print(f"💾 Checkpoint: {current_chunk}/{total_chunks} chunks ({output_size/1024/1024:.1f}MB)", flush=True)
+                print(f"💾 Checkpoint: {current_chunk}/{total_chunks} chunks ({size_mb:.1f}MB)", flush=True)
         except Exception as e:
             print(f"⚠️ Failed to save checkpoint: {e}")
     
     def _cleanup_checkpoint(self):
-        """Remove checkpoint file."""
+        """Remove checkpoint and temp files."""
         if self.checkpoint_path.exists():
             self.checkpoint_path.unlink()
+        # Clean up temp WAV if it still exists
+        if self.temp_wav_path and self.temp_wav_path.exists():
+            self.temp_wav_path.unlink()
+
+    def _move_to_finished(self) -> Path:
+        """Move completed file to finished folder."""
+        import shutil
+
+        # Get project root (output_path is in audio/ folder, so parent.parent is project root)
+        project_root = self.output_path.parent.parent
+        finished_dir = project_root / "finished"
+
+        # Ensure finished directory exists
+        finished_dir.mkdir(exist_ok=True)
+
+        # Create destination path
+        finished_path = finished_dir / self.output_path.name
+
+        # Move the file if it exists
+        if self.output_path.exists():
+            shutil.move(str(self.output_path), str(finished_path))
+            return finished_path
+        else:
+            return self.output_path  # Return original if file doesn't exist
 
 

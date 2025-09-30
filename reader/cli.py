@@ -256,20 +256,19 @@ class ReaderApp:
         
         # Generate audio with enhanced processing
         click.echo(f"Generating audio for '{parsed_content.title}'...")
-        
+
         # Use Neural Engine processing for Phase 3 (default)
         if PHASE3_AVAILABLE:
-            # Create output file path  
-            audio_config = self.config_manager.get_audio_config()
+            # Create output file path
             output_path = self._create_output_path(parsed_content.title, tts_config, audio_config, processing_config)
-            
+
             # Create Neural Engine processor with optimized settings
             processor = NeuralProcessor(
                 output_path=output_path,
                 checkpoint_interval=checkpoint_interval,
                 progress_style=progress_style
             )
-            
+
             # Split content into optimized chunks aligned with Kokoro's processing
             if tts_config.engine == "kokoro" and KOKORO_AVAILABLE:
                 # Use 400-char chunks to match Kokoro's optimal size (no re-chunking)
@@ -278,9 +277,9 @@ class ReaderApp:
             else:
                 # Use basic chunking for other engines
                 chunk_size = min(400, processing_config.chunk_size)
-                text_chunks = [parsed_content.content[i:i+chunk_size] 
+                text_chunks = [parsed_content.content[i:i+chunk_size]
                               for i in range(0, len(parsed_content.content), chunk_size)]
-            
+
             # Get voice blend configuration
             voice_blend = {}
             if tts_config.voice:
@@ -291,16 +290,16 @@ class ReaderApp:
                     voice_blend = {"am_michael": 1.0}
                 else:
                     voice_blend = {"default": 1.0}
-            
+
             # Processing configuration for checkpoints
             proc_config = {
                 'engine': tts_config.engine,
                 'voice': tts_config.voice,
                 'speed': tts_config.speed,
                 'processing_level': processing_config.level,
-                'format': self.config_manager.get_audio_config().format
+                'format': audio_config.format
             }
-            
+
             # Process chunks with Neural Engine
             final_output = processor.process_chunks(
                 file_path=file_path,
@@ -310,7 +309,7 @@ class ReaderApp:
                 speed=tts_config.speed,
                 processing_config=proc_config
             )
-            
+
             return final_output
         elif processing_config.emotion_analysis and self.ssml_generator:
             # Fallback: Process with emotion and character awareness
@@ -322,47 +321,31 @@ class ReaderApp:
             audio_segments = self._convert_basic_chunks(
                 parsed_content.content, tts_config, processing_config
             )
-        
-        # Create output filename with phase and config info
-        audio_dir = self.config_manager.get_audio_dir()
-        
-        # Build descriptive filename
-        phase = processing_config.level
-        engine = tts_config.engine
-        voice = tts_config.voice or "default"
-        speed_str = f"speed{tts_config.speed}".replace(".", "p")
-        
-        # Add feature flags
-        features = []
-        if processing_config.emotion_analysis:
-            features.append("emotion")
-        if processing_config.character_voices:
-            features.append("characters")
-        if processing_config.dialogue_detection:
-            features.append("dialogue")
-        
-        feature_str = "_".join(features) if features else "basic"
-        
-        output_filename = f"{parsed_content.title}_{phase}_{engine}_{voice}_{speed_str}_{feature_str}.{audio_config.format}"
-        output_path = audio_dir / output_filename
-        
+
+        # Create output path using standardized method
+        output_path = self._create_output_path(parsed_content.title, tts_config, audio_config, processing_config)
+
         # Combine audio segments into final audiobook
         if len(audio_segments) == 0:
             # Neural Engine processor already wrote the file directly
             click.echo("Audio file already written by Neural Engine processor")
         elif len(audio_segments) == 1:
             self.get_tts_engine().save_audio(audio_segments[0], output_path, audio_config.format)
+            # Move to finished folder
+            output_path = self._move_to_finished(output_path)
         else:
             # Merge all segments into a single audio file
             click.echo(f"Merging {len(audio_segments)} audio segments...")
             merged_audio = self._merge_audio_segments(audio_segments)
             output_path = output_path.with_suffix(f'.{audio_config.format}')
             self.get_tts_engine().save_audio(merged_audio, output_path, audio_config.format)
-        
+            # Move to finished folder
+            output_path = self._move_to_finished(output_path)
+
         # Phase 1: Skip metadata (requires complex audio libraries)
         if audio_config.add_metadata:
             click.echo("Phase 1: Metadata addition will be available in Phase 2+")
-        
+
         click.echo(f"Audiobook saved to: {output_path}")
         return output_path
     
@@ -488,13 +471,13 @@ class ReaderApp:
     def _create_output_path(self, title, tts_config, audio_config, processing_config):
         """Create standardized output path for audio files."""
         audio_dir = self.config_manager.get_audio_dir()
-        
+
         # Build descriptive filename
         phase = processing_config.level
         engine = tts_config.engine
         voice = tts_config.voice or "default"
         speed_str = f"speed{tts_config.speed}".replace(".", "p")
-        
+
         # Add feature flags
         features = []
         if processing_config.emotion_analysis:
@@ -503,11 +486,33 @@ class ReaderApp:
             features.append("characters")
         if processing_config.dialogue_detection:
             features.append("dialogue")
-        
+
         feature_str = "_".join(features) if features else "basic"
-        
+
         output_filename = f"{title}_{phase}_{engine}_{voice}_{speed_str}_{feature_str}.{audio_config.format}"
         return audio_dir / output_filename
+
+    def _move_to_finished(self, output_path: Path) -> Path:
+        """Move completed file to finished folder."""
+        import shutil
+
+        # Get project root from config manager
+        audio_dir = self.config_manager.get_audio_dir()
+        project_root = audio_dir.parent
+        finished_dir = project_root / "finished"
+
+        # Ensure finished directory exists
+        finished_dir.mkdir(exist_ok=True)
+
+        # Create destination path
+        finished_path = finished_dir / output_path.name
+
+        # Move the file if it exists
+        if output_path.exists():
+            shutil.move(str(output_path), str(finished_path))
+            return finished_path
+        else:
+            return output_path  # Return original if file doesn't exist
 
 
 # CLI Commands

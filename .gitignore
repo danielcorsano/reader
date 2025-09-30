@@ -87,6 +87,10 @@ text/*
 audio/*
 !audio/.gitkeep
 
+# Finished audiobook files
+finished/*
+!finished/.gitkeep
+
 # Application-specific: Generated files
 config/settings.yaml
 config/available_voices.yaml
