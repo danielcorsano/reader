@@ -53,22 +53,21 @@ class EPUBParser(TextParser):
                 'format': 'EPUB'
             }
             
-            # Extract text content with optimized processing
+            # Extract text content using spine order with content filtering
             chapters = []
             full_text = []
             processed_items = 0
             
-            # Get all document items first to show progress
-            document_items = [item for item in book.get_items() 
-                            if item.get_type() == ebooklib.ITEM_DOCUMENT]
-            total_items = len(document_items)
+            # Get spine items (proper reading order) and filter content
+            spine_items = self._get_filtered_spine_items(book)
+            total_items = len(spine_items)
             
-            print(f"📚 Processing {total_items} chapters...", file=sys.stderr)
+            print(f"📚 Processing {total_items} content sections in reading order...", file=sys.stderr)
             
-            for i, item in enumerate(document_items, 1):
+            for i, item in enumerate(spine_items, 1):
                 # Show progress for large books
                 if total_items > 10 and i % max(1, total_items // 10) == 0:
-                    print(f"📖 Progress: {i}/{total_items} chapters ({i/total_items*100:.0f}%)", file=sys.stderr)
+                    print(f"📖 Progress: {i}/{total_items} sections ({i/total_items*100:.0f}%)", file=sys.stderr)
                 
                 # Optimize BeautifulSoup parsing for large documents
                 content = item.get_content()
@@ -83,7 +82,7 @@ class EPUBParser(TextParser):
                 
                 if text.strip():
                     chapter_info = {
-                        'title': item.get_name(),
+                        'title': self._extract_title_from_html(soup) or item.get_name(),
                         'content': text,
                         'start_pos': len(' '.join(full_text))
                     }
@@ -91,7 +90,7 @@ class EPUBParser(TextParser):
                     full_text.append(text)
                     processed_items += 1
             
-            print(f"✅ Processed {processed_items} chapters successfully", file=sys.stderr)
+            print(f"✅ Processed {processed_items} content sections successfully", file=sys.stderr)
             content = ' '.join(full_text)
             
             return ParsedContent(
@@ -146,3 +145,76 @@ class EPUBParser(TextParser):
         text = re.sub(r'\s+', ' ', text)
         
         return text.strip()
+    
+    def _get_filtered_spine_items(self, book):
+        """Get spine items in reading order, filtered to exclude unwanted content."""
+        spine_items = []
+        
+        for item_id, linear in book.spine:
+            item = book.get_item_with_id(item_id)
+            if item and item.get_type() == ebooklib.ITEM_DOCUMENT:
+                # Filter out unwanted content
+                if self._should_include_item(item):
+                    spine_items.append(item)
+        
+        return spine_items
+    
+    def _should_include_item(self, item) -> bool:
+        """Determine if an EPUB item should be included in the audiobook."""
+        item_name = item.get_name().lower()
+        
+        # Exclude cover pages
+        if any(x in item_name for x in ['cover', 'title.html']):
+            return False
+        
+        # Exclude table of contents
+        if any(x in item_name for x in ['toc.html', 'contents']):
+            return False
+            
+        # Exclude back matter (index, notes, copyright, etc.)
+        if any(x in item_name for x in ['index.html', 'notes.html', 'copy.html', 'dsi.html', 'copyright']):
+            return False
+        
+        # Exclude image-only sections
+        if '_img.html' in item_name:
+            return False
+        
+        # Check content length - exclude very short sections (likely navigation)
+        try:
+            content = item.get_content()
+            soup = BeautifulSoup(content, 'html.parser')
+            text = soup.get_text(strip=True)
+            
+            # Exclude if too short (likely just navigation or formatting)
+            if len(text) < 100:
+                return False
+                
+        except Exception:
+            # If we can't parse it, exclude it
+            return False
+        
+        # Include forewords, introductions, and chapters
+        if any(x in item_name for x in ['fw.html', 'intro', 'foreword', 'preface']):
+            return True
+            
+        # Include main chapters (c1.html, c2.html, etc.)
+        if any(x in item_name for x in ['c1.html', 'c2.html', 'c3.html', 'c4.html', 'c5.html', 'c6.html', 'c7.html', 'c8.html', 'c9.html']) or '/c' in item_name:
+            return True
+            
+        # Default: include if it passes the length check above
+        return True
+    
+    def _extract_title_from_html(self, soup):
+        """Extract chapter title from HTML soup."""
+        # Look for common title tags
+        title_tags = ['h1', 'h2', 'h3', 'title']
+        
+        for tag in title_tags:
+            element = soup.find(tag)
+            if element and element.get_text(strip=True):
+                title = element.get_text(strip=True)
+                # Clean up title and check reasonable length
+                if len(title) < 200:  # Reasonable title length
+                    return title
+        
+        return None

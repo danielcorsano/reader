@@ -160,22 +160,18 @@ class NeuralProcessor:
         for i in range(start_chunk, total_chunks):
             chunk_text = text_chunks[i]
             
-            # Calculate progress and ETA
-            progress = ((i + 1) / total_chunks) * 100
-            
+            # Calculate progress and ETA for progress display
             if i > start_chunk:  # Calculate ETA after first chunk
                 elapsed = time.time() - start_time
                 chunks_done = i + 1 - start_chunk
                 chunks_remaining = total_chunks - (i + 1)
                 eta_seconds = (elapsed / chunks_done) * chunks_remaining
-                eta_mins = int(eta_seconds // 60)
-                eta_secs = int(eta_seconds % 60)
-                eta_str = f" ETA: {eta_mins:02d}:{eta_secs:02d}"
             else:
-                eta_str = ""
+                elapsed = 0
+                eta_seconds = 0
             
-            # Update progress display
-            self.progress_display.update(i + 1, total_chunks, elapsed if i > start_chunk else 0, eta_seconds if i > start_chunk else 0)
+            # Update progress display (handles all output formatting)
+            self.progress_display.update(i + 1, total_chunks, elapsed, eta_seconds)
             
             # Process chunk with Neural Engine
             try:
@@ -400,7 +396,16 @@ class NeuralProcessor:
         try:
             with open(self.checkpoint_path, 'w') as f:
                 json.dump(asdict(checkpoint), f)
-            print(f"💾 Checkpoint: {current_chunk}/{total_chunks} chunks ({output_size/1024/1024:.1f}MB)", flush=True)
+            
+            # Provide informative checkpoint message based on output format
+            if self.output_path.suffix.lower() == '.mp3':
+                # For MP3, show buffer status instead of misleading file size
+                buffer_chunks = len(self.audio_buffer)
+                estimated_mb = buffer_chunks * 0.5  # Rough estimate: ~0.5MB per chunk
+                print(f"💾 Checkpoint: {current_chunk}/{total_chunks} chunks ({buffer_chunks} buffered, ~{estimated_mb:.1f}MB in memory)", flush=True)
+            else:
+                # For WAV, show actual file size
+                print(f"💾 Checkpoint: {current_chunk}/{total_chunks} chunks ({output_size/1024/1024:.1f}MB)", flush=True)
         except Exception as e:
             print(f"⚠️ Failed to save checkpoint: {e}")
     

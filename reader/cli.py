@@ -478,36 +478,12 @@ class ReaderApp:
     
     def _merge_audio_segments(self, audio_segments):
         """Merge multiple audio segments into a single audio file."""
-        if not audio_segments:
-            return b''
+        # Use the improved WAV combining from neural processor
+        from .batch.neural_processor import NeuralProcessor
         
-        if len(audio_segments) == 1:
-            return audio_segments[0]
-        
-        # Merge WAV files properly by concatenating audio data and updating header
-        import struct
-        
-        # Start with the first segment
-        merged_audio = bytearray(audio_segments[0])
-        
-        # Extract audio data from subsequent segments and append
-        for segment in audio_segments[1:]:
-            if len(segment) > 44:
-                # Skip WAV header (44 bytes) and append audio data
-                audio_data = segment[44:]
-                merged_audio.extend(audio_data)
-        
-        # Update the WAV header to reflect the new file size
-        if len(merged_audio) > 44:
-            # Update file size in RIFF header (bytes 4-7)
-            file_size = len(merged_audio) - 8
-            merged_audio[4:8] = struct.pack('<L', file_size)
-            
-            # Update data chunk size (bytes 40-43)
-            data_size = len(merged_audio) - 44
-            merged_audio[40:44] = struct.pack('<L', data_size)
-        
-        return bytes(merged_audio)
+        # Create a temporary neural processor instance to use its better method
+        temp_processor = NeuralProcessor(output_path=Path("temp.wav"))
+        return temp_processor._combine_wav_chunks_properly(audio_segments)
     
     def _create_output_path(self, title, tts_config, audio_config, processing_config):
         """Create standardized output path for audio files."""
