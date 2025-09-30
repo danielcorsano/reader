@@ -109,7 +109,6 @@ class NeuralProcessor:
         self.output_path = output_path
         self.checkpoint_interval = checkpoint_interval
         self.checkpoint_path = output_path.with_suffix('.checkpoint')
-        self.audio_buffer = []
         self.progress_style = progress_style
         self.progress_display = create_progress_display(progress_style)
 
@@ -123,9 +122,25 @@ class NeuralProcessor:
         """Process chunks with Neural Engine optimization and stream to output."""
         total_chunks = len(text_chunks)
         settings_hash = self._get_settings_hash(processing_config)
-        
-        # Check for existing checkpoint
-        start_chunk, output_size = self._load_checkpoint(file_path, total_chunks, settings_hash)
+
+        # Check for lock file (another process working on this file)
+        lock_path = self.output_path.with_suffix('.lock')
+        if lock_path.exists():
+            print(f"⚠️ Another process is already converting this file.")
+            print(f"   If this is incorrect, delete: {lock_path}")
+            raise RuntimeError(f"Conversion already in progress for {file_path.name}")
+
+        # Create lock file
+        try:
+            with open(lock_path, 'w') as f:
+                import os
+                f.write(f"{os.getpid()}\n")
+        except Exception as e:
+            print(f"⚠️ Could not create lock file: {e}")
+
+        try:
+            # Check for existing checkpoint
+            start_chunk, output_size = self._load_checkpoint(file_path, total_chunks, settings_hash)
         
         # Initialize progress display
         self.progress_display.start(total_chunks, file_path.name)
@@ -143,21 +158,25 @@ class NeuralProcessor:
                 start_chunk, total_chunks, file_path, settings_hash
             )
 
-        # Convert temp WAV to MP3 if needed
-        if self.is_mp3_output:
-            self._convert_wav_to_mp3()
+            # Convert temp WAV to MP3 if needed
+            if self.is_mp3_output:
+                self._convert_wav_to_mp3()
 
-        # Clean up checkpoint on completion
-        self._cleanup_checkpoint()
+            # Clean up checkpoint on completion
+            self._cleanup_checkpoint()
 
-        # Finalize progress display
-        self.progress_display.finish()
+            # Finalize progress display
+            self.progress_display.finish()
 
-        # Move finished file to finished folder
-        finished_path = self._move_to_finished()
+            # Move finished file to finished folder
+            finished_path = self._move_to_finished()
 
-        print(f"✅ Neural Engine processing complete: {finished_path}")
-        return finished_path
+            print(f"✅ Neural Engine processing complete: {finished_path}")
+            return finished_path
+        finally:
+            # Always remove lock file, even on error
+            if lock_path.exists():
+                lock_path.unlink()
     
     def _process_all_chunks(self, output_file, text_chunks: List[str], 
                            tts_engine, voice_blend: Dict[str, float], speed: float,
@@ -302,60 +321,6 @@ class NeuralProcessor:
             # Fallback: rename temp WAV to output
             if self.temp_wav_path.exists():
                 self.temp_wav_path.rename(self.output_path.with_suffix('.wav'))
-    
-    def _combine_wav_chunks_properly(self, wav_chunks: List[bytes]) -> bytes:
-        """Properly combine WAV chunks by extracting audio data and creating a new WAV file."""
-        import wave
-        import struct
-        
-        if not wav_chunks:
-            return b''
-        
-        # Extract audio data from each WAV chunk (skip headers)
-        audio_data_chunks = []
-        sample_rate = DEFAULT_SAMPLE_RATE
-        channels = 1
-        sample_width = 2
-        
-        for i, wav_data in enumerate(wav_chunks):
-            try:
-                # Create temporary file to read WAV structure
-                with tempfile.NamedTemporaryFile(suffix='.wav') as temp_wav:
-                    temp_wav.write(wav_data)
-                    temp_wav.flush()
-                    
-                    # Read WAV file to extract parameters and audio data
-                    with wave.open(temp_wav.name, 'rb') as wav_file:
-                        if i == 0:  # Get parameters from first chunk
-                            sample_rate = wav_file.getframerate()
-                            channels = wav_file.getnchannels()
-                            sample_width = wav_file.getsampwidth()
-                        
-                        # Extract audio data (without header)
-                        audio_data = wav_file.readframes(wav_file.getnframes())
-                        audio_data_chunks.append(audio_data)
-                        
-            except Exception as e:
-                print(f"⚠️ Warning: Failed to process WAV chunk {i+1}: {e}")
-                continue
-        
-        if not audio_data_chunks:
-            raise RuntimeError("Failed to extract audio data from any WAV chunks")
-        
-        # Combine all audio data
-        combined_audio_data = b''.join(audio_data_chunks)
-        
-        # Create new WAV file with combined audio data
-        wav_buffer = io.BytesIO()
-        
-        with wave.open(wav_buffer, 'wb') as wav_file:
-            wav_file.setnchannels(channels)
-            wav_file.setsampwidth(sample_width)
-            wav_file.setframerate(sample_rate)
-            wav_file.writeframes(combined_audio_data)
-        
-        wav_buffer.seek(0)
-        return wav_buffer.read()
     
     def _get_settings_hash(self, config: Dict[str, Any]) -> str:
         """Generate hash of processing settings to detect changes."""

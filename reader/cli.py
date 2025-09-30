@@ -461,12 +461,37 @@ class ReaderApp:
     
     def _merge_audio_segments(self, audio_segments):
         """Merge multiple audio segments into a single audio file."""
-        # Use the improved WAV combining from neural processor
-        from .batch.neural_processor import NeuralProcessor
-        
-        # Create a temporary neural processor instance to use its better method
-        temp_processor = NeuralProcessor(output_path=Path("temp.wav"))
-        return temp_processor._combine_wav_chunks_properly(audio_segments)
+        import wave
+        import io
+
+        if not audio_segments:
+            return b''
+
+        # Extract audio data from each segment
+        audio_data_chunks = []
+        sample_rate = 22050
+        channels = 1
+        sample_width = 2
+
+        for i, wav_data in enumerate(audio_segments):
+            wav_buffer = io.BytesIO(wav_data)
+            with wave.open(wav_buffer, 'rb') as wav_file:
+                if i == 0:  # Get parameters from first chunk
+                    sample_rate = wav_file.getframerate()
+                    channels = wav_file.getnchannels()
+                    sample_width = wav_file.getsampwidth()
+                audio_data_chunks.append(wav_file.readframes(wav_file.getnframes()))
+
+        # Create combined WAV
+        wav_buffer = io.BytesIO()
+        with wave.open(wav_buffer, 'wb') as wav_file:
+            wav_file.setnchannels(channels)
+            wav_file.setsampwidth(sample_width)
+            wav_file.setframerate(sample_rate)
+            wav_file.writeframes(b''.join(audio_data_chunks))
+
+        wav_buffer.seek(0)
+        return wav_buffer.read()
     
     def _create_output_path(self, title, tts_config, audio_config, processing_config):
         """Create standardized output path for audio files."""
