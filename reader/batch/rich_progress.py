@@ -43,7 +43,7 @@ class RichProgressDisplay(ProgressDisplay):
             TextColumn("•"),
             TimeRemainingColumn(),
             TextColumn("•"),
-            TextColumn("[green]{task.fields[speed]:.1f} chunk/s[/green]"),
+            TextColumn("[green]{task.fields[speed]:.1f} chunk/min[/green]"),
             console=self.console,
             transient=False
         )
@@ -54,12 +54,12 @@ class RichProgressDisplay(ProgressDisplay):
     def update(self, current_chunk: int, total_chunks: int, elapsed_time: float, eta_seconds: float):
         if self.progress is None or self.task_id is None:
             return
-            
-        # Calculate processing speed (chunks per second)
+
+        # Calculate processing speed (chunks per minute)
         speed = 0.0
         if elapsed_time > 0 and current_chunk > 1:
-            speed = (current_chunk - 1) / elapsed_time
-        
+            speed = ((current_chunk - 1) / elapsed_time) * 60
+
         # Update the progress bar
         self.progress.update(
             self.task_id,

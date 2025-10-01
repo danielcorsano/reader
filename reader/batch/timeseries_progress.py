@@ -37,35 +37,37 @@ class TimeseriesProgressDisplay(ProgressDisplay):
     def update(self, current_chunk: int, total_chunks: int, elapsed_time: float, eta_seconds: float):
         current_time = time.time()
         progress_pct = (current_chunk / total_chunks) * 100
-        
-        # Calculate instantaneous speed (chunks per second)
+
+        # Calculate instantaneous speed (chunks per minute)
         if current_chunk > self.last_chunk and current_time > self.last_update_time:
             time_delta = current_time - self.last_update_time
             chunk_delta = current_chunk - self.last_chunk
-            instant_speed = chunk_delta / time_delta
+            instant_speed = (chunk_delta / time_delta) * 60  # Convert to chunks per minute
         else:
             instant_speed = 0.0
-        
-        # Add to history
-        relative_time = current_time - self.start_time
+
+        # Add to history (convert to minutes for display)
+        relative_time = (current_time - self.start_time) / 60  # Convert to minutes
         self.speed_history.append(instant_speed)
         self.time_history.append(relative_time)
-        
+
         # Clear screen and draw updated chart
         os.system('clear' if os.name == 'posix' else 'cls')
-        
+
         # Print header
+        elapsed_mins = int(elapsed_time // 60)
+        elapsed_secs = int(elapsed_time % 60)
         print(f"🎯 Neural Engine stream processing ({current_chunk}/{total_chunks} chunks)")
-        print(f"📊 Progress: {progress_pct:.1f}% | Speed: {instant_speed:.1f} chunk/s | ETA: {eta_seconds/60:.1f}m")
+        print(f"📊 Progress: {progress_pct:.1f}% | Speed: {instant_speed:.1f} chunk/min | Elapsed: {elapsed_mins}m {elapsed_secs}s | ETA: {eta_seconds/60:.1f}m")
         print()
-        
+
         # Draw timeseries chart
         if len(self.speed_history) > 1:
             plt.clear_data()
-            plt.plot(list(self.time_history), list(self.speed_history), marker="dot")
+            plt.plot(list(self.time_history), list(self.speed_history), marker="dot", color="cyan")
             plt.title("🚀 Processing Speed Over Time")
-            plt.xlabel("Time (seconds)")
-            plt.ylabel("Speed (chunks/sec)")
+            plt.xlabel("Time (minutes)")
+            plt.ylabel("Speed (chunks/min)")
             plt.plotsize(80, 15)
             plt.theme("dark")
             plt.show()

@@ -104,7 +104,7 @@ def create_progress_display(style: str) -> ProgressDisplay:
 class NeuralProcessor:
     """Neural Engine optimized processor with streaming output and checkpoints."""
     
-    def __init__(self, output_path: Path, checkpoint_interval: int = DEFAULT_CHECKPOINT_INTERVAL, progress_style: str = "simple"):
+    def __init__(self, output_path: Path, checkpoint_interval: int = DEFAULT_CHECKPOINT_INTERVAL, progress_style: str = "timeseries"):
         self.output_path = output_path
         self.checkpoint_interval = checkpoint_interval
         self.checkpoint_path = output_path.with_suffix('.checkpoint')

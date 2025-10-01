@@ -190,7 +190,7 @@ class ReaderApp:
         checkpoint_interval: int = 50,
         turbo_mode: bool = False,
         debug: bool = False,
-        progress_style: str = "simple"
+        progress_style: str = "timeseries"
     ) -> Path:
         """Convert a single file to audiobook."""
         # Get parser
@@ -563,7 +563,7 @@ def cli():
 @click.option('--checkpoint-interval', type=int, default=50, help='Save checkpoint every N chunks (default: 50)')
 @click.option('--turbo-mode', is_flag=True, default=False, help='Enable maximum performance mode (minimal delays, 95% CPU)')
 @click.option('--debug', is_flag=True, default=False, help='Enable detailed debug output')
-@click.option('--progress-style', type=click.Choice(['simple', 'tqdm', 'rich', 'timeseries']), default='simple', help='Progress display style (simple/tqdm/rich/timeseries)')
+@click.option('--progress-style', type=click.Choice(['simple', 'tqdm', 'rich', 'timeseries']), default='timeseries', help='Progress display style (simple/tqdm/rich/timeseries)')
 def convert(voice, speed, format, file, engine, emotion, characters, chapters, dialogue, processing_level, batch_mode, checkpoint_interval, turbo_mode, debug, progress_style):
     """Convert text files in text/ folder to audiobooks.
     

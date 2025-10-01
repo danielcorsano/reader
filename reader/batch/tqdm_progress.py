@@ -35,17 +35,17 @@ class TQDMProgressDisplay(ProgressDisplay):
     def update(self, current_chunk: int, total_chunks: int, elapsed_time: float, eta_seconds: float):
         if self.pbar is None:
             return
-            
+
         # Update progress bar to current chunk
         self.pbar.n = current_chunk
-        
-        # Calculate processing speed (chunks per second)
+
+        # Calculate processing speed (chunks per minute)
         if elapsed_time > 0:
-            chunks_per_sec = (current_chunk - self.pbar.n + 1) / elapsed_time if current_chunk > 1 else 0
+            chunks_per_min = ((current_chunk - self.pbar.n + 1) / elapsed_time) * 60 if current_chunk > 1 else 0
             self.pbar.set_postfix({
-                'speed': f'{chunks_per_sec:.1f} chunk/s' if chunks_per_sec > 0 else 'calculating...'
+                'speed': f'{chunks_per_min:.1f} chunk/min' if chunks_per_min > 0 else 'calculating...'
             })
-        
+
         self.pbar.refresh()
     
     def finish(self):
