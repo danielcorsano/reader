@@ -140,38 +140,38 @@ class NeuralProcessor:
         try:
             # Check for existing checkpoint
             start_chunk, output_size = self._load_checkpoint(file_path, total_chunks, settings_hash)
-        
-        # Initialize progress display
-        self.progress_display.start(total_chunks, file_path.name)
-        if start_chunk > 0:
-            print(f"📂 Resuming from chunk {start_chunk} (file size: {output_size/1024/1024:.1f}MB)")
-        
-        # For MP3: stream to temp WAV, for WAV: stream directly
-        actual_output_path = self.temp_wav_path if self.is_mp3_output else self.output_path
-        mode = 'ab' if start_chunk > 0 else 'wb'
 
-        with open(actual_output_path, mode) as output_file:
-            # Process chunks with Neural Engine
-            self._process_all_chunks(
-                output_file, text_chunks, tts_engine, voice_blend, speed,
-                start_chunk, total_chunks, file_path, settings_hash
-            )
+            # Initialize progress display
+            self.progress_display.start(total_chunks, file_path.name)
+            if start_chunk > 0:
+                print(f"📂 Resuming from chunk {start_chunk} (file size: {output_size/1024/1024:.1f}MB)")
 
-            # Convert temp WAV to MP3 if needed
-            if self.is_mp3_output:
-                self._convert_wav_to_mp3()
+            # For MP3: stream to temp WAV, for WAV: stream directly
+            actual_output_path = self.temp_wav_path if self.is_mp3_output else self.output_path
+            mode = 'ab' if start_chunk > 0 else 'wb'
 
-            # Clean up checkpoint on completion
-            self._cleanup_checkpoint()
+            with open(actual_output_path, mode) as output_file:
+                # Process chunks with Neural Engine
+                self._process_all_chunks(
+                    output_file, text_chunks, tts_engine, voice_blend, speed,
+                    start_chunk, total_chunks, file_path, settings_hash
+                )
 
-            # Finalize progress display
-            self.progress_display.finish()
+                # Convert temp WAV to MP3 if needed
+                if self.is_mp3_output:
+                    self._convert_wav_to_mp3()
 
-            # Move finished file to finished folder
-            finished_path = self._move_to_finished()
+                # Clean up checkpoint on completion
+                self._cleanup_checkpoint()
 
-            print(f"✅ Neural Engine processing complete: {finished_path}")
-            return finished_path
+                # Finalize progress display
+                self.progress_display.finish()
+
+                # Move finished file to finished folder
+                finished_path = self._move_to_finished()
+
+                print(f"✅ Neural Engine processing complete: {finished_path}")
+                return finished_path
         finally:
             # Always remove lock file, even on error
             if lock_path.exists():
