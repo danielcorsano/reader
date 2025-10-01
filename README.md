@@ -1,26 +1,17 @@
-# Reader: Text-to-Audiobook CLI
+# Reader: Neural Text-to-Audiobook CLI
 
-A powerful, modular Python application that converts text files into audiobooks using AI-powered text-to-speech engines.
+A powerful Python application that converts text files into professional audiobooks using AI-powered Neural Engine acceleration and Kokoro TTS.
 
-## ✨ **All Phases Implemented**
+## ✨ Features
 
-✅ **Phase 1: Core Foundation**
-- Multiple file formats: EPUB, PDF, TXT, Markdown, ReStructuredText
-- System TTS integration with voice selection and speed control
-- Automatic chapter detection and smart parsing
-
-✅ **Phase 2: Neural TTS + Emotion Analysis** 
-- **Kokoro TTS**: 48 high-quality neural voices across 8 languages
-- **Emotion analysis**: Automatic prosody based on text sentiment
-- **Character voice mapping**: Different voices for different characters
-- **Voice blending**: Create custom mixed voices
-
-✅ **Phase 3: Professional Production**
-- **Advanced audio formats**: MP3, M4A, M4B with metadata
-- **Dialogue detection**: Smart character voice assignment
-- **Real-time progress visualization**: 4 display styles with ASCII charts
-- **Optimized for audiobooks**: Smaller file sizes, better quality
-- **Batch processing**: Robust processing with checkpoint recovery
+- **🧠 Neural Engine Optimization**: Apple Silicon (M1/M2/M3) CoreML acceleration
+- **🎙️ Kokoro TTS**: 48 high-quality neural voices across 8 languages
+- **📊 Real-time Visualization**: 4 progress styles including ASCII timeseries charts
+- **💾 Smart Processing**: Checkpoint recovery and streaming audio assembly
+- **🎭 Advanced Analysis**: Emotion detection, dialogue analysis, character voice mapping
+- **📚 Multiple Formats**: EPUB, PDF, TXT, Markdown, ReStructuredText input
+- **🎵 Professional Audio**: Optimized MP3, M4A, M4B output with metadata
+- **⚡ High Performance**: 6x faster than real-time playback on Apple Silicon
 
 ## 📦 Installation
 
@@ -93,10 +84,10 @@ poetry add onnxruntime-directml
 # 1. Add a text file
 echo "Hello world! This is my first audiobook." > text/hello.txt
 
-# 2. Convert to audiobook
+# 2. Convert to audiobook (Neural Engine optimized)
 poetry run reader convert
 
-# 3. Listen to finished/hello_phase3_kokoro_am_michael_speed1p0_emotion_characters_dialogue.mp3
+# 3. Listen to finished/hello_*.mp3
 ```
 
 ## 📖 Documentation
@@ -109,17 +100,17 @@ poetry run reader convert
 
 ### Basic Conversion
 ```bash
-# Convert single file (temporary overrides, won't save to config)
-poetry run reader convert --file text/book.epub --voice am_michael --engine kokoro
+# Convert single file with Neural Engine acceleration
+poetry run reader convert --file text/book.epub
 
-# Convert with specific processing level
-poetry run reader convert --processing-level phase3 --engine kokoro
+# Convert with specific voice
+poetry run reader convert --file text/book.epub --voice am_michael
 
-# Fast conversion for large books
-poetry run reader convert --engine pyttsx3 --processing-level phase1
+# Fallback to system TTS (if Kokoro unavailable)
+poetry run reader convert --file text/book.epub --engine pyttsx3
 
-# Batch processing with checkpoints (for very large books)
-poetry run reader convert --batch-mode --checkpoint-interval 100
+# Enable debug mode to see Neural Engine status
+poetry run reader convert --file text/book.epub --debug
 ```
 
 ### 📊 Progress Visualization Options
@@ -190,29 +181,17 @@ poetry run reader convert --engine pyttsx3 --voice af_sarah
 ```
 reader/
 ├── text/                   # 📂 Input files (your books)
-├── audio/                  # 🔊 Generated audiobooks  
+├── audio/                  # 🔊 Temporary processing
+├── finished/               # ✅ Completed audiobooks
 ├── config/                 # ⚙️ Configuration files
-├── docs/                   # 📚 Documentation
+├── models/                 # 🤖 Kokoro TTS models
 └── reader/
-    ├── interfaces/         # 🔌 Abstract base classes
-    ├── engines/           # 🎙️ TTS implementations
+    ├── engines/           # 🎙️ TTS engines (Kokoro, pyttsx3)
     ├── parsers/           # 📖 File format parsers
+    ├── batch/             # 💾 Neural Engine processor
+    ├── analysis/          # 🎭 Emotion/dialogue detection
     └── cli.py             # 💻 Command-line interface
 ```
-
-## 🔮 Roadmap
-
-### Phase 2: Enhanced TTS + Smart Acting (~300MB)
-- **Kokoro TTS**: 48 neural voices across 8 languages
-- **Voice blending**: Create custom character voices  
-- **Emotion detection**: VADER sentiment → automatic prosody
-- **Smart acting**: Punctuation-based emphasis and pacing
-
-### Phase 3: Professional Production (~350MB)
-- **Dialogue detection**: Character voice assignment
-- **Context analysis**: Scene-appropriate narration
-- **M4B export**: Professional audiobook format with chapters
-- **Batch processing**: Queue management and voice preview
 
 ## 🎨 Example Workflows
 
@@ -294,22 +273,25 @@ See **[docs/EXAMPLES.md](docs/EXAMPLES.md)** for detailed examples including:
 
 ## 📊 Technical Specs
 
-- **Dependencies**: 6 core packages (~50MB total)
-- **Python**: 3.9+ compatibility
-- **Platforms**: macOS, Linux, Windows
-- **Performance**: ~1x real-time conversion
-- **Quality**: 16-bit WAV, 22kHz sample rate
+- **Dependencies**: Core packages + Kokoro TTS
+- **Python**: 3.10+ compatibility
+- **Platforms**: macOS (Neural Engine), Linux, Windows
+- **Performance**: 6x faster than real-time on Apple Silicon
+- **Audio Quality**: 22kHz mono MP3, optimized for audiobooks
+- **Neural Engine**: CoreML acceleration on M1/M2/M3 Macs
 
-## 🎵 Audio Quality Notes
+## 🎵 Audio Quality
 
-**Phase 1** uses system TTS engines (macOS Voices, Windows SAPI, Linux espeak):
-- ✅ Fast, reliable, offline
-- ⚠️ Synthetic quality (suitable for personal use)
-
-**Phase 2+** will add neural TTS:
-- ✅ Near-human quality voices
-- ✅ Emotion and emphasis control
+**Kokoro TTS** (primary engine):
+- ✅ Near-human quality neural voices
+- ✅ 48 voices across 8 languages
+- ✅ Apple Neural Engine acceleration
 - ✅ Professional audiobook production
+
+**pyttsx3** (fallback):
+- ✅ Works without Kokoro models
+- ✅ System TTS (macOS, Windows, Linux)
+- ⚠️ Lower quality, suitable for testing
 
 ---
 

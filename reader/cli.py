@@ -18,32 +18,23 @@ from .parsers.pdf_parser import PDFParser
 from .parsers.text_parser import PlainTextParser
 from .interfaces.text_parser import TextParser
 
-# Phase 2 imports
+# TTS engines
 try:
     from .engines.kokoro_engine import KokoroEngine
     KOKORO_AVAILABLE = True
 except ImportError:
     KOKORO_AVAILABLE = False
 
-try:
-    from .analysis.emotion_detector import EmotionDetector
-    from .analysis.ssml_generator import SSMLGenerator
-    from .voices.character_mapper import CharacterVoiceMapper
-    PHASE2_AVAILABLE = True
-except ImportError:
-    PHASE2_AVAILABLE = False
-
-# Phase 3 imports
-try:
-    from .analysis.dialogue_detector import DialogueDetector
-    from .chapters.chapter_manager import ChapterManager
-    from .batch.neural_processor import NeuralProcessor
-    from .batch.batch_processor import create_batch_processor
-    from .processors.ffmpeg_processor import get_audio_processor
-    from .voices.voice_previewer import get_voice_previewer
-    PHASE3_AVAILABLE = True
-except ImportError:
-    PHASE3_AVAILABLE = False
+# Analysis and processing components
+from .analysis.emotion_detector import EmotionDetector
+from .analysis.dialogue_detector import DialogueDetector
+from .analysis.ssml_generator import SSMLGenerator
+from .voices.character_mapper import CharacterVoiceMapper
+from .chapters.chapter_manager import ChapterManager
+from .batch.neural_processor import NeuralProcessor
+from .batch.batch_processor import create_batch_processor
+from .processors.ffmpeg_processor import get_audio_processor
+from .voices.voice_previewer import get_voice_previewer
 
 
 class ReaderApp:
@@ -63,33 +54,17 @@ class ReaderApp:
             PlainTextParser()
         ]
         
-        # Phase 2 components (optional)
-        self.emotion_detector = None
-        self.ssml_generator = None
-        self.character_mapper = None
-        
-        # Phase 3 components (optional)
-        self.dialogue_detector = None
-        self.chapter_manager = None
-        self.audio_processor = None
-        self.voice_previewer = None
-        
-        if PHASE2_AVAILABLE:
-            try:
-                self.emotion_detector = EmotionDetector()
-                self.ssml_generator = SSMLGenerator()
-                self.character_mapper = CharacterVoiceMapper(self.config_manager.get_config_dir())
-            except Exception as e:
-                print(f"Warning: Phase 2 features not available: {e}")
-        
-        if PHASE3_AVAILABLE:
-            try:
-                self.dialogue_detector = DialogueDetector()
-                self.chapter_manager = ChapterManager()
-                self.audio_processor = get_audio_processor()
-                self.voice_previewer = get_voice_previewer()
-            except Exception as e:
-                print(f"Warning: Phase 3 features not available: {e}")
+        # Analysis and processing components
+        try:
+            self.emotion_detector = EmotionDetector()
+            self.ssml_generator = SSMLGenerator()
+            self.character_mapper = CharacterVoiceMapper(self.config_manager.get_config_dir())
+            self.dialogue_detector = DialogueDetector()
+            self.chapter_manager = ChapterManager()
+            self.audio_processor = get_audio_processor()
+            self.voice_previewer = get_voice_previewer()
+        except Exception as e:
+            print(f"Warning: Some advanced features not available: {e}")
         
         # Ensure directories exist
         self.config_manager.get_text_dir().mkdir(exist_ok=True)
@@ -254,100 +229,61 @@ class ReaderApp:
             if voice_analysis['detected_characters']:
                 click.echo(f"Character voices: {voice_analysis['voice_assignments']}")
         
-        # Generate audio with enhanced processing
+        # Generate audio with Neural Engine processing
         click.echo(f"Generating audio for '{parsed_content.title}'...")
 
-        # Use Neural Engine processing for Phase 3 (default)
-        if PHASE3_AVAILABLE:
-            # Create output file path
-            output_path = self._create_output_path(parsed_content.title, tts_config, audio_config, processing_config)
-
-            # Create Neural Engine processor with optimized settings
-            processor = NeuralProcessor(
-                output_path=output_path,
-                checkpoint_interval=checkpoint_interval,
-                progress_style=progress_style
-            )
-
-            # Split content into optimized chunks aligned with Kokoro's processing
-            if tts_config.engine == "kokoro" and KOKORO_AVAILABLE:
-                # Use 400-char chunks to match Kokoro's optimal size (no re-chunking)
-                kokoro_engine = self.get_tts_engine()
-                text_chunks = kokoro_engine._chunk_text_intelligently(parsed_content.content, max_length=400)
-            else:
-                # Use basic chunking for other engines
-                chunk_size = min(400, processing_config.chunk_size)
-                text_chunks = [parsed_content.content[i:i+chunk_size]
-                              for i in range(0, len(parsed_content.content), chunk_size)]
-
-            # Get voice blend configuration
-            voice_blend = {}
-            if tts_config.voice:
-                voice_blend = {tts_config.voice: 1.0}
-            else:
-                # Default voice
-                if tts_config.engine == "kokoro":
-                    voice_blend = {"am_michael": 1.0}
-                else:
-                    voice_blend = {"default": 1.0}
-
-            # Processing configuration for checkpoints
-            proc_config = {
-                'engine': tts_config.engine,
-                'voice': tts_config.voice,
-                'speed': tts_config.speed,
-                'processing_level': processing_config.level,
-                'format': audio_config.format
-            }
-
-            # Process chunks with Neural Engine
-            final_output = processor.process_chunks(
-                file_path=file_path,
-                text_chunks=text_chunks,
-                tts_engine=self.get_tts_engine(),
-                voice_blend=voice_blend,
-                speed=tts_config.speed,
-                processing_config=proc_config
-            )
-
-            return final_output
-        elif processing_config.emotion_analysis and self.ssml_generator:
-            # Fallback: Process with emotion and character awareness
-            audio_segments = self._convert_with_emotion_analysis(
-                parsed_content, tts_config, processing_config
-            )
-        else:
-            # Fallback to chunk-based processing
-            audio_segments = self._convert_basic_chunks(
-                parsed_content.content, tts_config, processing_config
-            )
-
-        # Create output path using standardized method
+        # Create output file path
         output_path = self._create_output_path(parsed_content.title, tts_config, audio_config, processing_config)
 
-        # Combine audio segments into final audiobook
-        if len(audio_segments) == 0:
-            # Neural Engine processor already wrote the file directly
-            click.echo("Audio file already written by Neural Engine processor")
-        elif len(audio_segments) == 1:
-            self.get_tts_engine().save_audio(audio_segments[0], output_path, audio_config.format)
-            # Move to finished folder
-            output_path = self._move_to_finished(output_path)
+        # Create Neural Engine processor with optimized settings
+        processor = NeuralProcessor(
+            output_path=output_path,
+            checkpoint_interval=checkpoint_interval,
+            progress_style=progress_style
+        )
+
+        # Split content into optimized chunks aligned with Kokoro's processing
+        if tts_config.engine == "kokoro" and KOKORO_AVAILABLE:
+            # Use 400-char chunks to match Kokoro's optimal size (no re-chunking)
+            kokoro_engine = self.get_tts_engine()
+            text_chunks = kokoro_engine._chunk_text_intelligently(parsed_content.content, max_length=400)
         else:
-            # Merge all segments into a single audio file
-            click.echo(f"Merging {len(audio_segments)} audio segments...")
-            merged_audio = self._merge_audio_segments(audio_segments)
-            output_path = output_path.with_suffix(f'.{audio_config.format}')
-            self.get_tts_engine().save_audio(merged_audio, output_path, audio_config.format)
-            # Move to finished folder
-            output_path = self._move_to_finished(output_path)
+            # Use basic chunking for other engines (pyttsx3 fallback)
+            chunk_size = min(400, processing_config.chunk_size)
+            text_chunks = [parsed_content.content[i:i+chunk_size]
+                          for i in range(0, len(parsed_content.content), chunk_size)]
 
-        # Phase 1: Skip metadata (requires complex audio libraries)
-        if audio_config.add_metadata:
-            click.echo("Phase 1: Metadata addition will be available in Phase 2+")
+        # Get voice blend configuration
+        voice_blend = {}
+        if tts_config.voice:
+            voice_blend = {tts_config.voice: 1.0}
+        else:
+            # Default voice
+            if tts_config.engine == "kokoro":
+                voice_blend = {"am_michael": 1.0}
+            else:
+                voice_blend = {"default": 1.0}
 
-        click.echo(f"Audiobook saved to: {output_path}")
-        return output_path
+        # Processing configuration for checkpoints
+        proc_config = {
+            'engine': tts_config.engine,
+            'voice': tts_config.voice,
+            'speed': tts_config.speed,
+            'processing_level': processing_config.level,
+            'format': audio_config.format
+        }
+
+        # Process chunks with Neural Engine
+        final_output = processor.process_chunks(
+            file_path=file_path,
+            text_chunks=text_chunks,
+            tts_engine=self.get_tts_engine(),
+            voice_blend=voice_blend,
+            speed=tts_config.speed,
+            processing_config=proc_config
+        )
+
+        return final_output
     
     def _get_expected_output_path(self, file_path: Path, voice=None, speed=None, format=None, 
                                 emotion=None, characters=None, chapters=None, dialogue=None, 
@@ -385,114 +321,6 @@ class ReaderApp:
         
         # Generate the same output path that would be created
         return self._create_output_path(parsed_content.title, tts_config, audio_config, processing_config)
-    
-    def _convert_with_emotion_analysis(self, parsed_content, tts_config, processing_config):
-        """Convert content with emotion analysis and smart acting."""
-        audio_segments = []
-        
-        # Split into sentences for better emotion analysis
-        sentences = self._split_into_sentences(parsed_content.content)
-        
-        for sentence in sentences:
-            if sentence.strip():
-                # Analyze emotion
-                emotion_analysis = self.emotion_detector.analyze_emotion(sentence)
-                
-                # Generate SSML if supported
-                tts_engine = self.get_tts_engine()
-                if hasattr(tts_engine, 'supports_ssml') and tts_engine.supports_ssml():
-                    # Generate SSML with emotion-based prosody
-                    ssml_text = self.ssml_generator.generate_ssml(sentence, emotion_analysis)
-                    text_to_synthesize = ssml_text
-                else:
-                    # Apply prosody hints to TTS parameters
-                    text_to_synthesize = sentence
-                    # Adjust speed based on emotion
-                    emotion_speed = tts_config.speed * emotion_analysis.prosody_hints.get('rate', 1.0)
-                    
-                    # Determine voice (character mapping if available)
-                    voice_to_use = tts_config.voice
-                    if self.character_mapper and processing_config.character_voices:
-                        # Simple character detection for this sentence
-                        detected_chars = self.character_mapper.detect_characters_in_text(sentence)
-                        if detected_chars:
-                            char_name = list(detected_chars)[0]
-                            char_voice = self.character_mapper.get_character_voice(char_name)
-                            if char_voice:
-                                voice_to_use = char_voice.voice_id
-                    
-                    # Synthesize with appropriate voice and emotion adjustments
-                    audio_data = self.get_tts_engine().synthesize(
-                        text=text_to_synthesize,
-                        voice=voice_to_use,
-                        speed=emotion_speed if 'emotion_speed' in locals() else tts_config.speed,
-                        volume=tts_config.volume
-                    )
-                    audio_segments.append(audio_data)
-        
-        return audio_segments
-    
-    def _convert_basic_chunks(self, content, tts_config, processing_config):
-        """Fallback chunk-based conversion (Phase 1 style)."""
-        chunk_size = processing_config.chunk_size
-        chunks = [content[i:i+chunk_size] for i in range(0, len(content), chunk_size)]
-        
-        audio_segments = []
-        
-        for chunk in chunks:
-            if chunk.strip():
-                audio_data = self.get_tts_engine().synthesize(
-                    text=chunk,
-                    voice=tts_config.voice,
-                    speed=tts_config.speed,
-                    volume=tts_config.volume
-                )
-                audio_segments.append(audio_data)
-        
-        return audio_segments
-    
-    
-    def _split_into_sentences(self, text):
-        """Split text into sentences for emotion analysis."""
-        import re
-        # Simple sentence splitting
-        sentences = re.split(r'(?<=[.!?])\s+', text)
-        return [s.strip() for s in sentences if s.strip()]
-    
-    def _merge_audio_segments(self, audio_segments):
-        """Merge multiple audio segments into a single audio file."""
-        import wave
-        import io
-
-        if not audio_segments:
-            return b''
-
-        # Extract audio data from each segment
-        audio_data_chunks = []
-        sample_rate = 22050
-        channels = 1
-        sample_width = 2
-
-        for i, wav_data in enumerate(audio_segments):
-            wav_buffer = io.BytesIO(wav_data)
-            with wave.open(wav_buffer, 'rb') as wav_file:
-                if i == 0:  # Get parameters from first chunk
-                    sample_rate = wav_file.getframerate()
-                    channels = wav_file.getnchannels()
-                    sample_width = wav_file.getsampwidth()
-                audio_data_chunks.append(wav_file.readframes(wav_file.getnframes()))
-
-        # Create combined WAV
-        wav_buffer = io.BytesIO()
-        with wave.open(wav_buffer, 'wb') as wav_file:
-            wav_file.setnchannels(channels)
-            wav_file.setsampwidth(sample_width)
-            wav_file.setframerate(sample_rate)
-            wav_file.writeframes(b''.join(audio_data_chunks))
-
-        wav_buffer.seek(0)
-        return wav_buffer.read()
-    
     def _create_output_path(self, title, tts_config, audio_config, processing_config):
         """Create standardized output path for audio files."""
         audio_dir = self.config_manager.get_audio_dir()
@@ -836,10 +664,7 @@ def list():
 @click.option('--monitor', is_flag=True, help='Monitor current conversion progress')
 def progress(monitor):
     """Monitor conversion progress in real-time."""
-    if not PHASE3_AVAILABLE:
-        click.echo("Progress monitoring requires Phase 3 components.")
-        return
-    
+    from .batch.batch_processor import RobustProcessor
     processor = RobustProcessor()
     
     if monitor:
@@ -894,10 +719,7 @@ def progress(monitor):
 @click.option('--summary', is_flag=True, help='Show checkpoint system summary')
 def checkpoints(list_checkpoints, cleanup, status, summary):
     """Manage batch processing checkpoints."""
-    if not PHASE3_AVAILABLE:
-        click.echo("Checkpoint management requires Phase 3 components.")
-        return
-    
+    from .batch.batch_processor import RobustProcessor
     processor = RobustProcessor()
     
     if list_checkpoints:
@@ -1037,13 +859,7 @@ def info():
     audio_dir = app.config_manager.get_audio_dir()
     
     # Header
-    if PHASE3_AVAILABLE:
-        phase = "Phase 3"
-    elif PHASE2_AVAILABLE:
-        phase = "Phase 2"
-    else:
-        phase = "Phase 1"
-    click.echo(f"📖 Reader: Text-to-Audiobook CLI ({phase})")
+    click.echo(f"📖 Reader: Text-to-Audiobook CLI (Neural Engine Optimized)")
     click.echo("=" * 50)
     
     # System info
@@ -1077,21 +893,16 @@ def info():
         click.echo("  reader convert --characters # Enable character voices")
     click.echo("  reader voices               # List available voices")
     click.echo("  reader config               # View/set preferences")
-    
-    if PHASE2_AVAILABLE:
-        click.echo("\n🎭 Phase 2 Commands:")
-        click.echo("  reader characters add NAME VOICE # Map character to voice")
-        click.echo("  reader characters list     # Show character mappings")
-        click.echo("  reader blend create NAME SPEC # Create voice blend")
-        click.echo("  reader blend list           # Show voice blends")
-    
-    if PHASE3_AVAILABLE:
-        click.echo("\n🚀 Phase 3 Commands:")
-        click.echo("  reader preview VOICE        # Preview voice samples")
-        click.echo("  reader chapters extract FILE # Extract chapter structure")
-        click.echo("  reader batch add FILES      # Add files to batch queue")
-        click.echo("  reader batch process        # Process batch queue")
-        click.echo("  reader config --processing-level phase3 # Enable all features")
+
+    click.echo("\n🎭 Advanced Commands:")
+    click.echo("  reader characters add NAME VOICE # Map character to voice")
+    click.echo("  reader characters list     # Show character mappings")
+    click.echo("  reader blend create NAME SPEC # Create voice blend")
+    click.echo("  reader blend list           # Show voice blends")
+    click.echo("  reader preview VOICE        # Preview voice samples")
+    click.echo("  reader chapters extract FILE # Extract chapter structure")
+    click.echo("  reader batch add FILES      # Add files to batch queue")
+    click.echo("  reader batch process        # Process batch queue")
     
     # Configuration
     tts_config = app.config_manager.get_tts_config()
@@ -1107,44 +918,17 @@ def info():
     click.echo("  README.md        - Project overview and quick start")
     click.echo("  docs/USAGE.md    - Complete command reference")
     click.echo("  docs/EXAMPLES.md - Real-world examples and workflows")
-    
-    # Phase info
-    if PHASE2_AVAILABLE:
-        click.echo("\n🎯 Phase 2 Features:")
-        click.echo("  ✅ Neural TTS (Kokoro) with 48+ voices")
-        click.echo("  ✅ Emotion detection and smart acting")
-        click.echo("  ✅ Character voice mapping")
-        click.echo("  ✅ Voice blending capabilities")
-        click.echo("  ✅ SSML-based prosody control")
-        click.echo("  ✅ Multi-language support")
-        
-        click.echo("\n🔮 Coming in Phase 3:")
-        click.echo("  Professional audiobook formats (MP3, M4B)")
-        click.echo("  Advanced dialogue detection")
-        click.echo("  Batch processing with queues")
-    
-    if PHASE3_AVAILABLE:
-        click.echo("\n🎯 Phase 3 Features:")
-        click.echo("  ✅ Professional audio formats (MP3, M4A, M4B)")
-        click.echo("  ✅ Advanced dialogue detection with NLP")
-        click.echo("  ✅ Chapter extraction and metadata")
-        click.echo("  ✅ Voice preview and comparison")
-        click.echo("  ✅ Batch processing with progress tracking")
-        click.echo("  ✅ Audio normalization and enhancement")
-        click.echo("  ✅ Configurable processing levels")
-    else:
-        click.echo("\n🎯 Phase 1 Features:")
-        click.echo("  ✅ 5 file formats (EPUB, PDF, TXT, MD, RST)")
-        click.echo("  ✅ System TTS with voice selection")
-        click.echo("  ✅ WAV audio output")
-        click.echo("  ✅ Automatic chapter detection")
-        click.echo("  ✅ Configuration management")
-        
-        click.echo("\n🔮 Available Upgrades:")
-        click.echo("  Phase 2: Neural TTS + emotion detection")
-        click.echo("  Install: poetry add kokoro-onnx vaderSentiment")
-        click.echo("  Phase 3: Professional audiobook production")
-        click.echo("  Install: poetry add spacy pydub mutagen")
+
+    click.echo("\n🎯 Features:")
+    click.echo("  ✅ Neural TTS (Kokoro) with 48+ voices")
+    click.echo("  ✅ Apple Neural Engine acceleration (M1/M2/M3)")
+    click.echo("  ✅ Professional audio formats (MP3, M4A, M4B)")
+    click.echo("  ✅ Emotion detection and dialogue analysis")
+    click.echo("  ✅ Character voice mapping and blending")
+    click.echo("  ✅ Chapter extraction and metadata")
+    click.echo("  ✅ Batch processing with checkpoints")
+    click.echo("  ✅ Real-time progress visualization")
+    click.echo("  ✅ 5 input formats (EPUB, PDF, TXT, MD, RST)")
     
     # Tips
     if len(text_files) == 0:
@@ -1162,16 +946,11 @@ def info():
 @click.argument('voice')
 @click.option('--engine', type=click.Choice(['pyttsx3', 'kokoro']), default='kokoro', help='TTS engine to use')
 @click.option('--text', help='Custom preview text')
-@click.option('--emotion', type=click.Choice(['neutral', 'excited', 'sad', 'angry', 'whisper', 'dramatic']), 
+@click.option('--emotion', type=click.Choice(['neutral', 'excited', 'sad', 'angry', 'whisper', 'dramatic']),
               default='neutral', help='Emotional style for preview')
 @click.option('--output-dir', type=click.Path(), help='Directory to save preview files')
 def preview(voice, engine, text, emotion, output_dir):
     """Generate voice preview samples."""
-    if not PHASE3_AVAILABLE:
-        click.echo("Voice preview requires Phase 3 dependencies.")
-        click.echo("Install with: poetry add spacy pydub mutagen")
-        return
-    
     app = ReaderApp(init_tts=False)  # TTS initialized by voice_previewer
     if not app.voice_previewer:
         click.echo("Voice previewer not available.")
@@ -1206,10 +985,6 @@ def chapters():
 @click.option('--format', type=click.Choice(['json', 'text']), default='json', help='Output format')
 def extract(file_path, output, format):
     """Extract chapter structure from a book file."""
-    if not PHASE3_AVAILABLE:
-        click.echo("Chapter extraction requires Phase 3 dependencies.")
-        return
-    
     app = ReaderApp(init_tts=False)  # No TTS needed for chapter extraction
     if not app.chapter_manager:
         click.echo("Chapter manager not available.")
@@ -1280,10 +1055,6 @@ def batch():
 @click.option('--output-dir', type=click.Path(), help='Output directory for converted files')
 def add(files, directory, recursive, output_dir):
     """Add files to batch processing queue."""
-    if not PHASE3_AVAILABLE:
-        click.echo("Batch processing requires Phase 3 dependencies.")
-        return
-    
     app = ReaderApp(init_tts=False)  # Batch processor handles TTS internally
     batch_processor = create_batch_processor(app.config_manager)
     
@@ -1321,10 +1092,6 @@ def add(files, directory, recursive, output_dir):
 @click.option('--save-progress', is_flag=True, help='Save progress to file')
 def process(max_workers, save_progress):
     """Process all jobs in the batch queue."""
-    if not PHASE3_AVAILABLE:
-        click.echo("Batch processing requires Phase 3 dependencies.")
-        return
-    
     app = ReaderApp()
     batch_processor = create_batch_processor(app.config_manager, max_workers)
     
@@ -1366,10 +1133,6 @@ def process(max_workers, save_progress):
 @batch.command()
 def status():
     """Show current batch queue status."""
-    if not PHASE3_AVAILABLE:
-        click.echo("Batch processing requires Phase 3 dependencies.")
-        return
-    
     app = ReaderApp()
     batch_processor = create_batch_processor(app.config_manager)
     
@@ -1389,10 +1152,6 @@ def status():
 @batch.command()
 def clear():
     """Clear all jobs from the batch queue."""
-    if not PHASE3_AVAILABLE:
-        click.echo("Batch processing requires Phase 3 dependencies.")
-        return
-    
     app = ReaderApp()
     batch_processor = create_batch_processor(app.config_manager)
     

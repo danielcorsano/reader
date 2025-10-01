@@ -124,20 +124,18 @@ poetry add onnxruntime-directml
 - Smart acting rules (punctuation, context keywords)
 - Additional dependencies: kokoro-onnx, onnxruntime, vaderSentiment
 
-### Phase 3: Advanced Features + Polish (~350MB) ✅ COMPLETED
-**Goal**: Professional audiobook production with Neural Engine optimization
+### Current Architecture ✅ COMPLETED
+**Professional audiobook production with Neural Engine optimization**
 - Apple Neural Engine acceleration (CoreML) for M1/M2/M3 Macs
-- Consolidated NeuralProcessor with streamlined processing pipeline
+- NeuralProcessor with streaming audio assembly
 - Emotion analysis, character voice mapping, dialogue detection
-- Optimized 400-character chunking (no double-chunking)
-- 48k mono MP3 encoding with batch conversion
-- Real-time progress feedback with chunk-by-chunk ETA
+- Optimized 400-character chunking aligned with Kokoro
+- 48k mono MP3 encoding with FFmpeg batch conversion
+- Real-time progress visualization (4 styles: simple, tqdm, rich, timeseries)
 - Checkpoint resumption for interrupted conversions
-- Default voice: am_michael, all redundancies eliminated
+- Default voice: am_michael
 
 ### Architecture Principles
-- **Swappable Components**: Abstract base classes for TTS engines, parsers, processors
-- **Modular Design**: Easy to upgrade engines without breaking existing code
-- **Token-Efficient Development**: ~5K tokens per phase across focused conversations
-- **Progressive Enhancement**: Each phase delivers complete, usable software
-- never put claude in any git commits
+- **Swappable Components**: Abstract base classes for TTS engines and parsers
+- **Modular Design**: Easy to add new engines or file formats
+- **Streaming Architecture**: Memory-efficient processing for large books
