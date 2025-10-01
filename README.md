@@ -22,37 +22,82 @@ A powerful, modular Python application that converts text files into audiobooks 
 - **Optimized for audiobooks**: Smaller file sizes, better quality
 - **Batch processing**: Robust processing with checkpoint recovery
 
+## 📦 Installation
+
+### Using pip (recommended for users)
+```bash
+# Default installation (Kokoro TTS + core features)
+pip install reader
+
+# With advanced NLP features (adds spacy for better dialogue detection)
+pip install reader[nlp]
+
+# With all progress visualizations (tqdm, rich, plotext)
+pip install reader[progress-full]
+
+# With system monitoring
+pip install reader[monitoring]
+
+# With everything
+pip install reader[all]
+```
+
+### Using Poetry (for development)
+```bash
+# Clone the repository
+git clone https://github.com/yourusername/reader.git
+cd reader
+
+# Default installation
+poetry install
+
+# With optional extras
+poetry install --extras "nlp progress-full"
+
+# Install all extras
+poetry install --extras "all"
+```
+
+### GPU Acceleration
+
+#### Apple Silicon (M1/M2/M3) ✅
+The Neural Engine (CoreML) is used automatically - no additional setup needed!
+
+#### NVIDIA GPU (Windows/Linux)
+```bash
+# Using pip
+pip install reader
+pip uninstall onnxruntime
+pip install onnxruntime-gpu
+
+# Using poetry
+poetry remove onnxruntime
+poetry add onnxruntime-gpu
+```
+
+#### AMD/Intel GPU (Windows via DirectML)
+```bash
+# Using pip
+pip install reader
+pip uninstall onnxruntime
+pip install onnxruntime-directml
+
+# Using poetry
+poetry remove onnxruntime
+poetry add onnxruntime-directml
+```
+
 ## 🚀 Quick Start
 
 ```bash
-# 1. Install dependencies
-poetry install
-
-# 2. Add a text file
+# 1. Add a text file
 echo "Hello world! This is my first audiobook." > text/hello.txt
 
-# 3. Convert to audiobook
+# 2. Convert to audiobook
 poetry run reader convert
 
-# 4. Listen to audio/hello_phase3_kokoro_am_michael_speed1p0_emotion_characters_dialogue.mp3
+# 3. Listen to finished/hello_phase3_kokoro_am_michael_speed1p0_emotion_characters_dialogue.mp3
 ```
-
-## 🔧 Optional Progress Dependencies
-
-For enhanced progress visualization, install these optional packages:
-
-```bash
-# For professional progress bars with ETA and speed metrics
-poetry add tqdm
-
-# For beautiful terminal formatting and enhanced displays  
-poetry add rich
-
-# For ASCII timeseries charts and real-time speed visualization
-poetry add plotext
-```
-
-All progress styles gracefully fall back to simple display if dependencies are missing.
 
 ## 📖 Documentation
 

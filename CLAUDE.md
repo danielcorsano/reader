@@ -8,15 +8,42 @@ This is a Python project called "reader" managed with Poetry for dependency mana
 
 ## Development Commands
 
+**IMPORTANT: This project uses Poetry for dependency management. Always use `poetry add/remove`, never use `pip install` directly.**
+
 ### Poetry Commands
 - `poetry install` - Install all dependencies and create virtual environment
-- `poetry add <package>` - Add a new dependency
+- `poetry install --extras "nlp progress-full"` - Install with optional extras
+- `poetry add <package>` - Add a new dependency (use this, NOT pip install)
+- `poetry add <package> --optional` - Add as optional dependency
 - `poetry add --group dev <package>` - Add a development dependency
 - `poetry remove <package>` - Remove a dependency
 - `poetry run <command>` - Run command in Poetry virtual environment
 - `poetry shell` - Activate Poetry virtual environment
 - `poetry lock` - Update poetry.lock file
 - `poetry show` - List installed packages
+
+### Optional Extras
+- `nlp` - Advanced NLP with spacy (dialogue detection)
+- `progress-full` - All progress visualizations (plotext, tqdm, rich)
+- `progress-timeseries` - ASCII timeseries charts (plotext)
+- `progress-tqdm` - TQDM progress bars
+- `progress-rich` - Rich enhanced displays
+- `monitoring` - System monitoring (psutil)
+- `phase1` - pyttsx3 system TTS
+- `all` - All optional features
+
+### GPU Acceleration Setup
+```bash
+# For NVIDIA GPU (Windows/Linux)
+poetry remove onnxruntime
+poetry add onnxruntime-gpu
+
+# For AMD/Intel GPU (Windows via DirectML)
+poetry remove onnxruntime
+poetry add onnxruntime-directml
+
+# Apple Silicon uses CoreML by default (no changes needed)
+```
 
 ### Reader CLI Commands
 
