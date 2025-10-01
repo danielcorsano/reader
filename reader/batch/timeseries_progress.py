@@ -47,7 +47,7 @@ class TimeseriesProgressDisplay(ProgressDisplay):
             instant_speed = 0.0
 
         # Add to history (convert to minutes for display)
-        relative_time = (current_time - self.start_time) / 60  # Convert to minutes
+        relative_time = (current_time - self.start_time) / 60
         self.speed_history.append(instant_speed)
         self.time_history.append(relative_time)
 
@@ -63,12 +63,24 @@ class TimeseriesProgressDisplay(ProgressDisplay):
 
         # Draw timeseries chart
         if len(self.speed_history) > 1:
-            plt.clear_figure()  # Clear the entire figure
-            plt.clear_data()    # Clear data
+            plt.clear_figure()
+            plt.clear_data()
             plt.plot(list(self.time_history), list(self.speed_history), marker="dot", color="cyan")
             plt.title("🚀 Processing Speed Over Time")
-            plt.xlabel("Time (minutes)")
             plt.ylabel("Speed (chunks/min)")
+
+            # Build custom x ticks with "Xm Ys" labels
+            max_time = max(self.time_history)
+            interval = 0.5 if max_time < 5 else 1  # 30s or 1min intervals
+            ticks = [i * interval for i in range(int(max_time / interval) + 2)]
+            labels = []
+            for t in ticks:
+                secs = int(t * 60)
+                m, s = divmod(secs, 60)
+                labels.append(f"{m}m {s}s" if s else f"{m}m")
+
+            plt.xticks(ticks, labels)
+            plt.xlabel("Time")
             plt.plotsize(80, 15)
             plt.theme("dark")
             plt.show()
