@@ -63,7 +63,8 @@ class TimeseriesProgressDisplay(ProgressDisplay):
 
         # Draw timeseries chart
         if len(self.speed_history) > 1:
-            plt.clear_data()
+            plt.clear_figure()  # Clear the entire figure
+            plt.clear_data()    # Clear data
             plt.plot(list(self.time_history), list(self.speed_history), marker="dot", color="cyan")
             plt.title("🚀 Processing Speed Over Time")
             plt.xlabel("Time (minutes)")
@@ -71,7 +72,7 @@ class TimeseriesProgressDisplay(ProgressDisplay):
             plt.plotsize(80, 15)
             plt.theme("dark")
             plt.show()
-        
+
         # Draw progress bar
         bar_width = 60
         filled_width = int((current_chunk / total_chunks) * bar_width)
