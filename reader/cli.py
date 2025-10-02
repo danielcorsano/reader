@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import List, Optional
 import sys
 import warnings
+import yaml
 
 # Suppress known warnings from dependencies
 warnings.filterwarnings("ignore", 
@@ -26,9 +27,7 @@ except ImportError:
     KOKORO_AVAILABLE = False
 
 # Analysis and processing components
-from .analysis.emotion_detector import EmotionDetector
 from .analysis.dialogue_detector import DialogueDetector
-from .analysis.ssml_generator import SSMLGenerator
 from .voices.character_mapper import CharacterVoiceMapper
 from .chapters.chapter_manager import ChapterManager
 from .batch.neural_processor import NeuralProcessor
@@ -56,8 +55,6 @@ class ReaderApp:
         
         # Analysis and processing components
         try:
-            self.emotion_detector = EmotionDetector()
-            self.ssml_generator = SSMLGenerator()
             self.character_mapper = CharacterVoiceMapper(self.config_manager.get_config_dir())
             self.dialogue_detector = DialogueDetector()
             self.chapter_manager = ChapterManager()
@@ -108,20 +105,14 @@ class ReaderApp:
             
             # Auto-configure features based on level (in memory only)
             if level == "phase1":
-                config.processing.emotion_analysis = False
                 config.processing.character_voices = False
                 config.processing.dialogue_detection = False
-                config.processing.advanced_audio_formats = False
             elif level == "phase2":
-                config.processing.emotion_analysis = True
-                config.processing.character_voices = True
+                config.processing.character_voices = False
                 config.processing.dialogue_detection = False
-                config.processing.advanced_audio_formats = False
             elif level == "phase3":
-                config.processing.emotion_analysis = True
-                config.processing.character_voices = True
+                config.processing.character_voices = False
                 config.processing.dialogue_detection = True
-                config.processing.advanced_audio_formats = True
         
         # Apply engine override
         if 'engine' in overrides:
@@ -157,7 +148,6 @@ class ReaderApp:
         voice: Optional[str] = None,
         speed: Optional[float] = None,
         format: Optional[str] = None,
-        emotion_analysis: Optional[bool] = None,
         character_voices: Optional[bool] = None,
         chapter_detection: Optional[bool] = None,
         dialogue_detection: Optional[bool] = None,
@@ -165,7 +155,8 @@ class ReaderApp:
         checkpoint_interval: int = 50,
         turbo_mode: bool = False,
         debug: bool = False,
-        progress_style: str = "timeseries"
+        progress_style: str = "timeseries",
+        character_config: Optional[Path] = None
     ) -> Path:
         """Convert a single file to audiobook."""
         # Get parser
@@ -186,7 +177,7 @@ class ReaderApp:
             print(f"🔍 DEBUG: Loaded config values:")
             print(f"   TTS: engine={tts_config.engine}, voice={tts_config.voice}, speed={tts_config.speed}")
             print(f"   Audio: format={audio_config.format}")
-            print(f"   Processing: level={processing_config.level}, emotion={processing_config.emotion_analysis}, characters={processing_config.character_voices}")
+            print(f"   Processing: level={processing_config.level}, characters={processing_config.character_voices}")
             print(f"   Chunk size: {processing_config.chunk_size}")
         
         # Override with command-line arguments
@@ -199,9 +190,6 @@ class ReaderApp:
         if format:
             if debug: print(f"🔍 DEBUG: Overriding format: {audio_config.format} -> {format}")
             audio_config.format = format
-        if emotion_analysis is not None:
-            if debug: print(f"🔍 DEBUG: Overriding emotion: {processing_config.emotion_analysis} -> {emotion_analysis}")
-            processing_config.emotion_analysis = emotion_analysis
         if character_voices is not None:
             if debug: print(f"🔍 DEBUG: Overriding characters: {processing_config.character_voices} -> {character_voices}")
             processing_config.character_voices = character_voices
@@ -211,21 +199,32 @@ class ReaderApp:
         if dialogue_detection is not None:
             if debug: print(f"🔍 DEBUG: Overriding dialogue: {processing_config.dialogue_detection} -> {dialogue_detection}")
             processing_config.dialogue_detection = dialogue_detection
-            
+
         if debug:
             print(f"🔍 DEBUG: Final config after overrides:")
             print(f"   TTS: engine={tts_config.engine}, voice={tts_config.voice}, speed={tts_config.speed}")
             print(f"   Audio: format={audio_config.format}")
-            print(f"   Processing: level={processing_config.level}, emotion={processing_config.emotion_analysis}, characters={processing_config.character_voices}")
+            print(f"   Processing: level={processing_config.level}, characters={processing_config.character_voices}")
         
-        # Phase 2: Character analysis
+        # Character voice loading and analysis
         if self.character_mapper and processing_config.character_voices:
+            # Load character config from file if provided or auto-detect
+            if character_config and character_config.exists():
+                count = self.character_mapper.load_from_file(character_config)
+                click.echo(f"Loaded {count} character mappings from {character_config.name}")
+            else:
+                # Try to auto-detect character config file next to source
+                auto_config = file_path.with_suffix('.characters.yaml')
+                if auto_config.exists():
+                    count = self.character_mapper.load_from_file(auto_config)
+                    click.echo(f"Loaded {count} character mappings from {auto_config.name}")
+
             click.echo("Analyzing characters and dialogue...")
             voice_analysis = self.character_mapper.analyze_text_for_voices(parsed_content.content)
-            
+
             if voice_analysis['new_characters']:
                 click.echo(f"Found new characters: {', '.join(voice_analysis['new_characters'])}")
-            
+
             if voice_analysis['detected_characters']:
                 click.echo(f"Character voices: {voice_analysis['voice_assignments']}")
         
@@ -236,10 +235,13 @@ class ReaderApp:
         output_path = self._create_output_path(parsed_content.title, tts_config, audio_config, processing_config)
 
         # Create Neural Engine processor with optimized settings
+        # Pass character mapper and dialogue detector if character voices enabled
         processor = NeuralProcessor(
             output_path=output_path,
             checkpoint_interval=checkpoint_interval,
-            progress_style=progress_style
+            progress_style=progress_style,
+            character_mapper=self.character_mapper if processing_config.character_voices else None,
+            dialogue_detector=self.dialogue_detector if processing_config.character_voices else None
         )
 
         # Split content into optimized chunks aligned with Kokoro's processing
@@ -285,8 +287,8 @@ class ReaderApp:
 
         return final_output
     
-    def _get_expected_output_path(self, file_path: Path, voice=None, speed=None, format=None, 
-                                emotion=None, characters=None, chapters=None, dialogue=None, 
+    def _get_expected_output_path(self, file_path: Path, voice=None, speed=None, format=None,
+                                characters=None, chapters=None, dialogue=None,
                                 processing_level=None, turbo_mode=False) -> Path:
         """Get expected output path for a file with given settings."""
         # Get parser and parse just the title
@@ -308,8 +310,6 @@ class ReaderApp:
             tts_config.speed = speed
         if format:
             audio_config.format = format
-        if emotion is not None:
-            processing_config.emotion_analysis = emotion
         if characters is not None:
             processing_config.character_voices = characters
         if chapters is not None:
@@ -326,23 +326,22 @@ class ReaderApp:
         audio_dir = self.config_manager.get_audio_dir()
 
         # Build descriptive filename
-        phase = processing_config.level
         engine = tts_config.engine
         voice = tts_config.voice or "default"
-        speed_str = f"speed{tts_config.speed}".replace(".", "p")
 
-        # Add feature flags
-        features = []
-        if processing_config.emotion_analysis:
-            features.append("emotion")
+        # Build filename parts
+        filename_parts = [title, engine, voice]
+
+        # Only add speed if non-default (not 1.0)
+        if tts_config.speed != 1.0:
+            speed_str = f"speed{tts_config.speed}".replace(".", "p")
+            filename_parts.append(speed_str)
+
+        # Add feature flags (only if enabled)
         if processing_config.character_voices:
-            features.append("characters")
-        if processing_config.dialogue_detection:
-            features.append("dialogue")
+            filename_parts.append("characters")
 
-        feature_str = "_".join(features) if features else "basic"
-
-        output_filename = f"{title}_{phase}_{engine}_{voice}_{speed_str}_{feature_str}.{audio_config.format}"
+        output_filename = f"{'_'.join(filename_parts)}.{audio_config.format}"
         return audio_dir / output_filename
 
     def _move_to_finished(self, output_path: Path) -> Path:
@@ -382,8 +381,8 @@ def cli():
 @click.option('--format', '-f', type=click.Choice(['wav', 'mp3', 'm4a', 'm4b']), help='Output audio format')
 @click.option('--file', '-F', type=click.Path(exists=True), help='Convert specific file instead of scanning text/ folder')
 @click.option('--engine', '-e', type=click.Choice(['pyttsx3', 'kokoro']), help='TTS engine to use (temporary override)')
-@click.option('--emotion/--no-emotion', default=None, help='Enable/disable emotion analysis (temporary override)')
 @click.option('--characters/--no-characters', default=None, help='Enable/disable character voice mapping (temporary override)')
+@click.option('--character-config', type=click.Path(exists=True), help='Path to character voice config YAML file')
 @click.option('--chapters/--no-chapters', default=None, help='Enable/disable chapter detection and metadata (temporary override)')
 @click.option('--dialogue/--no-dialogue', default=None, help='Enable/disable dialogue detection (Phase 3, temporary override)')
 @click.option('--processing-level', type=click.Choice(['phase1', 'phase2', 'phase3']), help='Set processing level (temporary override)')
@@ -392,7 +391,7 @@ def cli():
 @click.option('--turbo-mode', is_flag=True, default=False, help='Enable maximum performance mode (minimal delays, 95% CPU)')
 @click.option('--debug', is_flag=True, default=False, help='Enable detailed debug output')
 @click.option('--progress-style', type=click.Choice(['simple', 'tqdm', 'rich', 'timeseries']), default='timeseries', help='Progress display style (simple/tqdm/rich/timeseries)')
-def convert(voice, speed, format, file, engine, emotion, characters, chapters, dialogue, processing_level, batch_mode, checkpoint_interval, turbo_mode, debug, progress_style):
+def convert(voice, speed, format, file, engine, characters, character_config, chapters, dialogue, processing_level, batch_mode, checkpoint_interval, turbo_mode, debug, progress_style):
     """Convert text files in text/ folder to audiobooks.
     
     All options are temporary overrides and won't be saved to config.
@@ -422,13 +421,14 @@ def convert(voice, speed, format, file, engine, emotion, characters, chapters, d
             if debug:
                 click.echo(f"🔍 DEBUG: CLI parameters passed to convert_file:")
                 click.echo(f"   voice={voice}, speed={speed}, format={format}")
-                click.echo(f"   emotion={emotion}, characters={characters}, chapters={chapters}, dialogue={dialogue}")
+                click.echo(f"   characters={characters}, character_config={character_config}, chapters={chapters}, dialogue={dialogue}")
                 click.echo(f"   batch_mode={batch_mode}, turbo_mode={turbo_mode}, progress_style={progress_style}")
-            
+
             output_path = app.convert_file(
-                file_path, voice, speed, format, emotion, characters, chapters, dialogue,
+                file_path, voice, speed, format, characters, chapters, dialogue,
                 batch_mode=batch_mode, checkpoint_interval=checkpoint_interval,
-                turbo_mode=turbo_mode, debug=debug, progress_style=progress_style
+                turbo_mode=turbo_mode, debug=debug, progress_style=progress_style,
+                character_config=Path(character_config) if character_config else None
             )
             click.echo(f"✓ Conversion complete: {output_path}")
         except Exception as e:
@@ -450,20 +450,21 @@ def convert(voice, speed, format, file, engine, emotion, characters, chapters, d
         # Convert each file (skip if already converted, continue if partial)
         for file_path in text_files:
             # Check if already converted with same settings
-            expected_output = app._get_expected_output_path(file_path, voice, speed, format, emotion, characters, chapters, dialogue, processing_level, turbo_mode)
+            expected_output = app._get_expected_output_path(file_path, voice, speed, format, characters, chapters, dialogue, processing_level, turbo_mode)
             checkpoint_path = expected_output.with_suffix('.checkpoint')
-            
+
             if expected_output.exists() and not checkpoint_path.exists():
                 click.echo(f"⏭️ Skipping {file_path.name} (already converted: {expected_output.name})")
                 continue
             elif checkpoint_path.exists():
                 click.echo(f"📂 Resuming {file_path.name} from checkpoint...")
-                
+
             try:
                 output_path = app.convert_file(
-                    file_path, voice, speed, format, emotion, characters, chapters, dialogue,
+                    file_path, voice, speed, format, characters, chapters, dialogue,
                     batch_mode=batch_mode, checkpoint_interval=checkpoint_interval,
-                    turbo_mode=turbo_mode, progress_style=progress_style
+                    turbo_mode=turbo_mode, progress_style=progress_style,
+                    character_config=Path(character_config) if character_config else None
                 )
                 click.echo(f"✓ {file_path.name} -> {output_path.name}")
             except Exception as e:
@@ -590,21 +591,90 @@ def list():
     """List all character voice mappings."""
     app = ReaderApp()
     if not app.character_mapper:
-        click.echo("Character mapping not available. Install Phase 2 dependencies.")
+        click.echo("Character mapping not available.")
         return
-    
+
     characters_list = app.character_mapper.list_characters()
     if not characters_list:
         click.echo("No characters configured.")
         return
-    
+
     click.echo("Character Voice Mappings:")
     for char_name in characters_list:
         char_voice = app.character_mapper.get_character_voice(char_name)
         if char_voice:
             click.echo(f"  {char_name}: {char_voice.voice_id} ({char_voice.gender})")
-            if char_voice.description:
-                click.echo(f"    {char_voice.description}")
+
+
+@characters.command()
+@click.argument('file_path', type=click.Path(exists=True))
+@click.option('--output', '-o', help='Output config file (default: <file>_characters.yaml)')
+@click.option('--auto-assign', is_flag=True, help='Automatically assign gender-appropriate voices')
+def detect(file_path, output, auto_assign):
+    """Detect characters in a text file and create character config template."""
+    app = ReaderApp()
+    if not app.character_mapper or not app.dialogue_detector:
+        click.echo("Character detection not available.")
+        return
+
+    input_file = Path(file_path)
+
+    # Parse the file
+    parser = app.get_parser_for_file(input_file)
+    if not parser:
+        click.echo(f"✗ No parser available for {input_file.suffix}")
+        return
+
+    click.echo(f"📖 Analyzing {input_file.name}...")
+    parsed_content = parser.parse(input_file)
+
+    # Detect characters
+    detected_chars = app.character_mapper.detect_characters_in_text(parsed_content.content)
+
+    if not detected_chars:
+        click.echo("No characters detected in the text.")
+        return
+
+    click.echo(f"Found {len(detected_chars)} characters: {', '.join(detected_chars)}")
+
+    # Determine output file
+    if output:
+        output_file = Path(output)
+    else:
+        output_file = input_file.with_suffix('.characters.yaml')
+
+    # Create character config template
+    char_list = []
+    if auto_assign:
+        # Auto-assign gender-appropriate voices
+        click.echo("Auto-assigning voices...")
+        assignments = app.character_mapper.auto_assign_voices(detected_chars)
+        for char_name in sorted(detected_chars):
+            char_voice = app.character_mapper.get_character_voice(char_name)
+            if char_voice:
+                char_list.append({
+                    'name': char_name,
+                    'voice': char_voice.voice_id,
+                    'gender': char_voice.gender
+                })
+                click.echo(f"  {char_name}: {char_voice.voice_id} ({char_voice.gender})")
+    else:
+        # Create template for manual editing
+        for char_name in sorted(detected_chars):
+            char_list.append({
+                'name': char_name,
+                'voice': 'CHANGE_ME',  # User must fill in
+                'gender': 'unknown'  # User must fill in
+            })
+
+    # Write config file
+    config_data = {'characters': char_list}
+    with open(output_file, 'w') as f:
+        yaml.dump(config_data, f, default_flow_style=False, indent=2)
+
+    click.echo(f"✓ Character config saved to: {output_file}")
+    if not auto_assign:
+        click.echo(f"   Edit the file to assign voices, then use: reader convert --characters --character-config {output_file.name}")
 
 
 @cli.group()
@@ -780,10 +850,9 @@ def checkpoints(list_checkpoints, cleanup, status, summary):
 @click.option('--speed', type=float, help='Set default speed (saved to config)')
 @click.option('--format', type=click.Choice(['wav', 'mp3', 'm4a', 'm4b']), help='Set default audio format (saved to config)')
 @click.option('--engine', type=click.Choice(['pyttsx3', 'kokoro']), help='Set default TTS engine (saved to config)')
-@click.option('--emotion/--no-emotion', help='Enable/disable emotion analysis by default (saved to config)')
 @click.option('--characters/--no-characters', help='Enable/disable character voices by default (saved to config)')
 @click.option('--processing-level', type=click.Choice(['phase1', 'phase2', 'phase3']), help='Set default processing level (saved to config)')
-def config(voice, speed, format, engine, emotion, characters, processing_level):
+def config(voice, speed, format, engine, characters, processing_level):
     """Configure default settings (permanently saved to config file)."""
     app = ReaderApp()
     
@@ -812,16 +881,14 @@ def config(voice, speed, format, engine, emotion, characters, processing_level):
     
     # Processing configuration updates
     processing_updates = {}
-    if emotion is not None:
-        processing_updates['emotion_analysis'] = emotion
     if characters is not None:
         processing_updates['character_voices'] = characters
-    
+
     if processing_updates:
         app.config_manager.update_processing_config(**processing_updates)
         click.echo("Processing configuration updated.")
-    
-    if not any([voice, speed, format, engine, emotion is not None, characters is not None, processing_level]):
+
+    if not any([voice, speed, format, engine, characters is not None, processing_level]):
         # Display current config
         tts_config = app.config_manager.get_tts_config()
         audio_config = app.config_manager.get_audio_config()
@@ -834,20 +901,8 @@ def config(voice, speed, format, engine, emotion, characters, processing_level):
         click.echo(f"  Speed: {tts_config.speed}")
         click.echo(f"  Volume: {tts_config.volume}")
         click.echo(f"  Audio format: {audio_config.format}")
-        
-        # Phase 2 settings
-        if PHASE2_AVAILABLE:
-            click.echo("  Phase 2 Features:")
-            click.echo(f"    Emotion analysis: {processing_config.emotion_analysis}")
-            click.echo(f"    Character voices: {processing_config.character_voices}")
-            click.echo(f"    Smart acting: {processing_config.smart_acting}")
-        
-        # Phase 3 settings
-        if PHASE3_AVAILABLE:
-            click.echo("  Phase 3 Features:")
-            click.echo(f"    Dialogue detection: {processing_config.dialogue_detection}")
-            click.echo(f"    Advanced audio formats: {processing_config.advanced_audio_formats}")
-            click.echo(f"    Chapter metadata: {processing_config.chapter_metadata}")
+        click.echo(f"  Character voices: {processing_config.character_voices}")
+        click.echo(f"  Dialogue detection: {processing_config.dialogue_detection}")
 
 
 @cli.command()
@@ -887,9 +942,8 @@ def info():
     click.echo("\n💻 Basic Commands:")
     click.echo("  reader convert              # Convert all text files")
     click.echo("  reader convert --voice Alex # Use specific voice")
-    if PHASE2_AVAILABLE:
+    if KOKORO_AVAILABLE:
         click.echo("  reader convert --engine kokoro # Use neural TTS")
-        click.echo("  reader convert --emotion    # Enable emotion analysis")
         click.echo("  reader convert --characters # Enable character voices")
     click.echo("  reader voices               # List available voices")
     click.echo("  reader config               # View/set preferences")
@@ -946,10 +1000,8 @@ def info():
 @click.argument('voice')
 @click.option('--engine', type=click.Choice(['pyttsx3', 'kokoro']), default='kokoro', help='TTS engine to use')
 @click.option('--text', help='Custom preview text')
-@click.option('--emotion', type=click.Choice(['neutral', 'excited', 'sad', 'angry', 'whisper', 'dramatic']),
-              default='neutral', help='Emotional style for preview')
 @click.option('--output-dir', type=click.Path(), help='Directory to save preview files')
-def preview(voice, engine, text, emotion, output_dir):
+def preview(voice, engine, text, output_dir):
     """Generate voice preview samples."""
     app = ReaderApp(init_tts=False)  # TTS initialized by voice_previewer
     if not app.voice_previewer:
@@ -962,13 +1014,12 @@ def preview(voice, engine, text, emotion, output_dir):
             engine_name=engine,
             voice=voice,
             preview_text=text,
-            emotion=emotion,
             output_dir=output_path
         )
-        
+
         click.echo(f"✓ Voice preview generated: {preview_file}")
         click.echo("Play the file to hear how this voice sounds.")
-        
+
     except Exception as e:
         click.echo(f"✗ Error generating preview: {e}", err=True)
 

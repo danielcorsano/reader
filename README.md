@@ -8,7 +8,7 @@ A powerful Python application that converts text files into professional audiobo
 - **🎙️ Kokoro TTS**: 48 high-quality neural voices across 8 languages
 - **📊 Real-time Visualization**: 4 progress styles including ASCII timeseries charts
 - **💾 Smart Processing**: Checkpoint recovery and streaming audio assembly
-- **🎭 Advanced Analysis**: Emotion detection, dialogue analysis, character voice mapping
+- **🎭 Character Voice Mapping**: Dialogue detection with character-specific voices
 - **📚 Multiple Formats**: EPUB, PDF, TXT, Markdown, ReStructuredText input
 - **🎵 Professional Audio**: Optimized MP3, M4A, M4B output with metadata
 - **⚡ High Performance**: 6x faster than real-time playback on Apple Silicon
@@ -88,6 +88,27 @@ echo "Hello world! This is my first audiobook." > text/hello.txt
 poetry run reader convert
 
 # 3. Listen to finished/hello_*.mp3
+```
+
+### 🎭 Character Voices (Optional)
+
+For books with dialogue, assign different voices to each character:
+
+```bash
+# Auto-detect characters and generate config
+poetry run reader characters detect text/mybook.txt --auto-assign
+
+# OR manually create mybook.characters.yaml:
+# characters:
+#   - name: Alice
+#     voice: af_sarah
+#     gender: female
+#   - name: Bob
+#     voice: am_michael
+#     gender: male
+
+# Convert with character voices
+poetry run reader convert --characters --file text/mybook.txt
 ```
 
 ## 📖 Documentation

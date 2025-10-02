@@ -14,10 +14,6 @@ class CharacterVoice:
     name: str
     voice_id: str  # Kokoro voice ID or blend
     gender: str
-    description: str
-    emotion_default: str = "neutral"
-    speed_modifier: float = 1.0
-    pitch_modifier: float = 0.0
 
 
 @dataclass 
@@ -51,11 +47,13 @@ class CharacterVoiceMapper:
             try:
                 with open(self.characters_file, 'r') as f:
                     char_data = yaml.safe_load(f) or {}
-                
-                self.characters = {
-                    name: CharacterVoice(**data) 
-                    for name, data in char_data.items()
-                }
+
+                # Filter out old fields that no longer exist (backwards compatibility)
+                self.characters = {}
+                for name, data in char_data.items():
+                    # Only keep valid fields
+                    filtered_data = {k: v for k, v in data.items() if k in ['name', 'voice_id', 'gender']}
+                    self.characters[name] = CharacterVoice(**filtered_data)
             except Exception as e:
                 print(f"Warning: Could not load characters config: {e}")
         
@@ -78,29 +76,67 @@ class CharacterVoiceMapper:
         char_data = {name: asdict(char) for name, char in self.characters.items()}
         with open(self.characters_file, 'w') as f:
             yaml.dump(char_data, f, default_flow_style=False, indent=2)
-        
+
         # Save voice blends
         blend_data = {name: asdict(blend) for name, blend in self.voice_blends.items()}
         with open(self.voice_blends_file, 'w') as f:
             yaml.dump(blend_data, f, default_flow_style=False, indent=2)
+
+    def load_from_file(self, config_file: Path) -> int:
+        """
+        Load character voice mappings from an external YAML file.
+
+        Expected format:
+        characters:
+          - name: Alice
+            voice: af_sarah
+            gender: female
+          - name: Bob
+            voice: am_michael
+            gender: male
+
+        Returns:
+            Number of characters loaded
+        """
+        if not config_file.exists():
+            return 0
+
+        try:
+            with open(config_file, 'r') as f:
+                data = yaml.safe_load(f)
+
+            if not data or 'characters' not in data:
+                return 0
+
+            count = 0
+            for char_data in data['characters']:
+                if 'name' in char_data and 'voice' in char_data:
+                    self.add_character(
+                        name=char_data['name'],
+                        voice_id=char_data['voice'],
+                        gender=char_data.get('gender', 'unknown')
+                    )
+                    count += 1
+
+            return count
+
+        except Exception as e:
+            print(f"Warning: Could not load character config from {config_file}: {e}")
+            return 0
     
     def add_character(
         self,
         name: str,
         voice_id: str,
-        gender: str = "unknown",
-        description: str = "",
-        emotion_default: str = "neutral"
+        gender: str = "unknown"
     ) -> None:
         """Add or update a character voice mapping."""
         character = CharacterVoice(
             name=name,
             voice_id=voice_id,
-            gender=gender,
-            description=description,
-            emotion_default=emotion_default
+            gender=gender
         )
-        
+
         self.characters[name] = character
         self.save_configurations()
     
@@ -318,8 +354,7 @@ class CharacterVoiceMapper:
             self.add_character(
                 name=char_name,
                 voice_id=voice_id,
-                gender=gender,
-                description=f"Auto-assigned voice for {char_name}"
+                gender=gender
             )
             
             assignments[char_name] = voice_id

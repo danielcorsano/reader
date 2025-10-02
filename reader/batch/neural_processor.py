@@ -103,13 +103,18 @@ def create_progress_display(style: str) -> ProgressDisplay:
 
 class NeuralProcessor:
     """Neural Engine optimized processor with streaming output and checkpoints."""
-    
-    def __init__(self, output_path: Path, checkpoint_interval: int = DEFAULT_CHECKPOINT_INTERVAL, progress_style: str = "timeseries"):
+
+    def __init__(self, output_path: Path, checkpoint_interval: int = DEFAULT_CHECKPOINT_INTERVAL,
+                 progress_style: str = "timeseries", character_mapper=None, dialogue_detector=None):
         self.output_path = output_path
         self.checkpoint_interval = checkpoint_interval
         self.checkpoint_path = output_path.with_suffix('.checkpoint')
         self.progress_style = progress_style
         self.progress_display = create_progress_display(progress_style)
+
+        # Character voice support
+        self.character_mapper = character_mapper
+        self.dialogue_detector = dialogue_detector
 
         # For MP3 output, use intermediate WAV file for streaming
         self.is_mp3_output = output_path.suffix.lower() == '.mp3'
@@ -232,19 +237,39 @@ class NeuralProcessor:
             # Return silence for empty chunks
             silence_samples = int(SILENCE_DURATION * DEFAULT_SAMPLE_RATE)
             silence_data = b'\\x00\\x00' * silence_samples
-            
+
             wav_buffer = io.BytesIO()
             with wave.open(wav_buffer, 'wb') as wav_file:
                 wav_file.setnchannels(1)
                 wav_file.setsampwidth(2)
                 wav_file.setframerate(DEFAULT_SAMPLE_RATE)
                 wav_file.writeframes(silence_data)
-            
+
             wav_buffer.seek(0)
             return wav_buffer.read()
-        
+
         try:
-            # Determine voice for synthesis
+            # Clean the text to prevent TTS issues
+            clean_text = chunk_text.strip()
+
+            # Replace problematic characters
+            clean_text = clean_text.replace('\\u00a0', ' ')  # Non-breaking space
+            clean_text = clean_text.replace('\\u2013', '-')  # En dash
+            clean_text = clean_text.replace('\\u2014', '-')  # Em dash
+            clean_text = clean_text.replace('\\u2019', "'")  # Right single quote
+            clean_text = clean_text.replace('\\u201c', '"')  # Left double quote
+            clean_text = clean_text.replace('\\u201d', '"')  # Right double quote
+
+            # Character voice detection - detect speaker and use appropriate voice
+            if self.character_mapper and self.dialogue_detector:
+                # Analyze chunk for dialogue
+                segments = self.dialogue_detector.analyze_text(clean_text)
+
+                # If we have dialogue segments with speakers, process them separately
+                if any(seg.is_dialogue and seg.speaker for seg in segments):
+                    return self._synthesize_with_character_voices(segments, tts_engine, voice_blend, speed)
+
+            # Default: use provided voice blend (narrator voice)
             if len(voice_blend) == 1:
                 # Single voice
                 voice_id, _ = list(voice_blend.items())[0]
@@ -253,22 +278,102 @@ class NeuralProcessor:
                 # Voice blending - create voice spec string
                 voice_parts = [f"{voice}:{int(weight*100)}" for voice, weight in voice_blend.items()]
                 voice_str = ",".join(voice_parts)
-            
-            # Clean the text to prevent TTS issues
-            clean_text = chunk_text.strip()
-            
-            # Replace problematic characters
-            clean_text = clean_text.replace('\\u00a0', ' ')  # Non-breaking space
-            clean_text = clean_text.replace('\\u2013', '-')  # En dash
-            clean_text = clean_text.replace('\\u2014', '-')  # Em dash
-            clean_text = clean_text.replace('\\u2019', "'")  # Right single quote
-            clean_text = clean_text.replace('\\u201c', '"')  # Left double quote
-            clean_text = clean_text.replace('\\u201d', '"')  # Right double quote
-            
+
             return tts_engine.synthesize(clean_text, voice_str, speed)
-            
+
         except Exception as e:
             raise RuntimeError(f"Neural Engine processing failed on chunk {chunk_idx + 1}: {str(e)}") from e
+
+    def _synthesize_with_character_voices(self, segments: List, tts_engine,
+                                         default_voice_blend: Dict[str, float], speed: float) -> bytes:
+        """Synthesize text segments with character-specific voices."""
+        audio_parts = []
+
+        for segment in segments:
+            if not segment.text.strip():
+                continue
+
+            # Determine voice for this segment
+            if segment.is_dialogue and segment.speaker:
+                # Get character voice mapping
+                char_voice = self.character_mapper.get_character_voice(segment.speaker)
+                if char_voice:
+                    voice_str = char_voice.voice_id
+                else:
+                    # Speaker detected but no mapping - use default voice
+                    voice_str = self._voice_blend_to_str(default_voice_blend)
+            else:
+                # Narration - use default narrator voice
+                voice_str = self._voice_blend_to_str(default_voice_blend)
+
+            # Synthesize segment
+            try:
+                audio_data = tts_engine.synthesize(segment.text.strip(), voice_str, speed)
+                audio_parts.append(audio_data)
+            except Exception as e:
+                # Fall back to default voice on error
+                voice_str = self._voice_blend_to_str(default_voice_blend)
+                audio_data = tts_engine.synthesize(segment.text.strip(), voice_str, speed)
+                audio_parts.append(audio_data)
+
+        # Concatenate all audio parts
+        if not audio_parts:
+            # Return silence if nothing was synthesized
+            silence_samples = int(SILENCE_DURATION * DEFAULT_SAMPLE_RATE)
+            silence_data = b'\\x00\\x00' * silence_samples
+
+            wav_buffer = io.BytesIO()
+            with wave.open(wav_buffer, 'wb') as wav_file:
+                wav_file.setnchannels(1)
+                wav_file.setsampwidth(2)
+                wav_file.setframerate(DEFAULT_SAMPLE_RATE)
+                wav_file.writeframes(silence_data)
+
+            wav_buffer.seek(0)
+            return wav_buffer.read()
+
+        return self._concatenate_audio_segments(audio_parts)
+
+    def _voice_blend_to_str(self, voice_blend: Dict[str, float]) -> str:
+        """Convert voice blend dict to voice string."""
+        if len(voice_blend) == 1:
+            voice_id, _ = list(voice_blend.items())[0]
+            return voice_id
+        else:
+            voice_parts = [f"{voice}:{int(weight*100)}" for voice, weight in voice_blend.items()]
+            return ",".join(voice_parts)
+
+    def _concatenate_audio_segments(self, audio_parts: List[bytes]) -> bytes:
+        """Concatenate multiple WAV audio segments into one."""
+        all_audio_data = []
+        sample_rate = DEFAULT_SAMPLE_RATE
+
+        for audio_data in audio_parts:
+            try:
+                wav_buffer = io.BytesIO(audio_data)
+                with wave.open(wav_buffer, 'rb') as wav_file:
+                    sample_rate = wav_file.getframerate()
+                    frames = wav_file.readframes(wav_file.getnframes())
+                    all_audio_data.append(frames)
+            except Exception as e:
+                # Skip corrupted segments
+                continue
+
+        if not all_audio_data:
+            raise RuntimeError("Failed to concatenate audio segments")
+
+        # Create final WAV
+        wav_buffer = io.BytesIO()
+        with wave.open(wav_buffer, 'wb') as wav_file:
+            wav_file.setnchannels(1)
+            wav_file.setsampwidth(2)
+            wav_file.setframerate(sample_rate)
+
+            for audio_data in all_audio_data:
+                wav_file.writeframes(audio_data)
+
+        wav_buffer.seek(0)
+        return wav_buffer.read()
     
     def _convert_and_write_chunk(self, output_file, audio_data: bytes):
         """Stream WAV chunk data directly to disk."""

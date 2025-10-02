@@ -28,8 +28,7 @@ class ProcessingConfig:
     pause_between_chapters: float = 1.0
     auto_detect_chapters: bool = True
     level: str = "phase3"  # Use all available features by default
-    emotion_analysis: bool = True
-    character_voices: bool = True
+    character_voices: bool = False  # Off by default
     dialogue_detection: bool = True
     chapter_metadata: bool = True
     batch_processing: bool = True
@@ -78,8 +77,8 @@ class ConfigManager:
                 
                 processing_data = config_data.get('processing', {})
                 # Remove old fields that no longer exist
-                valid_fields = ['chunk_size', 'pause_between_chapters', 'auto_detect_chapters', 'level', 
-                               'emotion_analysis', 'character_voices', 'dialogue_detection', 'chapter_metadata', 'batch_processing']
+                valid_fields = ['chunk_size', 'pause_between_chapters', 'auto_detect_chapters', 'level',
+                               'character_voices', 'dialogue_detection', 'chapter_metadata', 'batch_processing']
                 processing_data = {k: v for k, v in processing_data.items() if k in valid_fields}
                 
                 return AppConfig(
@@ -154,16 +153,12 @@ class ConfigManager:
         
         # Auto-configure features based on level
         if level == "phase1":
-            self.config.processing.emotion_analysis = False
             self.config.processing.character_voices = False
             self.config.processing.dialogue_detection = False
-            self.config.processing.advanced_audio_formats = False
             self.config.tts.engine = "pyttsx3"
         elif level == "phase2":
-            self.config.processing.emotion_analysis = True
-            self.config.processing.character_voices = True
+            self.config.processing.character_voices = False
             self.config.processing.dialogue_detection = False
-            self.config.processing.advanced_audio_formats = False
             # Only set to kokoro if it's likely to work
             try:
                 from ..engines.kokoro_engine import KokoroEngine
@@ -172,10 +167,8 @@ class ConfigManager:
             except:
                 self.config.tts.engine = "pyttsx3"
         elif level == "phase3":
-            self.config.processing.emotion_analysis = True
-            self.config.processing.character_voices = True
+            self.config.processing.character_voices = False
             self.config.processing.dialogue_detection = True
-            self.config.processing.advanced_audio_formats = True
             # Only set to kokoro if it's likely to work
             try:
                 from ..engines.kokoro_engine import KokoroEngine

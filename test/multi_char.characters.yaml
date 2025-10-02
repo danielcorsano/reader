@@ -1,0 +1,7 @@
+characters:
+- gender: male
+  name: Merlin
+  voice: am_adam
+- gender: male
+  name: Arthur
+  voice: am_michael
