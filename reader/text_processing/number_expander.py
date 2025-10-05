@@ -32,6 +32,7 @@ class NumberExpander:
     # Pre-compiled regex patterns (class-level for performance)
     CURRENCY_PATTERN = re.compile(r'\$(\d{1,3}(?:,\d{3})*|\d+)(?:\.(\d{2}))?')
     TIME_PATTERN = re.compile(r'\b(\d{1,2}):(\d{2})\s*(am|pm|AM|PM)?\b')
+    FRACTION_PATTERN = re.compile(r'\b(\d+)\/(\d+)\b')  # Must come before decimals
     PERCENTAGE_PATTERN = re.compile(r'\b(\d+(?:\.\d+)?)%')
     ORDINAL_PATTERN = re.compile(r'\b(\d+)(st|nd|rd|th)\b', re.IGNORECASE)
     DECIMAL_PATTERN = re.compile(r'\b(\d+)\.(\d+)\b')
@@ -68,18 +69,27 @@ class NumberExpander:
             60: "sixtieth", 70: "seventieth", 80: "eightieth", 90: "ninetieth"
         }
 
+        # Common fractions (for natural pronunciation)
+        self.common_fractions = {
+            (1, 2): "one half", (1, 3): "one third", (2, 3): "two thirds",
+            (1, 4): "one quarter", (3, 4): "three quarters",
+            (1, 5): "one fifth", (2, 5): "two fifths", (3, 5): "three fifths", (4, 5): "four fifths",
+            (1, 8): "one eighth", (3, 8): "three eighths", (5, 8): "five eighths", (7, 8): "seven eighths"
+        }
+
     def expand_numbers(self, text: str) -> str:
         """Expand all numeric expressions to words.
 
         Processes in priority order (most specific to least specific):
         1. Currency ($50.00)
         2. Time (3:45 PM)
-        3. Percentages (25%)
-        4. Ordinals (21st)
-        5. Decimals (3.14)
-        6. Ranges (5-10)
-        7. Years (2024)
-        8. Cardinals (1000)
+        3. Fractions (1/2)
+        4. Percentages (25%)
+        5. Ordinals (21st)
+        6. Decimals (3.14)
+        7. Ranges (5-10)
+        8. Years (2024)
+        9. Cardinals (1000)
 
         Args:
             text: Input text with numbers
@@ -89,6 +99,7 @@ class NumberExpander:
         """
         text = self._expand_currency(text)
         text = self._expand_time(text)
+        text = self._expand_fractions(text)
         text = self._expand_percentages(text)
         text = self._expand_ordinals(text)
         text = self._expand_decimals(text)
@@ -311,6 +322,45 @@ class NumberExpander:
             return result
 
         return self.TIME_PATTERN.sub(replacer, text)
+
+    def _expand_fractions(self, text: str) -> str:
+        """Expand fractions: 1/2 → one half, 3/4 → three quarters, 5/8 → five eighths.
+
+        Args:
+            text: Text containing fractions
+
+        Returns:
+            Text with fractions expanded
+        """
+        def replacer(match):
+            numerator = int(match.group(1))
+            denominator = int(match.group(2))
+
+            # Check common fractions lookup
+            if (numerator, denominator) in self.common_fractions:
+                return self.common_fractions[(numerator, denominator)]
+
+            # Generate fraction: "numerator denominator(s)"
+            num_words = self._number_to_words(numerator)
+
+            # Get ordinal for denominator (third, fourth, fifth, etc.)
+            if denominator in self.special_ordinals:
+                denom_words = self.special_ordinals[denominator]
+            else:
+                denom_words = self._number_to_words(denominator)
+                # Convert to ordinal form
+                if denom_words.endswith("y"):
+                    denom_words = denom_words[:-1] + "ieth"
+                else:
+                    denom_words = denom_words + "th"
+
+            # Pluralize if numerator > 1
+            if numerator > 1 and not denom_words.endswith("s"):
+                denom_words += "s"
+
+            return num_words + " " + denom_words
+
+        return self.FRACTION_PATTERN.sub(replacer, text)
 
     def _expand_ranges(self, text: str) -> str:
         """Expand ranges: 5-10 → five to ten.
