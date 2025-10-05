@@ -9,6 +9,9 @@ from typing import List, Dict, Any
 from dataclasses import dataclass, asdict
 from abc import ABC, abstractmethod
 
+# Text processing utilities
+from ..text_processing.number_expander import get_number_expander
+
 # Constants
 DEFAULT_SAMPLE_RATE = 22050
 SILENCE_DURATION = 0.1
@@ -119,6 +122,13 @@ class NeuralProcessor:
         # For MP3 output, use intermediate WAV file for streaming
         self.is_mp3_output = output_path.suffix.lower() == '.mp3'
         self.temp_wav_path = output_path.with_suffix('.wav.tmp') if self.is_mp3_output else None
+
+        # Time-based checkpointing (track last checkpoint time)
+        self.last_checkpoint_time = 0
+        self.checkpoint_interval_seconds = 60  # Save checkpoint every 60 seconds
+
+        # Number expansion for TTS (singleton instance)
+        self.number_expander = get_number_expander()
         
     def process_chunks(self, file_path: Path, text_chunks: List[str],
                       tts_engine, voice_blend: Dict[str, float], speed: float,
@@ -224,11 +234,21 @@ class NeuralProcessor:
             
             # Convert and write immediately for streaming
             self._convert_and_write_chunk(output_file, audio_data)
-            
-            # Save checkpoint periodically
-            if (i + 1) % self.checkpoint_interval == 0:
+
+            # Save checkpoint periodically (time-based with chunk-based fallback)
+            current_time = time.time()
+            time_since_last_checkpoint = current_time - self.last_checkpoint_time
+
+            # Checkpoint if either: 60 seconds passed OR chunk interval reached
+            should_checkpoint = (
+                time_since_last_checkpoint >= self.checkpoint_interval_seconds or
+                (i + 1) % self.checkpoint_interval == 0
+            )
+
+            if should_checkpoint:
                 current_size = output_file.tell()  # Actual file size (WAV or temp WAV)
                 self._save_checkpoint(file_path, i + 1, total_chunks, current_size, settings_hash)
+                self.last_checkpoint_time = current_time
     
     def _process_single_chunk(self, chunk_text: str, chunk_idx: int, total_chunks: int,
                              tts_engine, voice_blend: Dict[str, float], speed: float) -> bytes:
@@ -251,6 +271,9 @@ class NeuralProcessor:
         try:
             # Clean the text to prevent TTS issues
             clean_text = chunk_text.strip()
+
+            # Expand numbers to words BEFORE character replacement (for better pronunciation)
+            clean_text = self.number_expander.expand_numbers(clean_text)
 
             # Replace problematic characters
             clean_text = clean_text.replace('\\u00a0', ' ')  # Non-breaking space

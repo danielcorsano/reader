@@ -36,19 +36,23 @@ class KokoroEngine(TTSEngine):
         "af_nicole": {"name": "Nicole (American)", "lang": "en-us", "gender": "female"},
         "am_michael": {"name": "Michael (American)", "lang": "en-us", "gender": "male"},
         "am_adam": {"name": "Adam (American)", "lang": "en-us", "gender": "male"},
-        
-        # British English  
+
+        # British English
         "bf_emma": {"name": "Emma (British)", "lang": "en-uk", "gender": "female"},
         "bf_isabella": {"name": "Isabella (British)", "lang": "en-uk", "gender": "female"},
         "bm_oliver": {"name": "Oliver (British)", "lang": "en-uk", "gender": "male"},
         "bm_william": {"name": "William (British)", "lang": "en-uk", "gender": "male"},
-        
+
         # Other languages (using consistent naming pattern)
         "ef_clara": {"name": "Clara (Spanish)", "lang": "es", "gender": "female"},
         "em_pedro": {"name": "Pedro (Spanish)", "lang": "es", "gender": "male"},
         "ff_marie": {"name": "Marie (French)", "lang": "fr", "gender": "female"},
         "fm_pierre": {"name": "Pierre (French)", "lang": "fr", "gender": "male"},
     }
+
+    # Compiled regex patterns for text chunking (performance optimization)
+    SENTENCE_SPLIT_PATTERN = re.compile(r'(?<=[.!?])\s+')
+    PUNCTUATION_SPLIT_PATTERN = re.compile(r'([,;:—–\-])\s*')
     
     
     def _ensure_initialized(self) -> None:
@@ -157,7 +161,16 @@ class KokoroEngine(TTSEngine):
         # Default voice
         if not voice:
             voice = "am_michael"
-        
+
+        # Validate voice exists (check primary voice in blend)
+        primary_voice = voice.split(':')[0].split(',')[0].strip()
+        if primary_voice not in self.VOICES:
+            available_voices = ', '.join(sorted(self.VOICES.keys()))
+            raise ValueError(
+                f"Voice '{primary_voice}' not found. "
+                f"Available voices: {available_voices}"
+            )
+
         # Handle voice blending
         voice_blend = self._parse_voice_blend(voice)
         
@@ -473,15 +486,15 @@ class KokoroEngine(TTSEngine):
         """Chunk text at natural break points while staying under max_length."""
         chunks = []
         current_chunk = ""
-        
-        # Split by sentences first
-        sentences = re.split(r'(?<=[.!?])\s+', text)
-        
+
+        # Split by sentences first (using pre-compiled pattern)
+        sentences = self.SENTENCE_SPLIT_PATTERN.split(text)
+
         for sentence in sentences:
             # If sentence itself is too long, split by smaller units
             if len(sentence) > max_length:
-                # Split by commas, semicolons, or other punctuation
-                sub_parts = re.split(r'([,;:—–\-])\s*', sentence)
+                # Split by commas, semicolons, or other punctuation (using pre-compiled pattern)
+                sub_parts = self.PUNCTUATION_SPLIT_PATTERN.split(sentence)
                 temp_part = ""
                 
                 for i, part in enumerate(sub_parts):
