@@ -152,30 +152,18 @@ class ConfigManager:
         self.config.processing.level = level
         
         # Auto-configure features based on level
+        # All levels use kokoro now (pyttsx3 moved to reader-small)
+        self.config.tts.engine = "kokoro"
+
         if level == "phase1":
             self.config.processing.character_voices = False
             self.config.processing.dialogue_detection = False
-            self.config.tts.engine = "pyttsx3"
         elif level == "phase2":
             self.config.processing.character_voices = False
             self.config.processing.dialogue_detection = False
-            # Only set to kokoro if it's likely to work
-            try:
-                from ..engines.kokoro_engine import KokoroEngine
-                # Test if we can initialize without models
-                self.config.tts.engine = "kokoro"
-            except:
-                self.config.tts.engine = "pyttsx3"
         elif level == "phase3":
             self.config.processing.character_voices = False
             self.config.processing.dialogue_detection = True
-            # Only set to kokoro if it's likely to work
-            try:
-                from ..engines.kokoro_engine import KokoroEngine
-                # Test if we can initialize without models
-                self.config.tts.engine = "kokoro"
-            except:
-                self.config.tts.engine = "pyttsx3"
         
         self.save_config()
     

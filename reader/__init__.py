@@ -1,9 +1,10 @@
 """
-Reader: A lightweight, modular text-to-audiobook CLI application.
+Reader: Professional text-to-audiobook CLI with Neural Engine acceleration.
 
-Phase 1: Basic CLI with pyttsx3
-Phase 2: Enhanced TTS with Kokoro + emotion detection
-Phase 3: Advanced features with professional output
+Powered by Kokoro-82M neural TTS with 48 voices across 8 languages.
+Features emotion detection, character voice mapping, and professional audio output.
+
+For system TTS fallback support, see reader-small package.
 """
 
 __version__ = "0.1.0"

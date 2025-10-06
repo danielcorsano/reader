@@ -128,8 +128,8 @@ poetry run reader convert --file text/book.epub
 # Convert with specific voice
 poetry run reader convert --file text/book.epub --voice am_michael
 
-# Fallback to system TTS (if Kokoro unavailable)
-poetry run reader convert --file text/book.epub --engine pyttsx3
+# Kokoro is the only engine in this package
+# For limited storage/processing power, see reader-small package
 
 # Enable debug mode to see Neural Engine status
 poetry run reader convert --file text/book.epub --debug
@@ -312,10 +312,10 @@ See **[docs/EXAMPLES.md](docs/EXAMPLES.md)** for detailed examples including:
 - ✅ Apple Neural Engine acceleration
 - ✅ Professional audiobook production
 
-**pyttsx3** (fallback):
-- ✅ Works without Kokoro models
-- ✅ System TTS (macOS, Windows, Linux)
-- ⚠️ Lower quality, suitable for testing
+**Alternative: reader-small package**
+- Lighter-weight package using system TTS
+- For systems with limited storage or processing power
+- Lower audio quality but minimal resource requirements
 
 ---
 

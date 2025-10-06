@@ -202,10 +202,10 @@ poetry run reader voices
 - Try converting specific file: `--file text/yourfile.txt`
 
 **Audio quality:**
-- Kokoro TTS provides professional neural voices (default)
-- Fallback to pyttsx3 system TTS if models unavailable
+- Kokoro TTS provides professional neural voices
 - Output: 48kHz mono MP3, optimized for audiobooks
 - Adjust `--speed` to find comfortable pace
+- Limited storage/processing? Try reader-small package
 
 ## Configuration File
 

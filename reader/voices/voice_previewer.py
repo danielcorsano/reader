@@ -6,7 +6,6 @@ import random
 import json
 
 from ..interfaces.tts_engine import TTSEngine
-from ..engines.pyttsx3_engine import PyTTSX3Engine
 
 try:
     from ..engines.kokoro_engine import KokoroEngine
@@ -48,19 +47,14 @@ class VoicePreviewGenerator:
     def _get_engine(self, engine_name: str):
         """Get or initialize an engine on demand."""
         if engine_name not in self.engines:
-            if engine_name == 'pyttsx3':
-                try:
-                    self.engines[engine_name] = PyTTSX3Engine()
-                except Exception as e:
-                    raise RuntimeError(f"Could not initialize pyttsx3 engine: {e}")
-            elif engine_name == 'kokoro' and KOKORO_AVAILABLE:
+            if engine_name == 'kokoro' and KOKORO_AVAILABLE:
                 try:
                     self.engines[engine_name] = KokoroEngine()
                 except Exception as e:
                     raise RuntimeError(f"Could not initialize Kokoro engine: {e}")
             else:
-                raise ValueError(f"Engine '{engine_name}' not available")
-        
+                raise ValueError(f"❌ Only kokoro engine supported. Limited storage? Try reader-small package.")
+
         return self.engines[engine_name]
     
     def generate_voice_preview(
@@ -306,7 +300,7 @@ class VoicePreviewGenerator:
             return recommendations[:6]  # Limit to top 6 recommendations
         
         else:
-            # For pyttsx3 or other engines, return available voices
+            # For other engines (if any added later), return available voices
             return available_voices[:6] if available_voices else []
     
     def analyze_voice_characteristics(

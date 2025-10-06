@@ -70,7 +70,7 @@ poetry run reader voices
 - On Intel/Windows/Linux, uses CPU (still fast)
 - Debug mode shows acceleration status: `--debug`
 
-**Fallback to pyttsx3:**
-- If models missing, automatically uses system TTS
-- Lower quality but works without downloads
-- Install models for professional audio quality
+**Models required:**
+- Kokoro models are required for this package (~300MB)
+- No alternative engines in this package
+- Limited storage/processing power? Try reader-small package instead

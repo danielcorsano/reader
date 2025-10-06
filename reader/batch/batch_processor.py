@@ -10,7 +10,6 @@ import threading
 from enum import Enum
 
 from ..config import ConfigManager
-from ..engines.pyttsx3_engine import PyTTSX3Engine
 from ..parsers.epub_parser import EPUBParser
 from ..parsers.pdf_parser import PDFParser
 from ..parsers.text_parser import PlainTextParser
@@ -148,12 +147,6 @@ class BatchProcessor:
     def _initialize_engines(self) -> None:
         """Initialize TTS engines."""
         self.engines = {}
-        
-        try:
-            self.engines['pyttsx3'] = PyTTSX3Engine()
-        except Exception as e:
-            print(f"Warning: Could not initialize pyttsx3 engine: {e}")
-        
         # Engines will be initialized on demand during processing
     
     def _initialize_parsers(self) -> None:
@@ -397,12 +390,13 @@ class BatchProcessor:
     
     def _get_engine_for_job(self, job: BatchJob):
         """Get TTS engine for a specific job."""
-        engine_name = job.config.get('tts', {}).get('engine', 'pyttsx3')
-        
+        engine_name = job.config.get('tts', {}).get('engine', 'kokoro')
+
         if engine_name not in self.engines:
-            print(f"Warning: Engine '{engine_name}' not available, falling back to pyttsx3")
-            engine_name = 'pyttsx3'
-        
+            print(f"❌ Error: Engine '{engine_name}' not available.")
+            print("💡 Only kokoro engine supported. Limited storage? Try reader-small package.")
+            raise ValueError(f"Unsupported engine: {engine_name}")
+
         return self.engines[engine_name]
     
     def _process_text_content(self, text: str, config: Dict[str, Any]) -> str:

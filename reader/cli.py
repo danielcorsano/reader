@@ -13,7 +13,6 @@ warnings.filterwarnings("ignore",
                        module="ebooklib.*")
 
 from .config import ConfigManager
-from .engines.pyttsx3_engine import PyTTSX3Engine
 from .parsers.epub_parser import EPUBParser
 from .parsers.pdf_parser import PDFParser
 from .parsers.text_parser import PlainTextParser
@@ -75,24 +74,25 @@ class ReaderApp:
         return self.tts_engine
     
     def _initialize_tts_engine(self):
-        """Initialize TTS engine based on configuration."""
-        tts_config = self.config_manager.get_tts_config()
-        
-        if tts_config.engine == "kokoro" and KOKORO_AVAILABLE:
-            try:
-                return KokoroEngine()
-            except Exception as e:
-                # Only show the warning once and update config to prevent repeated attempts
-                if "Kokoro models not found" in str(e):
-                    print("Info: Kokoro models not yet downloaded. Using pyttsx3 for now.")
-                    print("Kokoro models will download automatically on first successful use.")
-                else:
-                    print(f"Warning: Could not initialize Kokoro engine: {e}")
-                # Automatically switch to pyttsx3 to prevent repeated warnings
-                self.config_manager.update_tts_config(engine="pyttsx3")
-                return PyTTSX3Engine()
-        else:
-            return PyTTSX3Engine()
+        """Initialize Kokoro TTS engine."""
+        if not KOKORO_AVAILABLE:
+            print("❌ Error: Kokoro engine not available.")
+            print("📥 Install: See docs/KOKORO_SETUP.md")
+            raise RuntimeError("Kokoro engine not available")
+
+        try:
+            return KokoroEngine()
+        except Exception as e:
+            # Show helpful error and exit
+            if "Kokoro models not found" in str(e) or "does not exist" in str(e):
+                print("❌ Error: Kokoro models not found.")
+                print("📥 Download models: See docs/KOKORO_SETUP.md")
+                print("💡 Limited storage? Try reader-small package instead")
+                print()
+                raise RuntimeError("Kokoro models required. See docs/KOKORO_SETUP.md") from e
+            else:
+                print(f"❌ Error initializing Kokoro engine: {e}")
+                raise
     
     def _apply_temporary_overrides(self, overrides: dict):
         """Apply temporary CLI parameter overrides without saving to config file."""
@@ -250,7 +250,7 @@ class ReaderApp:
             kokoro_engine = self.get_tts_engine()
             text_chunks = kokoro_engine._chunk_text_intelligently(parsed_content.content, max_length=400)
         else:
-            # Use basic chunking for other engines (pyttsx3 fallback)
+            # Use basic chunking for non-Kokoro engines (if any added later)
             chunk_size = min(400, processing_config.chunk_size)
             text_chunks = [parsed_content.content[i:i+chunk_size]
                           for i in range(0, len(parsed_content.content), chunk_size)]
@@ -380,7 +380,6 @@ def cli():
 @click.option('--speed', '-s', type=float, help='Speech speed multiplier (e.g., 1.2)')
 @click.option('--format', '-f', type=click.Choice(['wav', 'mp3', 'm4a', 'm4b']), help='Output audio format')
 @click.option('--file', '-F', type=click.Path(exists=True), help='Convert specific file instead of scanning text/ folder')
-@click.option('--engine', '-e', type=click.Choice(['pyttsx3', 'kokoro']), help='TTS engine to use (temporary override)')
 @click.option('--characters/--no-characters', default=None, help='Enable/disable character voice mapping (temporary override)')
 @click.option('--character-config', type=click.Path(exists=True), help='Path to character voice config YAML file')
 @click.option('--chapters/--no-chapters', default=None, help='Enable/disable chapter detection and metadata (temporary override)')
@@ -391,7 +390,7 @@ def cli():
 @click.option('--turbo-mode', is_flag=True, default=False, help='Enable maximum performance mode (minimal delays, 95% CPU)')
 @click.option('--debug', is_flag=True, default=False, help='Enable detailed debug output')
 @click.option('--progress-style', type=click.Choice(['simple', 'tqdm', 'rich', 'timeseries']), default='timeseries', help='Progress display style (simple/tqdm/rich/timeseries)')
-def convert(voice, speed, format, file, engine, characters, character_config, chapters, dialogue, processing_level, batch_mode, checkpoint_interval, turbo_mode, debug, progress_style):
+def convert(voice, speed, format, file, characters, character_config, chapters, dialogue, processing_level, batch_mode, checkpoint_interval, turbo_mode, debug, progress_style):
     """Convert text files in text/ folder to audiobooks.
     
     All options are temporary overrides and won't be saved to config.
@@ -403,9 +402,7 @@ def convert(voice, speed, format, file, engine, characters, character_config, ch
     
     if processing_level:
         temp_overrides['processing_level'] = processing_level
-    if engine:
-        temp_overrides['engine'] = engine
-    
+
     # Apply overrides and reinitialize if needed
     if temp_overrides:
         app._apply_temporary_overrides(temp_overrides)
@@ -472,83 +469,44 @@ def convert(voice, speed, format, file, engine, characters, character_config, ch
 
 
 @cli.command()
-@click.option('--engine', type=click.Choice(['pyttsx3', 'kokoro', 'all']), default='all', help='Show voices for specific engine')
 @click.option('--language', help='Filter by language (e.g., en-us, en-uk)')
 @click.option('--gender', type=click.Choice(['male', 'female']), help='Filter by gender')
-def voices(engine, language, gender):
-    """List available TTS voices."""
+def voices(language, gender):
+    """List available Kokoro TTS voices."""
     app = ReaderApp()
-    
-    engines_to_show = []
-    if engine == 'all':
-        engines_to_show.append(('pyttsx3', PyTTSX3Engine()))
-        if KOKORO_AVAILABLE:
-            engines_to_show.append(('kokoro', 'static'))
-    elif engine == 'kokoro' and KOKORO_AVAILABLE:
-        engines_to_show.append(('kokoro', 'static'))
-    elif engine == 'pyttsx3':
-        engines_to_show.append(('pyttsx3', PyTTSX3Engine()))
-    
-    for engine_name, engine_obj in engines_to_show:
-        click.echo(f"\n{engine_name.upper()} Voices:")
-        click.echo("=" * (len(engine_name) + 8))
-        
-        if engine_name == 'kokoro' and engine_obj == 'static':
-            # Use KokoroEngine voices (avoid duplication)
-            from .engines.kokoro_engine import KokoroEngine
-            kokoro_voices = KokoroEngine.VOICES
-            
-            # Get all available voices (avoid list(keys()) to prevent Click argument parsing issue)
-            filtered_voices = [
-                voice_id for voice_id in kokoro_voices
-            ]
-            
-            # Apply filters if specified
-            if language:
-                filtered_voices = [v for v in filtered_voices 
-                                 if kokoro_voices[v]['lang'] == language]
-            if gender:
-                filtered_voices = [v for v in filtered_voices 
-                                 if kokoro_voices[v]['gender'] == gender.lower()]
-            
-            # Display voices
-            for voice in filtered_voices:
-                voice_info = kokoro_voices[voice]
-                click.echo(f"  - {voice}")
-                click.echo(f"    Name: {voice_info['name']}")
-                click.echo(f"    Gender: {voice_info['gender']}")
-                click.echo(f"    Language: {voice_info['lang']}")
-        else:
-            # Regular engine
-            available_voices = engine_obj.list_voices()
-            
-            # Apply filters
-            filtered_voices = available_voices
-            
-            if hasattr(engine_obj, 'get_voices_by_language') and language:
-                filtered_voices = engine_obj.get_voices_by_language(language)
-            
-            if hasattr(engine_obj, 'get_voices_by_gender') and gender:
-                if language:
-                    # Filter further
-                    filtered_voices = [v for v in filtered_voices if v in engine_obj.get_voices_by_gender(gender)]
-                else:
-                    filtered_voices = engine_obj.get_voices_by_gender(gender)
-            
-            for voice in filtered_voices:
-                voice_info = engine_obj.get_voice_info(voice)
-                click.echo(f"  - {voice}")
-                
-                if voice_info.get('gender') != 'unknown':
-                    click.echo(f"    Gender: {voice_info.get('gender', 'unknown')}")
-                
-                if voice_info.get('lang'):
-                    click.echo(f"    Language: {voice_info.get('lang', 'unknown')}")
-        
-        click.echo(f"  Total: {len(filtered_voices)} voices")
+
+    if not KOKORO_AVAILABLE:
+        click.echo("❌ Kokoro engine not available.")
+        click.echo("📥 Install: See docs/KOKORO_SETUP.md")
+        return
+
+    click.echo("\nKOKORO Voices:")
+    click.echo("=" * 15)
+
+    # Use KokoroEngine voices
+    from .engines.kokoro_engine import KokoroEngine
+    kokoro_voices = KokoroEngine.VOICES
+
+    # Get all available voices
+    filtered_voices = [voice_id for voice_id in kokoro_voices]
+
+    # Apply filters if specified
+    if language:
+        filtered_voices = [v for v in filtered_voices
+                         if kokoro_voices[v]['lang'] == language]
+    if gender:
+        filtered_voices = [v for v in filtered_voices
+                         if kokoro_voices[v]['gender'] == gender.lower()]
+
+    # Display voices
+    for voice in filtered_voices:
+        voice_info = kokoro_voices[voice]
+        click.echo(f"  - {voice}")
+        click.echo(f"    Name: {voice_info['name']}")
+        click.echo(f"    Gender: {voice_info['gender']}")
+        click.echo(f"    Language: {voice_info['lang']}")
 
 
-# New Phase 2 commands
 @cli.group()
 def characters():
     """Manage character voice mappings."""
@@ -849,10 +807,9 @@ def checkpoints(list_checkpoints, cleanup, status, summary):
 @click.option('--voice', help='Set default voice (saved to config)')
 @click.option('--speed', type=float, help='Set default speed (saved to config)')
 @click.option('--format', type=click.Choice(['wav', 'mp3', 'm4a', 'm4b']), help='Set default audio format (saved to config)')
-@click.option('--engine', type=click.Choice(['pyttsx3', 'kokoro']), help='Set default TTS engine (saved to config)')
 @click.option('--characters/--no-characters', help='Enable/disable character voices by default (saved to config)')
 @click.option('--processing-level', type=click.Choice(['phase1', 'phase2', 'phase3']), help='Set default processing level (saved to config)')
-def config(voice, speed, format, engine, characters, processing_level):
+def config(voice, speed, format, characters, processing_level):
     """Configure default settings (permanently saved to config file)."""
     app = ReaderApp()
     
@@ -862,9 +819,7 @@ def config(voice, speed, format, engine, characters, processing_level):
         tts_updates['voice'] = voice
     if speed:
         tts_updates['speed'] = speed
-    if engine:
-        tts_updates['engine'] = engine
-    
+
     if tts_updates:
         app.config_manager.update_tts_config(**tts_updates)
         click.echo("TTS configuration updated.")
@@ -998,10 +953,9 @@ def info():
 # Phase 3 commands
 @cli.command()
 @click.argument('voice')
-@click.option('--engine', type=click.Choice(['pyttsx3', 'kokoro']), default='kokoro', help='TTS engine to use')
 @click.option('--text', help='Custom preview text')
 @click.option('--output-dir', type=click.Path(), help='Directory to save preview files')
-def preview(voice, engine, text, output_dir):
+def preview(voice, text, output_dir):
     """Generate voice preview samples."""
     app = ReaderApp(init_tts=False)  # TTS initialized by voice_previewer
     if not app.voice_previewer:
@@ -1011,7 +965,7 @@ def preview(voice, engine, text, output_dir):
     try:
         output_path = Path(output_dir) if output_dir else None
         preview_file = app.voice_previewer.generate_voice_preview(
-            engine_name=engine,
+            engine_name='kokoro',
             voice=voice,
             preview_text=text,
             output_dir=output_path
