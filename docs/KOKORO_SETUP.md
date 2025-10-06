@@ -1,9 +1,12 @@
-# Kokoro TTS Setup Requirements
+# Kokoro TTS Setup Guide
+
+## Overview
+Reader uses Kokoro-82M, a high-quality neural TTS model with 48 voices across 8 languages. The model files are large (~300MB) and must be downloaded separately.
 
 ## Current Status
-- Kokoro ONNX library is installed via Poetry
-- Engine implementation is in `reader/engines/kokoro_engine.py`
-- Model files need to be downloaded (large files - 310MB each)
+- ✅ Kokoro ONNX library installed via Poetry
+- ✅ Engine implementation complete in `reader/engines/kokoro_engine.py`
+- ⚠️ Model files need to be downloaded manually (large files - ~300MB total)
 
 ## Required Model Files
 Download these files to `models/kokoro/`:
@@ -15,19 +18,6 @@ cd models/kokoro
 # Download model files (310MB each)
 curl -L -o kokoro-v1.0.onnx https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/kokoro-v1.0.onnx
 curl -L -o voices-v1.0.bin https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/voices-v1.0.bin
-```
-
-## Required Code Fix
-Update `reader/engines/kokoro_engine.py` line 61:
-
-```python
-# Current (broken):
-self.kokoro = Kokoro(model_path=None, voices_path=None)
-
-# Fix to:
-model_path = Path(__file__).parent.parent.parent / "models" / "kokoro" / "kokoro-v1.0.onnx"
-voices_path = Path(__file__).parent.parent.parent / "models" / "kokoro" / "voices-v1.0.bin"
-self.kokoro = Kokoro(str(model_path), str(voices_path))
 ```
 
 ## Installation Dependencies
@@ -49,12 +39,38 @@ kokoro = Kokoro("models/kokoro/kokoro-v1.0.onnx", "models/kokoro/voices-v1.0.bin
 samples, sample_rate = kokoro.create("Hello world!", voice="af_sarah", speed=1.0, lang="en-us")
 ```
 
-## Testing Commands
-After setup:
-```bash
-# Test Phase 2 with emotion analysis
-poetry run python -m reader convert --processing-level phase2 --engine kokoro --voice "af_sarah" --speed 0.9 --emotion --file text/test_story.txt
+## Testing After Setup
 
-# Test Phase 3 with all features
-poetry run python -m reader convert --processing-level phase3 --engine kokoro --voice "af_sarah" --speed 0.9 --emotion --characters --file text/test_story.txt
+```bash
+# Basic test with Neural Engine
+poetry run reader convert --debug --file text/sample.txt
+
+# Should show:
+# ✅ Kokoro initialized with Neural Engine acceleration (CoreML)
+# 🚀 Optimized settings: 48k mono MP3, Neural Engine acceleration
+
+# Test with different voices
+poetry run reader convert --voice af_sarah --file text/sample.txt
+poetry run reader convert --voice am_michael --file text/sample.txt
+poetry run reader convert --voice bf_emma --file text/sample.txt
+
+# List all available voices
+poetry run reader voices
 ```
+
+## Troubleshooting
+
+**Models not found:**
+- Verify files are in `models/kokoro/` directory
+- Check filenames match exactly: `kokoro-v1.0.onnx` and `voices-v1.0.bin`
+- Models are ~310MB (onnx) and ~27MB (bin)
+
+**Neural Engine not detected:**
+- Apple Silicon only (M1/M2/M3 Macs)
+- On Intel/Windows/Linux, uses CPU (still fast)
+- Debug mode shows acceleration status: `--debug`
+
+**Fallback to pyttsx3:**
+- If models missing, automatically uses system TTS
+- Lower quality but works without downloads
+- Install models for professional audio quality

@@ -21,7 +21,7 @@ EOF
 # Convert to audiobook
 poetry run reader convert --voice "Samantha" --speed 1.0
 
-# Result: audio/short-story.wav
+# Result: finished/short-story_kokoro_am_michael.mp3
 ```
 
 ## Example 2: Process Multiple Books
@@ -42,9 +42,9 @@ poetry run reader config --voice "Daniel"
 poetry run reader convert
 
 # Results:
-# - audio/sci-fi.wav
-# - audio/mystery.wav  
-# - audio/romance.wav
+# - finished/sci-fi_kokoro_am_michael.mp3
+# - finished/mystery_kokoro_am_michael.mp3
+# - finished/romance_kokoro_am_michael.mp3
 ```
 
 ## Example 3: Configuration Workflow
@@ -53,15 +53,15 @@ poetry run reader convert
 # Find your preferred voice
 poetry run reader voices | head -20
 
-# Test different voices with a sample
+# Test different Kokoro voices with a sample
 echo "Hello, this is a test of the emergency broadcast system." > text/voice-test.txt
 
-poetry run reader convert --voice "Samantha" --file text/voice-test.txt
-poetry run reader convert --voice "Daniel" --file text/voice-test.txt
-poetry run reader convert --voice "Alex" --file text/voice-test.txt
+poetry run reader convert --voice af_sarah --file text/voice-test.txt
+poetry run reader convert --voice am_michael --file text/voice-test.txt
+poetry run reader convert --voice bf_emma --file text/voice-test.txt
 
 # Set your favorite as default
-poetry run reader config --voice "Samantha" --speed 1.1
+poetry run reader config --voice am_michael --speed 1.0
 
 # Confirm settings
 poetry run reader config
@@ -93,9 +93,9 @@ Your widget is now assembled and ready for use.
 EOF
 
 # Convert with slower, clear speech for technical content
-poetry run reader convert --voice "Alex" --speed 0.9
+poetry run reader convert --voice am_michael --speed 0.9
 
-# Result: audio/technical-manual.wav
+# Result: finished/technical-manual_kokoro_am_michael_speed0p9.mp3
 ```
 
 ## Example 5: Markdown with Chapters
@@ -131,9 +131,9 @@ You've learned the basics of Python programming!
 EOF
 
 # Convert with clear, educational voice
-poetry run reader convert --voice "Daniel" --speed 1.0
+poetry run reader convert --voice am_michael --speed 1.0
 
-# Result: audio/tutorial.wav (with automatic chapter detection)
+# Result: finished/tutorial_kokoro_am_michael.mp3 (with automatic chapter detection)
 ```
 
 ## Example 6: Batch Processing Workflow
@@ -149,20 +149,20 @@ echo "How to learn programming..." > text/tutorials/coding.txt
 echo "History of ancient Rome..." > text/non-fiction/history.txt
 
 # Process all fiction with one voice
-poetry run reader config --voice "Samantha"
+poetry run reader config --voice af_sarah
 poetry run reader convert --file text/fiction/fantasy.txt
 poetry run reader convert --file text/fiction/sci-fi.txt
 
 # Process tutorials with clear, slower voice
-poetry run reader config --voice "Alex" --speed 0.9
+poetry run reader config --voice am_michael --speed 0.9
 poetry run reader convert --file text/tutorials/coding.txt
 
-# Process non-fiction with authoritative voice
-poetry run reader config --voice "Daniel" --speed 1.0
+# Process non-fiction with British narrator
+poetry run reader config --voice bm_george --speed 1.0
 poetry run reader convert --file text/non-fiction/history.txt
 
 # Check results
-ls -la audio/
+ls -la finished/
 ```
 
 ## Example 7: Speed Optimization for Different Content
@@ -174,13 +174,13 @@ echo "Meditation guide: Close your eyes and breathe deeply..." > text/meditation
 echo "Quick recipe: Boil water, add pasta, cook 8 minutes..." > text/recipe.txt
 
 # News - faster pace
-poetry run reader convert --voice "Daniel" --speed 1.3 --file text/news.txt
+poetry run reader convert --voice am_michael --speed 1.3 --file text/news.txt
 
-# Meditation - slow, calming pace  
-poetry run reader convert --voice "Samantha" --speed 0.7 --file text/meditation.txt
+# Meditation - slow, calming pace
+poetry run reader convert --voice af_sarah --speed 0.7 --file text/meditation.txt
 
 # Recipe - normal, clear pace
-poetry run reader convert --voice "Alex" --speed 1.0 --file text/recipe.txt
+poetry run reader convert --voice bf_emma --speed 1.0 --file text/recipe.txt
 ```
 
 ## Example 8: Testing Voice Characteristics
@@ -193,16 +193,16 @@ cat > test-voices.sh << 'EOF'
 # Test text
 echo "This is a test of different voices. How does this voice sound for audiobook narration?" > text/voice-sample.txt
 
-# Test different voices
-voices=("Samantha" "Daniel" "Alex" "Alice" "Thomas")
+# Test different Kokoro voices
+voices=("af_sarah" "am_michael" "bf_emma" "bm_george" "af_nicole")
 
 for voice in "${voices[@]}"; do
     echo "Testing voice: $voice"
     poetry run reader convert --voice "$voice" --file text/voice-sample.txt
-    mv audio/voice-sample.wav "audio/test-${voice}.wav"
+    # Files automatically saved with voice name in filename
 done
 
-echo "Voice tests complete! Listen to audio/test-*.wav files"
+echo "Voice tests complete! Listen to finished/voice-sample_*.mp3 files"
 EOF
 
 chmod +x test-voices.sh
@@ -234,27 +234,16 @@ poetry run reader info  # Should show 3 supported files
 ## Example 10: Advanced Configuration
 
 ```bash
-# Save current config
-poetry run reader config > backup-config.txt
-
 # Test different configurations
-poetry run reader config --voice "Samantha" --speed 1.2
-poetry run reader convert --file text/sample.txt
-mv audio/sample.wav audio/sample-samantha-1.2.wav
+poetry run reader convert --voice af_sarah --speed 1.2 --file text/sample.txt
+poetry run reader convert --voice am_michael --speed 1.0 --file text/sample.txt
+poetry run reader convert --voice bf_emma --speed 0.8 --file text/sample.txt
 
-poetry run reader config --voice "Daniel" --speed 1.0  
-poetry run reader convert --file text/sample.txt
-mv audio/sample.wav audio/sample-daniel-1.0.wav
+# Compare results - files are named with voice and speed
+echo "Listen to finished/sample_*.mp3 to compare voices and speeds"
 
-poetry run reader config --voice "Alex" --speed 0.8
-poetry run reader convert --file text/sample.txt
-mv audio/sample.wav audio/sample-alex-0.8.wav
-
-# Compare results and choose your favorite
-echo "Listen to audio/sample-*.wav to compare voices and speeds"
-
-# Restore preferred config (example)
-poetry run reader config --voice "Samantha" --speed 1.1
+# Set preferred config
+poetry run reader config --voice am_michael --speed 1.0
 ```
 
 ## Tips for Best Results
@@ -265,18 +254,18 @@ poetry run reader config --voice "Samantha" --speed 1.1
 4. **File Organization**: Keep source files organized by genre/type for batch processing
 5. **Testing**: Always test with a short sample before processing long books
 
-## Coming in Phase 2
+## Advanced Features
 
-- 48 neural voices across 8 languages
-- Emotion detection and automatic prosody adjustment
+✅ **Currently Available:**
+- 48 neural Kokoro voices across 8 languages
+- Emotion detection and prosody adjustment
 - Character voice mapping for dialogue
-- Voice blending and custom voice creation
-- MP3/M4A/M4B output with metadata and chapters
+- MP3/M4A/M4B output with metadata
+- 4 progress visualization styles (simple, tqdm, rich, timeseries)
+- Checkpoint recovery for interrupted conversions
+- Apple Neural Engine optimization
 
-## Coming in Phase 3
-
-- Professional audiobook production features
-- Dialogue detection and character assignment
-- Scene-based narration adjustments
-- Batch processing with queue management
-- Voice preview and A/B testing interface
+📚 **For More Details:**
+- See [PHASE3_FEATURES.md](PHASE3_FEATURES.md) for full feature documentation
+- See [KOKORO_SETUP.md](KOKORO_SETUP.md) for model setup
+- See [USAGE.md](USAGE.md) for complete command reference

@@ -15,8 +15,9 @@ This directory contains comprehensive documentation for the Reader audiobook gen
 ## Getting Started
 
 1. **Install dependencies:** `poetry install`
-2. **Add text files** to the `text/` folder
-3. **Convert to audiobook:** `poetry run reader convert`
-4. **Find results** in the `audio/` folder
+2. **Download Kokoro models:** See [KOKORO_SETUP.md](KOKORO_SETUP.md)
+3. **Add text files** to the `text/` folder
+4. **Convert to audiobook:** `poetry run reader convert`
+5. **Find results** in the `finished/` folder
 
 For detailed instructions, see [USAGE.md](USAGE.md).

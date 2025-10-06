@@ -18,7 +18,7 @@
    poetry run reader convert
    ```
 
-4. **Find your audiobook in the `audio/` folder!**
+4. **Find your audiobook in the `finished/` folder!**
 
 ## Commands Reference
 
@@ -84,8 +84,10 @@ poetry run reader info
 - **`.rst`** - ReStructuredText files
 
 ### Output Formats
-- **`.wav`** - Uncompressed audio (Phase 1 only)
-- Future phases will add: MP3, M4A, M4B with metadata
+- **`.mp3`** - 48kHz mono, optimized for audiobooks (default)
+- **`.wav`** - Uncompressed audio
+- **`.m4a`** - Apple-friendly format
+- **`.m4b`** - Audiobook format with chapter support
 
 ## Examples
 
@@ -98,7 +100,7 @@ echo "Hello world! This is my first audiobook." > text/hello.txt
 # 2. Convert it
 poetry run reader convert
 
-# 3. Listen to audio/hello.wav
+# 3. Listen to finished/hello_kokoro_am_michael.mp3
 ```
 
 ### Custom Voice Examples
@@ -124,9 +126,9 @@ cp book1.epub book2.pdf story.txt text/
 poetry run reader convert
 
 # Results:
-# - audio/book1.wav
-# - audio/book2.wav
-# - audio/story.wav
+# - finished/book1_kokoro_am_michael.mp3
+# - finished/book2_kokoro_am_michael.mp3
+# - finished/story_kokoro_am_michael.mp3
 ```
 
 ### EPUB Example
@@ -138,7 +140,7 @@ curl -o text/alice.epub "https://www.gutenberg.org/ebooks/11.epub.noimages"
 # Convert with custom settings
 poetry run reader convert --voice "Alice" --speed 1.0
 
-# Result: audio/Alice's Adventures in Wonderland.wav
+# Result: finished/alice_kokoro_am_michael.mp3
 ```
 
 ### Configuration Workflow
@@ -200,8 +202,9 @@ poetry run reader voices
 - Try converting specific file: `--file text/yourfile.txt`
 
 **Audio quality:**
-- Phase 1 uses system TTS (basic quality)
-- Phase 2+ will add neural TTS for professional quality
+- Kokoro TTS provides professional neural voices (default)
+- Fallback to pyttsx3 system TTS if models unavailable
+- Output: 48kHz mono MP3, optimized for audiobooks
 - Adjust `--speed` to find comfortable pace
 
 ## Configuration File
@@ -210,41 +213,65 @@ Settings are saved to `config/settings.yaml`:
 
 ```yaml
 tts:
-  engine: pyttsx3
-  voice: "Samantha"
-  speed: 1.1
+  engine: kokoro          # kokoro or pyttsx3
+  voice: am_michael       # Kokoro voice ID
+  speed: 1.0
   volume: 1.0
 audio:
-  format: wav
-  add_metadata: false
+  format: mp3             # mp3, wav, m4a, m4b
+  add_metadata: true
 processing:
-  chunk_size: 1000
+  chunk_size: 1200
   pause_between_chapters: 1.0
   auto_detect_chapters: true
 text_dir: text
-audio_dir: audio
+finished_dir: finished    # Output directory
 ```
 
-## Phase 2: Advanced Features
+## Advanced Features
 
-Phase 2 adds neural TTS, emotion detection, and character voice mapping.
+Current features include neural TTS, emotion detection, and character voice mapping.
 
-### Neural TTS with Kokoro
+### Neural TTS with Kokoro (Default)
 ```bash
 # Use Kokoro neural TTS (48+ voices, 8 languages)
 poetry run reader convert --engine kokoro
 
-# Combine with emotion analysis
-poetry run reader convert --engine kokoro --emotion
+# Explicitly set Kokoro (already default)
+poetry run reader convert --engine kokoro
 ```
 
 ### Emotion-Aware Conversion
 ```bash
-# Enable emotion detection and smart acting
+# Enable emotion detection
 poetry run reader convert --emotion
 
-# Full Phase 2 features
-poetry run reader convert --engine kokoro --emotion --characters
+# With character voice mapping
+poetry run reader convert --characters --file text/novel.txt
+```
+
+### Progress Visualization
+```bash
+# ASCII timeseries chart with real-time speed graph (default)
+poetry run reader convert --progress-style timeseries
+
+# Simple text progress
+poetry run reader convert --progress-style simple
+
+# TQDM progress bars with speed metrics
+poetry run reader convert --progress-style tqdm
+
+# Rich formatted display
+poetry run reader convert --progress-style rich
+
+# ASCII timeseries chart (real-time speed graph)
+poetry run reader convert --progress-style timeseries
+```
+
+### Debug Mode
+```bash
+# See detailed processing info and Neural Engine status
+poetry run reader convert --debug --file text/sample.txt
 ```
 
 ### Character Voice Management
@@ -260,20 +287,17 @@ poetry run reader characters list
 poetry run reader characters remove "Alice"
 ```
 
-### Voice Blending
-```bash
-# Create custom voice blend (weights as percentages)
-poetry run reader blend create "MyBlend" "af_sarah:60,af_sky:40"
+### Available Kokoro Voices
 
-# List voice blends
-poetry run reader blend list
+American English: `af_sarah`, `af_nicole`, `am_michael`, `am_adam`
+British English: `bf_emma`, `bf_isabella`, `bm_george`, `bm_lewis`
+And 40+ more across Spanish, French, Italian, Portuguese, Japanese, Korean, Chinese
 
-# Remove voice blend
-poetry run reader blend remove "MyBlend"
-```
+See full list with: `poetry run reader voices`
 
 ## Next Steps
 
-- **Phase 3**: Professional audiobook formats (MP3, M4B), batch processing, advanced dialogue detection
-
-For advanced features and development, see the main README.md.
+For more examples and workflows, see:
+- **[EXAMPLES.md](EXAMPLES.md)** - Real-world use cases
+- **[PHASE3_FEATURES.md](PHASE3_FEATURES.md)** - Advanced features
+- **[KOKORO_SETUP.md](KOKORO_SETUP.md)** - Model setup guide

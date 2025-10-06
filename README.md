@@ -87,7 +87,7 @@ echo "Hello world! This is my first audiobook." > text/hello.txt
 # 2. Convert to audiobook (Neural Engine optimized)
 poetry run reader convert
 
-# 3. Listen to finished/hello_*.mp3
+# 3. Listen to finished/hello_kokoro_am_michael.mp3
 ```
 
 ### 🎭 Character Voices (Optional)
@@ -115,7 +115,8 @@ poetry run reader convert --characters --file text/mybook.txt
 
 - **[Usage Guide](docs/USAGE.md)** - Complete command reference and workflows
 - **[Examples](docs/EXAMPLES.md)** - Real-world examples and use cases
-- **[Architecture](docs/ARCHITECTURE.md)** - Technical design and development guide
+- **[Phase 3 Features](docs/PHASE3_FEATURES.md)** - Advanced audiobook production features
+- **[Kokoro Setup](docs/KOKORO_SETUP.md)** - Neural TTS model setup guide
 
 ## 🎙️ Command Reference
 
@@ -193,9 +194,10 @@ poetry run reader convert --engine pyttsx3 --voice af_sarah
 | ReStructuredText | `.rst` | ✅ Header-based |
 
 ### Output Formats
-- **MP3** (default) - Optimized for audiobooks, ~4-5x smaller than WAV
-- **WAV** - Uncompressed, high quality  
-- **M4A, M4B** (Phase 3) - Professional audiobook formats with metadata
+- **MP3** (default) - 48kHz mono, optimized for audiobooks
+- **WAV** - Uncompressed, high quality
+- **M4A** - Apple-friendly format
+- **M4B** - Audiobook format with chapter support
 
 ## 🏗️ Project Structure
 
@@ -221,20 +223,20 @@ reader/
 # Add your book
 cp "My Novel.epub" text/
 
-# Convert with preferred voice
-poetry run reader convert --voice "Samantha"
+# Convert with Neural Engine acceleration
+poetry run reader convert
 
-# Result: audio/My Novel.wav
+# Result: finished/My Novel_kokoro_am_michael.mp3
 ```
 
 ### Voice Comparison
 ```bash
-# Test different voices on same content
-poetry run reader convert --voice "Daniel" --file text/sample.txt
-poetry run reader convert --voice "Samantha" --file text/sample.txt
-poetry run reader convert --voice "Alex" --file text/sample.txt
+# Test different Kokoro voices on same content
+poetry run reader convert --voice af_sarah --file text/sample.txt
+poetry run reader convert --voice am_adam --file text/sample.txt
+poetry run reader convert --voice bf_emma --file text/sample.txt
 
-# Compare audio/sample.wav outputs
+# Compare finished/sample_*.mp3 outputs
 ```
 
 ### Batch Processing
@@ -243,10 +245,10 @@ poetry run reader convert --voice "Alex" --file text/sample.txt
 cp book1.epub book2.pdf story.txt text/
 
 # Set default voice and convert all
-poetry run reader config --voice "Daniel" --speed 1.1
+poetry run reader config --voice am_michael --speed 1.0
 poetry run reader convert
 
-# Results: audio/book1.wav, audio/book2.wav, audio/story.wav
+# Results: finished/book1_*.mp3, finished/book2_*.mp3, finished/story_*.mp3
 ```
 
 ## ⚙️ Configuration
@@ -255,15 +257,15 @@ Settings are saved to `config/settings.yaml`:
 
 ```yaml
 tts:
-  engine: pyttsx3
-  voice: "Samantha"        # Default voice
-  speed: 1.1               # Speech rate multiplier  
+  engine: kokoro           # TTS engine (kokoro or pyttsx3)
+  voice: am_michael        # Default voice
+  speed: 1.0               # Speech rate multiplier
   volume: 1.0              # Volume level
 audio:
-  format: wav              # Output format (Phase 1)
-  add_metadata: false      # Metadata support (Phase 2+)
+  format: mp3              # Output format (mp3, wav, m4a, m4b)
+  add_metadata: true       # Metadata support
 processing:
-  chunk_size: 1000         # Text chunk size for processing
+  chunk_size: 1200         # Text chunk size for processing
   auto_detect_chapters: true  # Chapter detection
 ```
 
@@ -295,11 +297,12 @@ See **[docs/EXAMPLES.md](docs/EXAMPLES.md)** for detailed examples including:
 ## 📊 Technical Specs
 
 - **Dependencies**: Core packages + Kokoro TTS
-- **Python**: 3.10+ compatibility
+- **Python**: 3.10-3.13 compatibility
 - **Platforms**: macOS (Neural Engine), Linux, Windows
 - **Performance**: 6x faster than real-time on Apple Silicon
-- **Audio Quality**: 22kHz mono MP3, optimized for audiobooks
+- **Audio Quality**: 48kHz mono MP3, optimized for audiobooks
 - **Neural Engine**: CoreML acceleration on M1/M2/M3 Macs
+- **Model Size**: 82M parameters, ~300MB ONNX models
 
 ## 🎵 Audio Quality
 
