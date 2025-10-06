@@ -20,9 +20,6 @@ A powerful Python application that converts text files into professional audiobo
 # Default installation (Kokoro TTS + core features)
 pip install reader
 
-# With advanced NLP features (adds spacy for better dialogue detection)
-pip install reader[nlp]
-
 # With all progress visualizations (tqdm, rich, plotext)
 pip install reader[progress-full]
 
@@ -43,7 +40,7 @@ cd reader
 poetry install
 
 # With optional extras
-poetry install --extras "nlp progress-full"
+poetry install --extras "progress-full"
 
 # Install all extras
 poetry install --extras "all"

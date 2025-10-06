@@ -6,6 +6,7 @@ from dataclasses import dataclass, asdict
 import re
 
 from ..engines.kokoro_engine import KokoroEngine
+from ..analysis.gender_detector import GenderDetector
 
 
 @dataclass
@@ -31,13 +32,14 @@ class CharacterVoiceMapper:
         """Initialize character voice mapper."""
         self.config_dir = config_dir
         self.config_dir.mkdir(exist_ok=True)
-        
+
         self.characters_file = config_dir / "characters.yaml"
         self.voice_blends_file = config_dir / "voice_blends.yaml"
-        
+
         self.characters: Dict[str, CharacterVoice] = {}
         self.voice_blends: Dict[str, VoiceBlend] = {}
-        
+        self.gender_detector = GenderDetector()
+
         self.load_configurations()
     
     def load_configurations(self) -> None:
@@ -295,22 +297,24 @@ class CharacterVoiceMapper:
         return True
     
     def auto_assign_voices(
-        self, 
+        self,
         character_names: Set[str],
-        voice_engine: Optional[KokoroEngine] = None
+        voice_engine: Optional[KokoroEngine] = None,
+        text: Optional[str] = None
     ) -> Dict[str, str]:
         """
-        Automatically assign voices to detected characters.
-        
+        Automatically assign voices to detected characters with gender detection.
+
         Args:
             character_names: Set of character names to assign
             voice_engine: TTS engine for getting available voices
-            
+            text: Full text for gender detection (optional)
+
         Returns:
             Dict mapping character names to voice IDs
         """
         assignments = {}
-        
+
         if not voice_engine:
             try:
                 voice_engine = KokoroEngine()
@@ -318,47 +322,62 @@ class CharacterVoiceMapper:
                 # Fallback to basic assignment using configured default
                 from ..config import ConfigManager
                 config = ConfigManager().config
-                fallback_voice = config.tts.voice or "am_michael"  # Use configured voice or default
+                fallback_voice = config.tts.voice or "am_michael"
                 return {name: fallback_voice for name in character_names}
-        
+
         available_voices = voice_engine.list_voices()
-        
+
         # Get male and female voices
         male_voices = voice_engine.get_voices_by_gender("male")
         female_voices = voice_engine.get_voices_by_gender("female")
-        
-        # Simple assignment strategy
+
+        # Detect genders if text provided
+        gender_map = {}
+        if text:
+            gender_map = self.gender_detector.detect_multiple_genders(
+                list(character_names), text
+            )
+
+        # Track used voices for variety
         used_voices = set()
-        
-        for i, char_name in enumerate(sorted(character_names)):
-            # Alternate between male and female voices
-            if i % 2 == 0 and female_voices:
+
+        for char_name in sorted(character_names):
+            # Get detected gender or use unknown
+            detected_gender = gender_map.get(char_name, 'unknown')
+
+            # Select voice pool based on detected gender
+            if detected_gender == 'female' and female_voices:
                 voice_pool = female_voices
                 gender = "female"
-            elif male_voices:
-                voice_pool = male_voices 
+            elif detected_gender == 'male' and male_voices:
+                voice_pool = male_voices
                 gender = "male"
             else:
-                voice_pool = available_voices
-                gender = "unknown"
-            
+                # Unknown gender - alternate between male/female for variety
+                if len([g for g in assignments.values() if g in male_voices]) <= len([g for g in assignments.values() if g in female_voices]):
+                    voice_pool = male_voices if male_voices else available_voices
+                    gender = "male" if male_voices else "unknown"
+                else:
+                    voice_pool = female_voices if female_voices else available_voices
+                    gender = "female" if female_voices else "unknown"
+
             # Pick an unused voice if possible
             available_pool = [v for v in voice_pool if v not in used_voices]
             if not available_pool:
                 available_pool = voice_pool
-            
-            voice_id = available_pool[i % len(available_pool)]
+
+            voice_id = available_pool[0]
             used_voices.add(voice_id)
-            
+
             # Add to character mapping
             self.add_character(
                 name=char_name,
                 voice_id=voice_id,
                 gender=gender
             )
-            
+
             assignments[char_name] = voice_id
-        
+
         return assignments
     
     def get_narration_voice(self) -> str:
@@ -377,29 +396,29 @@ class CharacterVoiceMapper:
     def analyze_text_for_voices(self, text: str) -> Dict[str, any]:
         """
         Analyze text and return character/voice information.
-        
+
         Returns:
             Dict with detected characters, voice assignments, and statistics
         """
         detected_chars = self.detect_characters_in_text(text)
         existing_chars = set(self.list_characters())
         new_chars = detected_chars - existing_chars
-        
-        # Auto-assign voices for new characters
+
+        # Auto-assign voices for new characters with gender detection
         if new_chars:
-            new_assignments = self.auto_assign_voices(new_chars)
+            new_assignments = self.auto_assign_voices(new_chars, text=text)
         else:
             new_assignments = {}
-        
+
         # Get current assignments
         current_assignments = {
             char: self.get_character_voice(char).voice_id
             for char in existing_chars
             if char in detected_chars
         }
-        
+
         all_assignments = {**current_assignments, **new_assignments}
-        
+
         return {
             'detected_characters': list(detected_chars),
             'new_characters': list(new_chars),
