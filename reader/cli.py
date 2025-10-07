@@ -33,6 +33,7 @@ from .batch.neural_processor import NeuralProcessor
 from .batch.batch_processor import create_batch_processor
 from .processors.ffmpeg_processor import get_audio_processor
 from .voices.voice_previewer import get_voice_previewer
+from .utils.setup import validate_environment, check_ffmpeg
 
 
 class ReaderApp:
@@ -41,17 +42,26 @@ class ReaderApp:
     def __init__(self, init_tts=False):
         """Initialize the reader application."""
         self.config_manager = ConfigManager()
+
+        # Ensure directories exist first
+        base_path = Path.cwd()
+        self.config_manager.get_text_dir().mkdir(exist_ok=True, parents=True)
+        self.config_manager.get_audio_dir().mkdir(exist_ok=True, parents=True)
+        self.config_manager.get_config_dir().mkdir(exist_ok=True, parents=True)
+        Path("finished").mkdir(exist_ok=True)
+        Path("models").mkdir(exist_ok=True)
+
         self.tts_engine = None
         if init_tts:
             self.tts_engine = self._initialize_tts_engine()
-        
+
         # Initialize parsers
         self.parsers: List[TextParser] = [
             EPUBParser(),
             PDFParser(),
             PlainTextParser()
         ]
-        
+
         # Analysis and processing components
         try:
             self.character_mapper = CharacterVoiceMapper(self.config_manager.get_config_dir())
@@ -60,12 +70,7 @@ class ReaderApp:
             self.audio_processor = get_audio_processor()
             self.voice_previewer = get_voice_previewer()
         except Exception as e:
-            print(f"Warning: Some advanced features not available: {e}")
-        
-        # Ensure directories exist
-        self.config_manager.get_text_dir().mkdir(exist_ok=True)
-        self.config_manager.get_audio_dir().mkdir(exist_ok=True)
-        self.config_manager.get_config_dir().mkdir(exist_ok=True)
+            print(f"⚠️  Warning: Some advanced features not available: {e}")
     
     def get_tts_engine(self):
         """Get TTS engine, initializing if needed."""
@@ -75,23 +80,49 @@ class ReaderApp:
     
     def _initialize_tts_engine(self):
         """Initialize Kokoro TTS engine."""
+        # Check FFmpeg first
+        ffmpeg_ok, ffmpeg_msg = check_ffmpeg()
+        if not ffmpeg_ok:
+            print(ffmpeg_msg)
+            raise RuntimeError("FFmpeg is required for audio conversion")
+
         if not KOKORO_AVAILABLE:
             print("❌ Error: Kokoro engine not available.")
-            print("📥 Install: See docs/KOKORO_SETUP.md")
+            print("📥 Install: poetry install")
+            print("📖 See: docs/KOKORO_SETUP.md")
             raise RuntimeError("Kokoro engine not available")
 
         try:
             return KokoroEngine()
         except Exception as e:
             # Show helpful error and exit
-            if "Kokoro models not found" in str(e) or "does not exist" in str(e):
+            error_str = str(e)
+            if "Kokoro models not found" in error_str or "does not exist" in error_str:
                 print("❌ Error: Kokoro models not found.")
-                print("📥 Download models: See docs/KOKORO_SETUP.md")
-                print("💡 Limited storage? Try reader-small package instead")
+                print()
+                print("The Kokoro TTS models (~300MB) will be downloaded automatically on first use.")
+                print("If download fails, manually download from:")
+                print("  https://huggingface.co/hexgrad/Kokoro-82M")
+                print()
+                print("💡 Limited storage? Try reader-small package instead:")
+                print("  pip install reader-small")
                 print()
                 raise RuntimeError("Kokoro models required. See docs/KOKORO_SETUP.md") from e
+            elif "ModuleNotFoundError" in error_str or "ImportError" in error_str:
+                print("❌ Error: Missing dependencies.")
+                print()
+                print("Reinstall reader with:")
+                print("  poetry install")
+                print("  or: pip install --force-reinstall reader")
+                print()
+                raise RuntimeError("Missing dependencies") from e
             else:
                 print(f"❌ Error initializing Kokoro engine: {e}")
+                print()
+                print("💡 Troubleshooting:")
+                print("  - Run with debug: reader convert --debug --file yourfile.txt")
+                print("  - Check issues: https://github.com/dcrsn/reader/issues")
+                print()
                 raise
     
     def _apply_temporary_overrides(self, overrides: dict):
@@ -376,20 +407,20 @@ def cli():
 
 
 @cli.command()
-@click.option('--voice', '-v', help='Voice to use for synthesis')
-@click.option('--speed', '-s', type=float, help='Speech speed multiplier (e.g., 1.2)')
-@click.option('--format', '-f', type=click.Choice(['wav', 'mp3', 'm4a', 'm4b']), help='Output audio format')
-@click.option('--file', '-F', type=click.Path(exists=True), help='Convert specific file instead of scanning text/ folder')
-@click.option('--characters/--no-characters', default=None, help='Enable/disable character voice mapping (temporary override)')
-@click.option('--character-config', type=click.Path(exists=True), help='Path to character voice config YAML file')
-@click.option('--chapters/--no-chapters', default=None, help='Enable/disable chapter detection and metadata (temporary override)')
-@click.option('--dialogue/--no-dialogue', default=None, help='Enable/disable dialogue detection (Phase 3, temporary override)')
-@click.option('--processing-level', type=click.Choice(['phase1', 'phase2', 'phase3']), help='Set processing level (temporary override)')
-@click.option('--batch-mode', is_flag=True, help='Enable robust batch processing with checkpoints')
-@click.option('--checkpoint-interval', type=int, default=50, help='Save checkpoint every N chunks (default: 50)')
-@click.option('--turbo-mode', is_flag=True, default=False, help='Enable maximum performance mode (minimal delays, 95% CPU)')
-@click.option('--debug', is_flag=True, default=False, help='Enable detailed debug output')
-@click.option('--progress-style', type=click.Choice(['simple', 'tqdm', 'rich', 'timeseries']), default='timeseries', help='Progress display style (simple/tqdm/rich/timeseries)')
+@click.option('--voice', '-v', help='Voice to use for synthesis (e.g., am_michael, af_sarah)')
+@click.option('--speed', '-s', type=float, help='Speech speed multiplier - 1.0 is normal, 1.2 is 20% faster (e.g., 1.2)')
+@click.option('--format', '-f', type=click.Choice(['wav', 'mp3', 'm4a', 'm4b']), help='Output audio format (default: mp3)')
+@click.option('--file', '-F', type=click.Path(exists=True), help='Convert specific file instead of all files in text/ folder')
+@click.option('--characters/--no-characters', default=None, help='Enable/disable character voice mapping for dialogue')
+@click.option('--character-config', type=click.Path(exists=True), help='Path to character voice config YAML file (e.g., mybook.characters.yaml)')
+@click.option('--chapters/--no-chapters', default=None, help='Enable/disable chapter detection and metadata in audiobook')
+@click.option('--dialogue/--no-dialogue', default=None, help='Enable/disable dialogue detection with emotion analysis')
+@click.option('--processing-level', type=click.Choice(['phase1', 'phase2', 'phase3']), help='Set processing level: phase1 (basic), phase2 (emotion), phase3 (full features)')
+@click.option('--batch-mode', is_flag=True, help='Enable checkpoint recovery - resume interrupted conversions')
+@click.option('--checkpoint-interval', type=int, default=50, help='Save progress every N chunks for recovery (default: 50)')
+@click.option('--turbo-mode', is_flag=True, default=False, help='Maximum speed - uses 95% CPU, minimal delays')
+@click.option('--debug', is_flag=True, default=False, help='Show detailed debug output including Neural Engine status')
+@click.option('--progress-style', type=click.Choice(['simple', 'tqdm', 'rich', 'timeseries']), default='timeseries', help='Progress display: simple (text), tqdm (bars), rich (fancy), timeseries (charts)')
 def convert(voice, speed, format, file, characters, character_config, chapters, dialogue, processing_level, batch_mode, checkpoint_interval, turbo_mode, debug, progress_style):
     """Convert text files in text/ folder to audiobooks.
     

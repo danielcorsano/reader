@@ -5,9 +5,40 @@ build-backend = "poetry.core.masonry.api"
 [tool.poetry]
 name = "reader"
 version = "0.1.0"
-description = "A lightweight text-to-audiobook CLI application"
+description = "Professional text-to-audiobook CLI with Neural Engine acceleration and Kokoro TTS"
 authors = ["corsano"]
 readme = "README.md"
+license = "MIT"
+homepage = "https://github.com/dcrsn/reader"
+repository = "https://github.com/dcrsn/reader"
+documentation = "https://github.com/dcrsn/reader/tree/main/docs"
+keywords = [
+    "audiobook",
+    "text-to-speech",
+    "tts",
+    "kokoro",
+    "neural-engine",
+    "epub",
+    "pdf",
+    "cli",
+    "audio",
+    "conversion"
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Multimedia :: Sound/Audio :: Speech",
+    "Topic :: Multimedia :: Sound/Audio :: Conversion",
+    "Topic :: Text Processing",
+    "Environment :: Console",
+]
 packages = [{include = "reader"}]
 
 [tool.poetry.scripts]

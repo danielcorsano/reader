@@ -1,5 +1,10 @@
 # Reader: Neural Text-to-Audiobook CLI
 
+[![PyPI](https://img.shields.io/pypi/v/reader)](https://pypi.org/project/reader/)
+[![Python](https://img.shields.io/pypi/pyversions/reader)](https://pypi.org/project/reader/)
+[![License](https://img.shields.io/pypi/l/reader)](https://github.com/dcrsn/reader/blob/main/LICENSE)
+[![Downloads](https://img.shields.io/pypi/dm/reader)](https://pypi.org/project/reader/)
+
 A powerful Python application that converts text files into professional audiobooks using AI-powered Neural Engine acceleration and Kokoro TTS.
 
 ## ✨ Features
@@ -33,7 +38,7 @@ pip install reader[all]
 ### Using Poetry (for development)
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/reader.git
+git clone https://github.com/dcrsn/reader.git
 cd reader
 
 # Default installation
@@ -313,6 +318,114 @@ See **[docs/EXAMPLES.md](docs/EXAMPLES.md)** for detailed examples including:
 - Lighter-weight package using system TTS
 - For systems with limited storage or processing power
 - Lower audio quality but minimal resource requirements
+
+## 🔧 Troubleshooting
+
+### FFmpeg Not Found
+**Error**: `FFmpeg not found` or `Command 'ffmpeg' not found`
+
+**Solution**:
+```bash
+# macOS
+brew install ffmpeg
+
+# Ubuntu/Debian
+sudo apt-get install ffmpeg
+
+# Windows
+# Download from https://ffmpeg.org/download.html
+# Or use: choco install ffmpeg
+```
+
+### Models Directory Missing
+**Error**: `Kokoro models not found` or `models/ directory empty`
+
+**Solution**:
+The Kokoro TTS models (~300MB) are downloaded automatically on first use. If download fails:
+```bash
+# Manual download
+mkdir -p models/kokoro
+# Models will auto-download on next run, or download from:
+# https://huggingface.co/hexgrad/Kokoro-82M
+```
+
+### Neural Engine Not Detected (Apple Silicon)
+**Error**: `Neural Engine not available, using CPU`
+
+**Solution**:
+- Ensure you're on Apple Silicon (M1/M2/M3 Mac)
+- Update macOS to latest version
+- Reinstall onnxruntime: `poetry remove onnxruntime && poetry add onnxruntime`
+- CPU fallback works fine but is slower
+
+### Permission Errors
+**Error**: `Permission denied` when creating directories
+
+**Solution**:
+```bash
+# Ensure write permissions in project directory
+chmod -R u+w /path/to/reader
+
+# Or run from a directory you own
+cd ~/Documents
+git clone https://github.com/dcrsn/reader.git
+cd reader
+```
+
+### Import Errors
+**Error**: `ModuleNotFoundError: No module named 'kokoro_onnx'`
+
+**Solution**:
+```bash
+# Reinstall dependencies
+poetry install
+
+# Or if using pip
+pip install --force-reinstall reader
+```
+
+### Invalid Input Format
+**Error**: `Unsupported file format`
+
+**Supported formats**: `.epub`, `.pdf`, `.txt`, `.md`, `.rst`
+
+**Solution**:
+```bash
+# Convert your file to a supported format first
+# For Word docs: Save as .txt or .pdf
+# For HTML: Save as .txt or use pandoc to convert
+```
+
+### GPU Acceleration Issues
+**NVIDIA GPU**: Requires `onnxruntime-gpu` instead of `onnxruntime`
+```bash
+poetry remove onnxruntime
+poetry add onnxruntime-gpu
+```
+
+**AMD/Intel GPU (Windows)**: Requires `onnxruntime-directml`
+```bash
+poetry remove onnxruntime
+poetry add onnxruntime-directml
+```
+
+### Still Having Issues?
+- Check the [GitHub Issues](https://github.com/dcrsn/reader/issues)
+- Run with debug mode: `reader convert --debug --file yourfile.txt`
+- Verify Python version: `python --version` (requires 3.10-3.13)
+
+## 📜 Credits & Licensing
+
+### Kokoro TTS Model
+This project uses the [Kokoro-82M](https://huggingface.co/hexgrad/Kokoro-82M) text-to-speech model by [hexgrad](https://github.com/hexgrad/kokoro), licensed under Apache 2.0.
+
+**Model Credits:**
+- Original Model: [hexgrad/Kokoro-82M](https://huggingface.co/hexgrad/Kokoro-82M) (Apache 2.0)
+- ONNX Wrapper: [kokoro-onnx](https://github.com/thewh1teagle/kokoro-onnx) by thewh1teagle (MIT)
+- Training datasets: Koniwa (CC BY 3.0), SIWIS (CC BY 4.0)
+
+### Reader Package
+This audiobook CLI tool is licensed under the MIT License. See `LICENSE` file for details.
 
 ---
 
