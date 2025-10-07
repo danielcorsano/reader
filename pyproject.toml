@@ -5,7 +5,7 @@ build-backend = "poetry.core.masonry.api"
 [tool.poetry]
 name = "reader"
 version = "0.1.0"
-description = "Professional text-to-audiobook CLI with Neural Engine acceleration and Kokoro TTS"
+description = "Professional audiobook production CLI with character-aware voices, emotion analysis, and Neural Engine optimization for Apple Silicon. Built with Kokoro-82M TTS."
 authors = ["corsano"]
 readme = "README.md"
 license = "MIT"

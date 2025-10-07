@@ -1,22 +1,54 @@
-# Reader: Neural Text-to-Audiobook CLI
+# Reader: Professional Audiobook Production CLI
 
 [![PyPI](https://img.shields.io/pypi/v/reader)](https://pypi.org/project/reader/)
 [![Python](https://img.shields.io/pypi/pyversions/reader)](https://pypi.org/project/reader/)
 [![License](https://img.shields.io/pypi/l/reader)](https://github.com/dcrsn/reader/blob/main/LICENSE)
 [![Downloads](https://img.shields.io/pypi/dm/reader)](https://pypi.org/project/reader/)
 
-A powerful Python application that converts text files into professional audiobooks using AI-powered Neural Engine acceleration and Kokoro TTS.
+**Transform novels into professional audiobooks with character-aware voices, emotion analysis, and blazing-fast Neural Engine optimization.**
 
-## ✨ Features
+Built with Kokoro-82M TTS for production-quality narration. Optimized for Apple Silicon (M1/M2/M3) with significant performance advantages over CPU-only solutions.
 
-- **🧠 Neural Engine Optimization**: Apple Silicon (M1/M2/M3) CoreML acceleration
-- **🎙️ Kokoro TTS**: 48 high-quality neural voices across 8 languages
-- **📊 Real-time Visualization**: 4 progress styles including ASCII timeseries charts
-- **💾 Smart Processing**: Checkpoint recovery and streaming audio assembly
-- **🎭 Character Voice Mapping**: Dialogue detection with character-specific voices
-- **📚 Multiple Formats**: EPUB, PDF, TXT, Markdown, ReStructuredText input
-- **🎵 Professional Audio**: Optimized MP3, M4A, M4B output with metadata
-- **⚡ High Performance**: 6x faster than real-time playback on Apple Silicon
+## ✨ What Makes Reader Different
+
+Unlike other audiobook tools, Reader is built for **professional novel narration** with features designed for long-form fiction:
+
+### 🎭 **Character-Aware Narration** (Unique)
+- **Auto-detect characters** in dialogue and assign different voices
+- **Map voices to personalities**: Harry gets `am_adam`, Hermione gets `af_sarah`
+- Perfect for novels with multiple POV characters
+
+### 😊 **Emotion Analysis** (Unique)
+- **VADER sentiment analysis** adjusts prosody in real-time
+- Excitement, sadness, tension automatically reflected in voice tone
+- Natural emotional narration without manual SSML tagging
+
+### 💾 **Checkpoint Resumption** (Unique)
+- Converting a 500-page novel? **Resume from where you left off** if interrupted
+- No other tool offers this for long audiobook conversions
+- Essential for reliable production workflows
+
+### ⚡ **Blazing Performance on Apple Silicon**
+- **Neural Engine (CoreML) optimization** for M1/M2/M3 Macs
+- Processes audiobooks significantly faster than CPU-only solutions
+- Kokoro-82M engine chosen for **speed + quality balance**
+
+### 📊 **Professional Production Tools**
+- **4 progress visualization styles** including real-time ASCII charts
+- **Chapter detection and metadata** for M4B audiobook format
+- **Batch processing** with queue management
+- **Multiple output formats**: MP3 (48kHz mono optimized), WAV, M4A, M4B
+
+### 🎙️ **Production-Quality TTS**
+- **Kokoro-82M**: 48 high-quality neural voices across 8 languages
+- **Near-human quality** without voice cloning overhead
+- **Consistent narration** perfect for audiobooks
+
+---
+
+## 📚 Supported Input Formats
+
+EPUB, PDF, TXT, Markdown, ReStructuredText
 
 ## 📦 Installation
 
@@ -298,13 +330,17 @@ See **[docs/EXAMPLES.md](docs/EXAMPLES.md)** for detailed examples including:
 
 ## 📊 Technical Specs
 
-- **Dependencies**: Core packages + Kokoro TTS
+- **TTS Engine**: Kokoro-82M (82M parameters, Apache 2.0 license)
+- **Model Size**: ~300MB ONNX models (auto-downloaded on first run)
 - **Python**: 3.10-3.13 compatibility
-- **Platforms**: macOS (Neural Engine), Linux, Windows
-- **Performance**: 6x faster than real-time on Apple Silicon
-- **Audio Quality**: 48kHz mono MP3, optimized for audiobooks
-- **Neural Engine**: CoreML acceleration on M1/M2/M3 Macs
-- **Model Size**: 82M parameters, ~300MB ONNX models
+- **Platforms**: macOS (Neural Engine optimized), Linux, Windows
+- **Audio Quality**: 48kHz mono MP3, professional audiobook standard
+- **Hardware Acceleration**:
+  - Apple Silicon: CoreML (Neural Engine)
+  - NVIDIA: CUDA via onnxruntime-gpu
+  - AMD/Intel: DirectML on Windows
+- **Performance**: Significantly faster than CPU-only solutions on Apple Silicon
+- **Memory**: Efficient streaming processing for large books
 
 ## 🎵 Audio Quality
 
@@ -313,11 +349,9 @@ See **[docs/EXAMPLES.md](docs/EXAMPLES.md)** for detailed examples including:
 - ✅ 48 voices across 8 languages
 - ✅ Apple Neural Engine acceleration
 - ✅ Professional audiobook production
+- ✅ Consistent narration (no hallucinations)
 
-**Alternative: reader-small package**
-- Lighter-weight package using system TTS
-- For systems with limited storage or processing power
-- Lower audio quality but minimal resource requirements
+---
 
 ## 🔧 Troubleshooting
 
