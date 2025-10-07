@@ -3,9 +3,9 @@ requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
-name = "reader"
+name = "audiobook-reader"
 version = "0.1.0"
-description = "Professional audiobook production CLI with character-aware voices, emotion analysis, and Neural Engine optimization for Apple Silicon. Built with Kokoro-82M TTS."
+description = "Professional audiobook production CLI with character-aware voices, emotion analysis, and hardware acceleration. Built with Kokoro-82M TTS for production-quality narration."
 authors = ["corsano"]
 readme = "README.md"
 license = "MIT"
@@ -18,11 +18,18 @@ keywords = [
     "tts",
     "kokoro",
     "neural-engine",
+    "apple-silicon",
+    "m1",
+    "m2",
+    "m3",
+    "m4",
     "epub",
     "pdf",
     "cli",
     "audio",
-    "conversion"
+    "conversion",
+    "character-voices",
+    "emotion-analysis"
 ]
 classifiers = [
     "Development Status :: 4 - Beta",

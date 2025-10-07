@@ -5,44 +5,70 @@
 [![License](https://img.shields.io/pypi/l/reader)](https://github.com/dcrsn/reader/blob/main/LICENSE)
 [![Downloads](https://img.shields.io/pypi/dm/reader)](https://pypi.org/project/reader/)
 
-**Transform novels into professional audiobooks with character-aware voices, emotion analysis, and blazing-fast Neural Engine optimization.**
+**Transform long-form text into professional audiobooks with character-aware voices, emotion analysis, and intelligent processing.**
 
-Built with Kokoro-82M TTS for production-quality narration. Optimized for Apple Silicon (M1/M2/M3) with significant performance advantages over CPU-only solutions.
+Perfect for novels, articles, textbooks, research papers, and any long-form content. Built with Kokoro-82M TTS for production-quality narration. Works on all platforms with optimizations for Apple Silicon (M1/M2/M3/M4 Neural Engine), NVIDIA GPUs, and AMD/Intel GPUs.
 
-## ✨ What Makes Reader Different
+## ✨ Core Features
 
-Unlike other audiobook tools, Reader is built for **professional novel narration** with features designed for long-form fiction:
+### ⚡ **High-Performance Conversion**
+- **Up to 6x faster than real-time** on Apple Silicon (M1/M2/M3/M4) with Neural Engine
+- **GPU acceleration** for NVIDIA (CUDA), AMD/Intel (DirectML on Windows)
+- **Efficient CPU processing** on all platforms
+- Kokoro-82M engine optimized for speed + quality balance
 
-### 🎭 **Character-Aware Narration** (Unique)
-- **Auto-detect characters** in dialogue and assign different voices
-- **Map voices to personalities**: Harry gets `am_adam`, Hermione gets `af_sarah`
-- Perfect for novels with multiple POV characters
+### 🎭 **Character-Aware Narration**
+- **Automatic character detection** in dialogue
+- **Auto-assign different voices** with automatic gender detection when possible
+- Assigns gender-appropriate voices (e.g., Alice gets `af_sarah`, Bob gets `am_adam`)
+- Perfect for fiction, interviews, dialogues, and multi-speaker content
 
-### 😊 **Emotion Analysis** (Unique)
+### 😊 **Emotion Analysis**
 - **VADER sentiment analysis** adjusts prosody in real-time
 - Excitement, sadness, tension automatically reflected in voice tone
 - Natural emotional narration without manual SSML tagging
 
-### 💾 **Checkpoint Resumption** (Unique)
-- Converting a 500-page novel? **Resume from where you left off** if interrupted
-- No other tool offers this for long audiobook conversions
-- Essential for reliable production workflows
+### 💾 **Checkpoint Resumption**
+- **Resume interrupted conversions** from where you left off
+- Essential for extra-long texts (500+ page books, textbooks, research papers)
+- Reliable production workflow for lengthy content
 
-### ⚡ **Blazing Performance on Apple Silicon**
-- **Neural Engine (CoreML) optimization** for M1/M2/M3 Macs
-- Processes audiobooks significantly faster than CPU-only solutions
-- Kokoro-82M engine chosen for **speed + quality balance**
+### 📚 **Chapter Management**
+- **Automatic chapter detection** from EPUB TOC, PDF structure, or text patterns
+- **M4B audiobook format** with chapter metadata
+- Chapter timestamps and navigation
 
 ### 📊 **Professional Production Tools**
-- **4 progress visualization styles** including real-time ASCII charts
-- **Chapter detection and metadata** for M4B audiobook format
+- **4 progress visualization styles**: simple, tqdm, rich, timeseries charts
+- **Real-time metrics**: processing speed, ETA, completion percentage
 - **Batch processing** with queue management
 - **Multiple output formats**: MP3 (48kHz mono optimized), WAV, M4A, M4B
 
 ### 🎙️ **Production-Quality TTS**
 - **Kokoro-82M**: 48 high-quality neural voices across 8 languages
-- **Near-human quality** without voice cloning overhead
-- **Consistent narration** perfect for audiobooks
+- **Near-human quality** narration
+- **Consistent voice** throughout long documents
+- No voice cloning overhead
+
+---
+
+## ⚖️ Copyright Notice
+
+**IMPORTANT**: This software is a tool for converting text to audio. Users are solely responsible for:
+
+- Ensuring they have the legal right to convert any text to audio
+- Obtaining necessary permissions for copyrighted materials
+- Complying with all applicable copyright laws and licensing terms
+- Understanding that creating audiobooks from copyrighted text without authorization may constitute copyright infringement
+
+**Recommended Use Cases:**
+- ✅ Your own original content
+- ✅ Public domain works
+- ✅ Content you have explicit permission to convert
+- ✅ Educational materials you legally own
+- ✅ Open-source or Creative Commons licensed texts (per their terms)
+
+The developers of audiobook-reader do not condone or support copyright infringement. By using this software, you agree to use it only for content you have the legal right to convert.
 
 ---
 
@@ -55,16 +81,16 @@ EPUB, PDF, TXT, Markdown, ReStructuredText
 ### Using pip (recommended for users)
 ```bash
 # Default installation (Kokoro TTS + core features)
-pip install reader
+pip install audiobook-reader
 
 # With all progress visualizations (tqdm, rich, plotext)
-pip install reader[progress-full]
+pip install audiobook-reader[progress-full]
 
 # With system monitoring
-pip install reader[monitoring]
+pip install audiobook-reader[monitoring]
 
 # With everything
-pip install reader[all]
+pip install audiobook-reader[all]
 ```
 
 ### Using Poetry (for development)
@@ -83,15 +109,24 @@ poetry install --extras "progress-full"
 poetry install --extras "all"
 ```
 
-### GPU Acceleration
+### Hardware Acceleration Options
 
-#### Apple Silicon (M1/M2/M3) ✅
-The Neural Engine (CoreML) is used automatically - no additional setup needed!
+audiobook-reader works great on **all platforms**. For maximum performance, enable hardware acceleration:
 
-#### NVIDIA GPU (Windows/Linux)
+#### ✅ Apple Silicon (M1/M2/M3/M4)
+**Neural Engine (CoreML) works automatically** - no additional setup needed!
+
+```bash
+pip install audiobook-reader
+# That's it! CoreML acceleration is built-in
+```
+
+#### ✅ NVIDIA GPU (Windows/Linux)
+Get **CUDA acceleration** with a simple package swap:
+
 ```bash
 # Using pip
-pip install reader
+pip install audiobook-reader
 pip uninstall onnxruntime
 pip install onnxruntime-gpu
 
@@ -100,16 +135,26 @@ poetry remove onnxruntime
 poetry add onnxruntime-gpu
 ```
 
-#### AMD/Intel GPU (Windows via DirectML)
+#### ✅ AMD/Intel GPU (Windows)
+Get **DirectML acceleration**:
+
 ```bash
 # Using pip
-pip install reader
+pip install audiobook-reader
 pip uninstall onnxruntime
 pip install onnxruntime-directml
 
 # Using poetry
 poetry remove onnxruntime
 poetry add onnxruntime-directml
+```
+
+#### ✅ CPU Only (All Platforms)
+**No GPU? No problem!** The default installation works efficiently on any CPU:
+
+```bash
+pip install audiobook-reader
+# Works great on Intel, AMD, ARM processors
 ```
 
 ## 🚀 Quick Start
@@ -333,13 +378,14 @@ See **[docs/EXAMPLES.md](docs/EXAMPLES.md)** for detailed examples including:
 - **TTS Engine**: Kokoro-82M (82M parameters, Apache 2.0 license)
 - **Model Size**: ~300MB ONNX models (auto-downloaded on first run)
 - **Python**: 3.10-3.13 compatibility
-- **Platforms**: macOS (Neural Engine optimized), Linux, Windows
+- **Platforms**: macOS, Linux, Windows (all fully supported)
 - **Audio Quality**: 48kHz mono MP3, professional audiobook standard
 - **Hardware Acceleration**:
-  - Apple Silicon: CoreML (Neural Engine)
-  - NVIDIA: CUDA via onnxruntime-gpu
-  - AMD/Intel: DirectML on Windows
-- **Performance**: Significantly faster than CPU-only solutions on Apple Silicon
+  - ✅ Apple Silicon (M1/M2/M3/M4): CoreML (Neural Engine) - automatic
+  - ✅ NVIDIA GPUs: CUDA via onnxruntime-gpu
+  - ✅ AMD/Intel GPUs: DirectML on Windows
+  - ✅ CPU: Works efficiently on all processors
+- **Performance**: Hardware-accelerated on all major platforms
 - **Memory**: Efficient streaming processing for large books
 
 ## 🎵 Audio Quality
@@ -387,7 +433,7 @@ mkdir -p models/kokoro
 **Error**: `Neural Engine not available, using CPU`
 
 **Solution**:
-- Ensure you're on Apple Silicon (M1/M2/M3 Mac)
+- Ensure you're on Apple Silicon (M1/M2/M3/M4 Mac)
 - Update macOS to latest version
 - Reinstall onnxruntime: `poetry remove onnxruntime && poetry add onnxruntime`
 - CPU fallback works fine but is slower
