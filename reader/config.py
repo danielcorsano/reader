@@ -24,7 +24,7 @@ class AudioConfig:
 @dataclass
 class ProcessingConfig:
     """Text processing configuration."""
-    chunk_size: int = 1200  # Optimized for Neural Engine
+    chunk_size: int = 400  # Optimal for Kokoro (450 char limit, 400 recommended)
     pause_between_chapters: float = 1.0
     auto_detect_chapters: bool = True
     level: str = "phase3"  # Use all available features by default

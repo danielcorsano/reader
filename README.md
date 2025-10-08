@@ -344,7 +344,7 @@ audio:
   format: mp3              # Output format (mp3, wav, m4a, m4b)
   add_metadata: true       # Metadata support
 processing:
-  chunk_size: 1200         # Text chunk size for processing
+  chunk_size: 400          # Text chunk size for processing (Kokoro optimal)
   auto_detect_chapters: true  # Chapter detection
 ```
 
