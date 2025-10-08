@@ -125,7 +125,36 @@ class CharacterVoiceMapper:
         except Exception as e:
             print(f"Warning: Could not load character config from {config_file}: {e}")
             return 0
-    
+
+    def save_to_file(self, config_file: Path) -> int:
+        """
+        Save current character voice mappings to an external YAML file.
+
+        Args:
+            config_file: Path to save character config
+
+        Returns:
+            Number of characters saved
+        """
+        char_list = [
+            {
+                'name': char.name,
+                'voice': char.voice_id,
+                'gender': char.gender
+            }
+            for char in self.characters.values()
+        ]
+
+        config_data = {'characters': char_list}
+
+        try:
+            with open(config_file, 'w') as f:
+                yaml.dump(config_data, f, default_flow_style=False, indent=2)
+            return len(char_list)
+        except Exception as e:
+            print(f"Warning: Could not save character config to {config_file}: {e}")
+            return 0
+
     def add_character(
         self,
         name: str,

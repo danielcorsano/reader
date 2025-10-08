@@ -256,6 +256,11 @@ class ReaderApp:
             if voice_analysis['new_characters']:
                 click.echo(f"Found new characters: {', '.join(voice_analysis['new_characters'])}")
 
+                # Auto-save character assignments to per-file config
+                per_file_config = file_path.with_suffix('.characters.yaml')
+                count = self.character_mapper.save_to_file(per_file_config)
+                click.echo(f"✓ Saved {count} character mappings to {per_file_config.name}")
+
             if voice_analysis['detected_characters']:
                 click.echo(f"Character voices: {voice_analysis['voice_assignments']}")
         
