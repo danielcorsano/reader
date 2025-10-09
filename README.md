@@ -1,4 +1,4 @@
-# Reader: Professional Audiobook Production CLI
+# AI Audiobook Generator: CLI Tool with GPU & NPU Acceleration
 
 [![PyPI](https://img.shields.io/pypi/v/reader)](https://pypi.org/project/reader/)
 [![Python](https://img.shields.io/pypi/pyversions/reader)](https://pypi.org/project/reader/)
