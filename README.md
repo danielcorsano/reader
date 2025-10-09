@@ -160,13 +160,19 @@ pip install audiobook-reader
 ## 🚀 Quick Start
 
 ```bash
-# 1. Add a text file
+# 1. Install
+pip install audiobook-reader
+
+# 2. Models auto-download on first use (~310MB)
+#    Or manually: reader download-models
+
+# 3. Add a text file
 echo "Hello world! This is my first audiobook." > text/hello.txt
 
-# 2. Convert to audiobook (Neural Engine optimized)
-poetry run reader convert
+# 4. Convert to audiobook (Neural Engine optimized)
+reader convert
 
-# 3. Listen to finished/hello_kokoro_am_michael.mp3
+# 5. Listen to finished/hello_kokoro_am_michael.mp3
 ```
 
 ### 🎭 Character Voices (Optional)
@@ -376,7 +382,8 @@ See **[docs/EXAMPLES.md](docs/EXAMPLES.md)** for detailed examples including:
 ## 📊 Technical Specs
 
 - **TTS Engine**: Kokoro-82M (82M parameters, Apache 2.0 license)
-- **Model Size**: ~300MB ONNX models (auto-downloaded on first run)
+- **Model Size**: ~310MB ONNX models (auto-downloaded on first use to cache)
+- **Model Cache**: Follows XDG standard (`~/.cache/audiobook-reader/models/`)
 - **Python**: 3.10-3.13 compatibility
 - **Platforms**: macOS, Linux, Windows (all fully supported)
 - **Audio Quality**: 48kHz mono MP3, professional audiobook standard
@@ -417,16 +424,19 @@ sudo apt-get install ffmpeg
 # Or use: choco install ffmpeg
 ```
 
-### Models Directory Missing
-**Error**: `Kokoro models not found` or `models/ directory empty`
+### Models Not Downloading
+**Error**: `Failed to download Kokoro models`
 
 **Solution**:
-The Kokoro TTS models (~300MB) are downloaded automatically on first use. If download fails:
+Models auto-download on first use (~310MB). If automatic download fails:
 ```bash
-# Manual download
-mkdir -p models/kokoro
-# Models will auto-download on next run, or download from:
-# https://huggingface.co/hexgrad/Kokoro-82M
+# Manual download via CLI
+reader download-models
+
+# Check cache location
+# macOS: ~/Library/Caches/audiobook-reader/models/
+# Linux: ~/.cache/audiobook-reader/models/
+# Windows: %LOCALAPPDATA%\audiobook-reader\models\
 ```
 
 ### Neural Engine Not Detected (Apple Silicon)

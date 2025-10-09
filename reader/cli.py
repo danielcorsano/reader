@@ -97,17 +97,13 @@ class ReaderApp:
         except Exception as e:
             # Show helpful error and exit
             error_str = str(e)
-            if "Kokoro models not found" in error_str or "does not exist" in error_str:
-                print("❌ Error: Kokoro models not found.")
+            if "Failed to download" in error_str or "Kokoro models not found" in error_str:
+                print("❌ Error: Kokoro models not available.")
                 print()
-                print("The Kokoro TTS models (~300MB) will be downloaded automatically on first use.")
-                print("If download fails, manually download from:")
-                print("  https://huggingface.co/hexgrad/Kokoro-82M")
+                print("💡 Try: reader download-models")
+                print("   Or check your internet connection")
                 print()
-                print("💡 Limited storage? Try reader-small package instead:")
-                print("  pip install reader-small")
-                print()
-                raise RuntimeError("Kokoro models required. See docs/KOKORO_SETUP.md") from e
+                raise RuntimeError("Kokoro models required") from e
             elif "ModuleNotFoundError" in error_str or "ImportError" in error_str:
                 print("❌ Error: Missing dependencies.")
                 print()
@@ -984,6 +980,32 @@ def info():
         click.echo("\n💡 Tip: Run 'reader convert' to create audiobooks!")
     else:
         click.echo("\n🎉 Great! You have text and audio files ready.")
+
+
+@cli.command()
+@click.option('--force', is_flag=True, help='Force re-download even if models exist')
+def download_models(force):
+    """Download Kokoro TTS models (~310MB) to cache directory."""
+    from .utils.model_downloader import download_models as do_download, get_cache_dir
+
+    cache = get_cache_dir() / "kokoro"
+
+    if not force:
+        model = cache / "kokoro-v1.0.onnx"
+        voices = cache / "voices-v1.0.bin"
+        if model.exists() and voices.exists():
+            click.echo(f"✅ Models already installed at: {cache}")
+            click.echo(f"   Use --force to re-download")
+            return
+
+    click.echo("📥 Downloading Kokoro TTS models...")
+    click.echo(f"   Location: {cache}")
+
+    if do_download(verbose=True):
+        click.echo("\n✅ Models ready! You can now use Kokoro TTS.")
+    else:
+        click.echo("\n❌ Download failed. Check your internet connection.")
+        raise click.Abort()
 
 
 # Phase 3 commands

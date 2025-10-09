@@ -61,17 +61,24 @@ class KokoroEngine(TTSEngine):
             if self.kokoro is None:
                 raise RuntimeError(f"Kokoro initialization failed: {self._init_error}")
             return
-            
+
         try:
-            # Initialize with proper model paths
-            model_path = Path(__file__).parent.parent.parent / "models" / "kokoro" / "kokoro-v1.0.onnx"
-            voices_path = Path(__file__).parent.parent.parent / "models" / "kokoro" / "voices-v1.0.bin"
-            
+            # Get model paths from cache directory
+            from ..utils.model_downloader import get_cache_dir, download_models
+
+            cache = get_cache_dir() / "kokoro"
+            model_path = cache / "kokoro-v1.0.onnx"
+            voices_path = cache / "voices-v1.0.bin"
+
+            # Auto-download if not present
             if not model_path.exists() or not voices_path.exists():
-                raise FileNotFoundError(f"Kokoro models not found. Please download:\n"
-                                      f"  {model_path}\n"
-                                      f"  {voices_path}\n"
-                                      f"See docs/KOKORO_SETUP.md for instructions")
+                print("📥 Kokoro models not found. Downloading (~310MB)...")
+                if not download_models(verbose=True):
+                    raise FileNotFoundError(
+                        f"Failed to download Kokoro models.\n"
+                        f"💡 Try: reader download-models\n"
+                        f"   Or check your internet connection"
+                    )
             
             # Try to initialize with CoreML for Apple Neural Engine acceleration
             try:
