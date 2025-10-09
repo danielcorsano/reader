@@ -9,9 +9,9 @@ description = "Professional audiobook production CLI with character-aware voices
 authors = ["corsano"]
 readme = "README.md"
 license = "MIT"
-homepage = "https://github.com/dcrsn/reader"
-repository = "https://github.com/dcrsn/reader"
-documentation = "https://github.com/dcrsn/reader/tree/main/docs"
+homepage = "https://github.com/danielcorsano/reader"
+repository = "https://github.com/danielcorsano/reader"
+documentation = "https://github.com/danielcorsano/reader/tree/main/docs"
 keywords = [
     "audiobook",
     "text-to-speech",

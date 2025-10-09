@@ -2,7 +2,7 @@
 
 [![PyPI](https://img.shields.io/pypi/v/reader)](https://pypi.org/project/reader/)
 [![Python](https://img.shields.io/pypi/pyversions/reader)](https://pypi.org/project/reader/)
-[![License](https://img.shields.io/pypi/l/reader)](https://github.com/dcrsn/reader/blob/main/LICENSE)
+[![License](https://img.shields.io/pypi/l/reader)](https://github.com/danielcorsano/reader/blob/main/LICENSE)
 [![Downloads](https://img.shields.io/pypi/dm/reader)](https://pypi.org/project/reader/)
 
 **Transform long-form text into professional audiobooks with character-aware voices, emotion analysis, and intelligent processing.**
@@ -96,7 +96,7 @@ pip install audiobook-reader[all]
 ### Using Poetry (for development)
 ```bash
 # Clone the repository
-git clone https://github.com/dcrsn/reader.git
+git clone https://github.com/danielcorsano/reader.git
 cd reader
 
 # Default installation
@@ -458,7 +458,7 @@ chmod -R u+w /path/to/reader
 
 # Or run from a directory you own
 cd ~/Documents
-git clone https://github.com/dcrsn/reader.git
+git clone https://github.com/danielcorsano/reader.git
 cd reader
 ```
 
@@ -500,7 +500,7 @@ poetry add onnxruntime-directml
 ```
 
 ### Still Having Issues?
-- Check the [GitHub Issues](https://github.com/dcrsn/reader/issues)
+- Check the [GitHub Issues](https://github.com/danielcorsano/reader/issues)
 - Run with debug mode: `reader convert --debug --file yourfile.txt`
 - Verify Python version: `python --version` (requires 3.10-3.13)
 

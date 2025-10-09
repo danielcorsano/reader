@@ -37,4 +37,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `reader config` - Configure default settings
 - `reader info` - Show application information
 
-[0.1.0]: https://github.com/dcrsn/reader/releases/tag/v0.1.0
+[0.1.0]: https://github.com/danielcorsano/reader/releases/tag/v0.1.0
