@@ -198,10 +198,10 @@ poetry run reader convert --characters --file text/mybook.txt
 
 ## 📖 Documentation
 
-- **[Usage Guide](docs/USAGE.md)** - Complete command reference and workflows
-- **[Examples](docs/EXAMPLES.md)** - Real-world examples and use cases
-- **[Phase 3 Features](docs/PHASE3_FEATURES.md)** - Advanced audiobook production features
-- **[Kokoro Setup](docs/KOKORO_SETUP.md)** - Neural TTS model setup guide
+- **[Usage Guide](https://github.com/danielcorsano/reader/blob/main/docs/USAGE.md)** - Complete command reference and workflows
+- **[Examples](https://github.com/danielcorsano/reader/blob/main/docs/EXAMPLES.md)** - Real-world examples and use cases
+- **[Phase 3 Features](https://github.com/danielcorsano/reader/blob/main/docs/PHASE3_FEATURES.md)** - Advanced audiobook production features
+- **[Kokoro Setup](https://github.com/danielcorsano/reader/blob/main/docs/KOKORO_SETUP.md)** - Neural TTS model setup guide
 
 ## 🎙️ Command Reference
 
@@ -519,4 +519,4 @@ This audiobook CLI tool is licensed under the MIT License. See `LICENSE` file fo
 
 ---
 
-**Ready to create your first audiobook?** Check out the **[Usage Guide](docs/USAGE.md)** for step-by-step instructions!
+**Ready to create your first audiobook?** Check out the **[Usage Guide](https://github.com/danielcorsano/reader/blob/main/docs/USAGE.md)** for step-by-step instructions!
