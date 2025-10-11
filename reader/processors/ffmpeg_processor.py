@@ -83,10 +83,12 @@ class FFmpegAudioProcessor(AudioProcessor):
     def _get_export_parameters(self, format: str) -> Dict[str, Any]:
         """Get optimal export parameters for each format."""
         format = format.lower()
-        
+
         if format == 'mp3':
+            from ..config import ConfigManager
+            bitrate = ConfigManager().config.audio.bitrate
             return {
-                'bitrate': '48k',  # Ultra-low bitrate for maximum compression and speed
+                'bitrate': bitrate,
                 'parameters': ['-q:a', '6', '-ac', '1']  # VBR quality 6 (higher compression), mono for speed
             }
         elif format in ['m4a', 'm4b']:

@@ -93,22 +93,6 @@ pip install audiobook-reader[monitoring]
 pip install audiobook-reader[all]
 ```
 
-### Using Poetry (for development)
-```bash
-# Clone the repository
-git clone https://github.com/danielcorsano/reader.git
-cd reader
-
-# Default installation
-poetry install
-
-# With optional extras
-poetry install --extras "progress-full"
-
-# Install all extras
-poetry install --extras "all"
-```
-
 ### Hardware Acceleration Options
 
 audiobook-reader works great on **all platforms**. For maximum performance, enable hardware acceleration:
@@ -125,28 +109,18 @@ pip install audiobook-reader
 Get **CUDA acceleration** with a simple package swap:
 
 ```bash
-# Using pip
 pip install audiobook-reader
 pip uninstall onnxruntime
 pip install onnxruntime-gpu
-
-# Using poetry
-poetry remove onnxruntime
-poetry add onnxruntime-gpu
 ```
 
 #### ✅ AMD/Intel GPU (Windows)
 Get **DirectML acceleration**:
 
 ```bash
-# Using pip
 pip install audiobook-reader
 pip uninstall onnxruntime
 pip install onnxruntime-directml
-
-# Using poetry
-poetry remove onnxruntime
-poetry add onnxruntime-directml
 ```
 
 #### ✅ CPU Only (All Platforms)
@@ -164,7 +138,8 @@ pip install audiobook-reader
 pip install audiobook-reader
 
 # 2. Models auto-download on first use (~310MB)
-#    Or manually: reader download-models
+#    Or manually: reader download models
+#    For permanent local storage: reader download models --local
 
 # 3. Add a text file
 echo "Hello world! This is my first audiobook." > text/hello.txt
@@ -181,7 +156,7 @@ For books with dialogue, assign different voices to each character:
 
 ```bash
 # Auto-detect characters and generate config
-poetry run reader characters detect text/mybook.txt --auto-assign
+reader characters detect text/mybook.txt --auto-assign
 
 # OR manually create mybook.characters.yaml:
 # characters:
@@ -193,7 +168,7 @@ poetry run reader characters detect text/mybook.txt --auto-assign
 #     gender: male
 
 # Convert with character voices
-poetry run reader convert --characters --file text/mybook.txt
+reader convert --characters --file text/mybook.txt
 ```
 
 ## 📖 Documentation
@@ -208,46 +183,46 @@ poetry run reader convert --characters --file text/mybook.txt
 ### Basic Conversion
 ```bash
 # Convert single file with Neural Engine acceleration
-poetry run reader convert --file text/book.epub
+reader convert --file text/book.epub
 
 # Convert with specific voice
-poetry run reader convert --file text/book.epub --voice am_michael
+reader convert --file text/book.epub --voice am_michael
 
 # Kokoro is the TTS engine
 
 # Enable debug mode to see Neural Engine status
-poetry run reader convert --file text/book.epub --debug
+reader convert --file text/book.epub --debug
 ```
 
 ### 📊 Progress Visualization Options
 
 ```bash
 # Simple text progress (default)
-poetry run reader convert --progress-style simple --file "book.epub"
+reader convert --progress-style simple --file "book.epub"
 
-# Professional progress bars with speed metrics  
-poetry run reader convert --progress-style tqdm --file "book.epub"
+# Professional progress bars with speed metrics
+reader convert --progress-style tqdm --file "book.epub"
 
 # Beautiful Rich formatted displays with colors
-poetry run reader convert --progress-style rich --file "book.epub"
+reader convert --progress-style rich --file "book.epub"
 
 # Real-time ASCII charts showing processing speed
-poetry run reader convert --progress-style timeseries --file "book.epub"
+reader convert --progress-style timeseries --file "book.epub"
 ```
 
 ### Configuration Management
 ```bash
 # Save permanent settings to config file
-poetry run reader config --engine kokoro --voice am_michael --format mp3
+reader config --engine kokoro --voice am_michael --format mp3
 
 # List available Kokoro voices
-poetry run reader voices
+reader voices
 
 # View current configuration
-poetry run reader config
+reader config
 
 # View application info and features
-poetry run reader info
+reader info
 ```
 
 ### **Parameter Hierarchy (How Settings Work)**
@@ -258,10 +233,10 @@ poetry run reader info
 Example:
 ```bash
 # Save your preferred settings
-poetry run reader config --engine kokoro --voice am_michael --format mp3
+reader config --engine kokoro --voice am_michael --format mp3
 
 # Use temporary override (doesn't change your saved config)
-poetry run reader convert --voice af_sarah
+reader convert --voice af_sarah
 
 # Your config file still has kokoro/am_michael/mp3 saved
 ```
@@ -278,7 +253,7 @@ poetry run reader convert --voice af_sarah
 | ReStructuredText | `.rst` | ✅ Header-based |
 
 ### Output Formats
-- **MP3** (default) - 48kHz mono, optimized for audiobooks
+- **MP3** (default) - 48kHz mono, configurable bitrate (32k-64k, default 48k)
 - **WAV** - Uncompressed, high quality
 - **M4A** - Apple-friendly format
 - **M4B** - Audiobook format with chapter support
@@ -308,7 +283,7 @@ reader/
 cp "My Novel.epub" text/
 
 # Convert with Neural Engine acceleration
-poetry run reader convert
+reader convert
 
 # Result: finished/My Novel_kokoro_am_michael.mp3
 ```
@@ -316,9 +291,9 @@ poetry run reader convert
 ### Voice Comparison
 ```bash
 # Test different Kokoro voices on same content
-poetry run reader convert --voice af_sarah --file text/sample.txt
-poetry run reader convert --voice am_adam --file text/sample.txt
-poetry run reader convert --voice bf_emma --file text/sample.txt
+reader convert --voice af_sarah --file text/sample.txt
+reader convert --voice am_adam --file text/sample.txt
+reader convert --voice bf_emma --file text/sample.txt
 
 # Compare finished/sample_*.mp3 outputs
 ```
@@ -329,8 +304,8 @@ poetry run reader convert --voice bf_emma --file text/sample.txt
 cp book1.epub book2.pdf story.txt text/
 
 # Set default voice and convert all
-poetry run reader config --voice am_michael --speed 1.0
-poetry run reader convert
+reader config --voice am_michael --speed 1.0
+reader convert
 
 # Results: finished/book1_*.mp3, finished/book2_*.mp3, finished/story_*.mp3
 ```
@@ -347,6 +322,7 @@ tts:
   volume: 1.0              # Volume level
 audio:
   format: mp3              # Output format (mp3, wav, m4a, m4b)
+  bitrate: 48k             # MP3 bitrate (32k-64k typical for audiobooks)
   add_metadata: true       # Metadata support
 processing:
   chunk_size: 400          # Text chunk size for processing (Kokoro optimal)
@@ -385,7 +361,7 @@ See **[docs/EXAMPLES.md](https://github.com/danielcorsano/reader/blob/main/docs/
 - **Model Cache**: Follows XDG standard (`~/.cache/audiobook-reader/models/`)
 - **Python**: 3.10-3.13 compatibility
 - **Platforms**: macOS, Linux, Windows (all fully supported)
-- **Audio Quality**: 48kHz mono MP3, professional audiobook standard
+- **Audio Quality**: 48kHz mono MP3, configurable bitrate (32k-64k, default 48k)
 - **Hardware Acceleration**:
   - ✅ Apple Silicon (M1/M2/M3/M4): CoreML (Neural Engine) - automatic
   - ✅ NVIDIA GPUs: CUDA via onnxruntime-gpu
@@ -429,14 +405,24 @@ sudo apt-get install ffmpeg
 **Solution**:
 Models auto-download on first use (~310MB). If automatic download fails:
 ```bash
-# Manual download via CLI
-reader download-models
+# Download to system cache (default)
+reader download models
 
-# Check cache location
-# macOS: ~/Library/Caches/audiobook-reader/models/
-# Linux: ~/.cache/audiobook-reader/models/
-# Windows: %LOCALAPPDATA%\audiobook-reader\models\
+# Download to local models/ folder (permanent storage)
+reader download models --local
+
+# Force re-download
+reader download models --force
 ```
+
+**Model Storage Options:**
+- **Cache** (default): System cache directory, shared across installations
+  - macOS: `~/Library/Caches/audiobook-reader/models/`
+  - Linux: `~/.cache/audiobook-reader/models/`
+  - Windows: `%LOCALAPPDATA%\audiobook-reader\models\`
+- **Local** (`--local` flag): `models/` folder in package root
+  - Permanent local storage, survives cache clears
+  - Priority: Reader checks `models/` first, then falls back to cache
 
 ### Neural Engine Not Detected (Apple Silicon)
 **Error**: `Neural Engine not available, using CPU`
@@ -444,7 +430,7 @@ reader download-models
 **Solution**:
 - Ensure you're on Apple Silicon (M1/M2/M3/M4 Mac)
 - Update macOS to latest version
-- Reinstall onnxruntime: `poetry remove onnxruntime && poetry add onnxruntime`
+- Reinstall onnxruntime: `pip uninstall onnxruntime && pip install onnxruntime`
 - CPU processing works fine but is slower than GPU/NPU
 
 ### Permission Errors
@@ -466,11 +452,8 @@ cd reader
 
 **Solution**:
 ```bash
-# Reinstall dependencies
-poetry install
-
-# Or if using pip
-pip install --force-reinstall reader
+# Reinstall package
+pip install --force-reinstall audiobook-reader
 ```
 
 ### Invalid Input Format
@@ -488,14 +471,14 @@ pip install --force-reinstall reader
 ### GPU Acceleration Issues
 **NVIDIA GPU**: Requires `onnxruntime-gpu` instead of `onnxruntime`
 ```bash
-poetry remove onnxruntime
-poetry add onnxruntime-gpu
+pip uninstall onnxruntime
+pip install onnxruntime-gpu
 ```
 
 **AMD/Intel GPU (Windows)**: Requires `onnxruntime-directml`
 ```bash
-poetry remove onnxruntime
-poetry add onnxruntime-directml
+pip uninstall onnxruntime
+pip install onnxruntime-directml
 ```
 
 ### Still Having Issues?

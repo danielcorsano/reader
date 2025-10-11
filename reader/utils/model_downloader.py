@@ -4,9 +4,15 @@ from pathlib import Path
 
 
 def get_cache_dir() -> Path:
-    """Get models cache directory."""
+    """Get models directory. Checks models/ folder first, then system cache."""
     import platform
 
+    # Check package models/ folder first
+    package_models = Path(__file__).parent.parent.parent / "models"
+    if package_models.exists():
+        return package_models
+
+    # Fall back to system cache
     if platform.system() == "Windows":
         cache = Path.home() / "AppData/Local/audiobook-reader/models"
     elif platform.system() == "Darwin":
@@ -18,9 +24,11 @@ def get_cache_dir() -> Path:
     return cache
 
 
-def download_models(verbose: bool = True) -> bool:
-    """Download Kokoro models (~310MB) to cache if not present."""
-    cache = get_cache_dir() / "kokoro"
+def download_models(verbose: bool = True, target_dir: Path = None) -> bool:
+    """Download Kokoro models (~310MB)."""
+    cache = (target_dir or get_cache_dir()) / "kokoro"
+    cache.mkdir(parents=True, exist_ok=True)
+
     model = cache / "kokoro-v1.0.onnx"
     voices = cache / "voices-v1.0.bin"
 
@@ -46,5 +54,5 @@ def download_models(verbose: bool = True) -> bool:
     except Exception as e:
         if verbose:
             print(f"❌ Download failed: {e}")
-            print(f"💡 Run: reader download-models")
+            print(f"💡 Run: reader download models")
         return False

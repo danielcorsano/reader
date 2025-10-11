@@ -14,10 +14,10 @@ This directory contains comprehensive documentation for the Reader audiobook gen
 
 ## Getting Started
 
-1. **Install dependencies:** `poetry install`
-2. **Download Kokoro models:** See [KOKORO_SETUP.md](KOKORO_SETUP.md)
+1. **Install package:** `pip install audiobook-reader`
+2. **Models auto-download** on first use (see [KOKORO_SETUP.md](KOKORO_SETUP.md))
 3. **Add text files** to the `text/` folder
-4. **Convert to audiobook:** `poetry run reader convert`
+4. **Convert to audiobook:** `reader convert`
 5. **Find results** in the `finished/` folder
 
 For detailed instructions, see [USAGE.md](USAGE.md).

@@ -88,7 +88,7 @@ class ReaderApp:
 
         if not KOKORO_AVAILABLE:
             print("❌ Error: Kokoro engine not available.")
-            print("📥 Install: poetry install")
+            print("📥 Install: pip install audiobook-reader")
             print("📖 See: docs/KOKORO_SETUP.md")
             raise RuntimeError("Kokoro engine not available")
 
@@ -108,8 +108,7 @@ class ReaderApp:
                 print("❌ Error: Missing dependencies.")
                 print()
                 print("Reinstall reader with:")
-                print("  poetry install")
-                print("  or: pip install --force-reinstall reader")
+                print("  pip install --force-reinstall audiobook-reader")
                 print()
                 raise RuntimeError("Missing dependencies") from e
             else:
@@ -922,8 +921,8 @@ def info():
     # Quick start
     click.echo("\n🚀 Quick Start:")
     click.echo("1. Add text files to text/ folder (.epub, .pdf, .txt, .md)")
-    click.echo("2. Run: poetry run reader convert")
-    click.echo("3. Find audiobooks in audio/ folder")
+    click.echo("2. Run: reader convert")
+    click.echo("3. Find audiobooks in finished/ folder")
     
     # Basic commands
     click.echo("\n💻 Basic Commands:")
@@ -975,20 +974,28 @@ def info():
     if len(text_files) == 0:
         click.echo("\n💡 Tip: Add text files to get started!")
         click.echo("  echo 'Hello world!' > text/hello.txt")
-        click.echo("  poetry run reader convert")
+        click.echo("  reader convert")
     elif len(audio_files) == 0:
         click.echo("\n💡 Tip: Run 'reader convert' to create audiobooks!")
     else:
         click.echo("\n🎉 Great! You have text and audio files ready.")
 
 
-@cli.command()
+@cli.command('download')
+@click.argument('target', default='models')
+@click.option('--local', is_flag=True, help='Download to local models/ folder instead of cache')
 @click.option('--force', is_flag=True, help='Force re-download even if models exist')
-def download_models(force):
-    """Download Kokoro TTS models (~310MB) to cache directory."""
+def download_models(target, local, force):
+    """Download Kokoro TTS models (~310MB)."""
     from .utils.model_downloader import download_models as do_download, get_cache_dir
+    from pathlib import Path
 
-    cache = get_cache_dir() / "kokoro"
+    if target != 'models':
+        click.echo(f"Unknown target: {target}. Use 'reader download models'")
+        return
+
+    target_dir = Path.cwd() / "models" if local else None
+    cache = (target_dir or get_cache_dir()) / "kokoro"
 
     if not force:
         model = cache / "kokoro-v1.0.onnx"
@@ -998,10 +1005,10 @@ def download_models(force):
             click.echo(f"   Use --force to re-download")
             return
 
-    click.echo("📥 Downloading Kokoro TTS models...")
+    click.echo(f"📥 Downloading Kokoro TTS models...")
     click.echo(f"   Location: {cache}")
 
-    if do_download(verbose=True):
+    if do_download(verbose=True, target_dir=target_dir):
         click.echo("\n✅ Models ready! You can now use Kokoro TTS.")
     else:
         click.echo("\n❌ Download failed. Check your internet connection.")

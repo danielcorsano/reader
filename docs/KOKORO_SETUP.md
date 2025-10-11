@@ -43,19 +43,19 @@ samples, sample_rate = kokoro.create("Hello world!", voice="af_sarah", speed=1.0
 
 ```bash
 # Basic test with Neural Engine
-poetry run reader convert --debug --file text/sample.txt
+reader convert --debug --file text/sample.txt
 
 # Should show:
 # ✅ Kokoro initialized with Neural Engine acceleration (CoreML)
 # 🚀 Optimized settings: 48k mono MP3, Neural Engine acceleration
 
 # Test with different voices
-poetry run reader convert --voice af_sarah --file text/sample.txt
-poetry run reader convert --voice am_michael --file text/sample.txt
-poetry run reader convert --voice bf_emma --file text/sample.txt
+reader convert --voice af_sarah --file text/sample.txt
+reader convert --voice am_michael --file text/sample.txt
+reader convert --voice bf_emma --file text/sample.txt
 
 # List all available voices
-poetry run reader voices
+reader voices
 ```
 
 ## Troubleshooting

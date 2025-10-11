@@ -18,6 +18,7 @@ class TTSConfig:
 class AudioConfig:
     """Audio output configuration."""
     format: str = "mp3"  # Optimized mono MP3 for audiobooks
+    bitrate: str = "48k"  # MP3 bitrate (32k-64k typical for audiobooks)
     add_metadata: bool = True
 
 

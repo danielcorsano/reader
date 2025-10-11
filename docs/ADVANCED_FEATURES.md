@@ -406,11 +406,11 @@ Info: Kokoro models not yet downloaded. Will auto-download on first use.
 ```
 - **Solution**: Models download automatically on first successful use with internet
 
-**Format Conversion Fails**  
+**Format Conversion Fails**
 ```
 Error: Format conversion requires FFmpeg and pydub
 ```
-- **Solution**: Install with `poetry install` (The system dependencies)
+- **Solution**: FFmpeg must be installed separately (see troubleshooting section)
 
 **Batch Queue Empty**
 ```

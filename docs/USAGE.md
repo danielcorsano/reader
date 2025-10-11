@@ -2,9 +2,9 @@
 
 ## Quick Start
 
-1. **Install dependencies:**
+1. **Install package:**
    ```bash
-   poetry install
+   pip install audiobook-reader
    ```
 
 2. **Place text files in the `text/` folder:**
@@ -15,7 +15,7 @@
 
 3. **Convert to audiobook:**
    ```bash
-   poetry run reader convert
+   reader convert
    ```
 
 4. **Find your audiobook in the `finished/` folder!**
@@ -26,52 +26,52 @@
 
 ```bash
 # Convert all files in text/ folder
-poetry run reader convert
+reader convert
 
 # Convert with custom voice
-poetry run reader convert --voice "Samantha"
+reader convert --voice "Samantha"
 
 # Convert with custom speed (1.0 = normal, 1.5 = faster, 0.8 = slower)
-poetry run reader convert --speed 1.2
+reader convert --speed 1.2
 
 # Convert specific file
-poetry run reader convert --file path/to/book.epub
+reader convert --file path/to/book.epub
 
 # Combine options
-poetry run reader convert --voice "Daniel" --speed 1.1 --format wav
+reader convert --voice "Daniel" --speed 1.1 --format wav
 ```
 
 ### Voice Management
 
 ```bash
 # List all available voices
-poetry run reader voices
+reader voices
 
 # See voice details (gender, language)
-poetry run reader voices
+reader voices
 ```
 
 ### Configuration
 
 ```bash
 # View current settings
-poetry run reader config
+reader config
 
 # Set default voice
-poetry run reader config --voice "Alex"
+reader config --voice "Alex"
 
 # Set default speed
-poetry run reader config --speed 1.3
+reader config --speed 1.3
 
 # Set multiple defaults
-poetry run reader config --voice "Samantha" --speed 1.1
+reader config --voice "Samantha" --speed 1.1
 ```
 
 ### System Information
 
 ```bash
 # Show app info and file counts
-poetry run reader info
+reader info
 ```
 
 ## Supported File Formats
@@ -98,7 +98,7 @@ poetry run reader info
 echo "Hello world! This is my first audiobook." > text/hello.txt
 
 # 2. Convert it
-poetry run reader convert
+reader convert
 
 # 3. Listen to finished/hello_kokoro_am_michael.mp3
 ```
@@ -107,13 +107,13 @@ poetry run reader convert
 
 ```bash
 # Professional male voice
-poetry run reader convert --voice "Daniel"
+reader convert --voice "Daniel"
 
 # Clear female voice
-poetry run reader convert --voice "Samantha"
+reader convert --voice "Samantha"
 
 # Faster narration
-poetry run reader convert --voice "Alex" --speed 1.3
+reader convert --voice "Alex" --speed 1.3
 ```
 
 ### Batch Processing
@@ -123,7 +123,7 @@ poetry run reader convert --voice "Alex" --speed 1.3
 cp book1.epub book2.pdf story.txt text/
 
 # Convert all at once
-poetry run reader convert
+reader convert
 
 # Results:
 # - finished/book1_kokoro_am_michael.mp3
@@ -138,7 +138,7 @@ poetry run reader convert
 curl -o text/alice.epub "https://www.gutenberg.org/ebooks/11.epub.noimages"
 
 # Convert with custom settings
-poetry run reader convert --voice "Alice" --speed 1.0
+reader convert --voice "Alice" --speed 1.0
 
 # Result: finished/alice_kokoro_am_michael.mp3
 ```
@@ -147,16 +147,16 @@ poetry run reader convert --voice "Alice" --speed 1.0
 
 ```bash
 # First, find your preferred voice
-poetry run reader voices | grep -i female
+reader voices | grep -i female
 
 # Set it as default
-poetry run reader config --voice "Samantha" --speed 1.1
+reader config --voice "Samantha" --speed 1.1
 
 # Now all conversions use these settings
-poetry run reader convert
+reader convert
 
 # Override for specific books
-poetry run reader convert --voice "Daniel"  # Uses Daniel, but keeps speed 1.1
+reader convert --voice "Daniel"  # Uses Daniel, but keeps speed 1.1
 ```
 
 ## Tips & Tricks
@@ -193,7 +193,7 @@ text/
 **No voices available:**
 ```bash
 # Check system voices
-poetry run reader voices
+reader voices
 ```
 
 **File not converting:**
@@ -234,56 +234,56 @@ Current features include neural TTS, emotion detection, and character voice mapp
 ### Neural TTS with Kokoro (Default)
 ```bash
 # Use Kokoro neural TTS (48+ voices, 8 languages)
-poetry run reader convert --engine kokoro
+reader convert --engine kokoro
 
 # Explicitly set Kokoro (already default)
-poetry run reader convert --engine kokoro
+reader convert --engine kokoro
 ```
 
 ### Emotion-Aware Conversion
 ```bash
 # Enable emotion detection
-poetry run reader convert --emotion
+reader convert --emotion
 
 # With character voice mapping
-poetry run reader convert --characters --file text/novel.txt
+reader convert --characters --file text/novel.txt
 ```
 
 ### Progress Visualization
 ```bash
 # ASCII timeseries chart with real-time speed graph (default)
-poetry run reader convert --progress-style timeseries
+reader convert --progress-style timeseries
 
 # Simple text progress
-poetry run reader convert --progress-style simple
+reader convert --progress-style simple
 
 # TQDM progress bars with speed metrics
-poetry run reader convert --progress-style tqdm
+reader convert --progress-style tqdm
 
 # Rich formatted display
-poetry run reader convert --progress-style rich
+reader convert --progress-style rich
 
 # ASCII timeseries chart (real-time speed graph)
-poetry run reader convert --progress-style timeseries
+reader convert --progress-style timeseries
 ```
 
 ### Debug Mode
 ```bash
 # See detailed processing info and Neural Engine status
-poetry run reader convert --debug --file text/sample.txt
+reader convert --debug --file text/sample.txt
 ```
 
 ### Character Voice Management
 ```bash
 # Add character-to-voice mapping
-poetry run reader characters add "Alice" "af_sarah"
-poetry run reader characters add "Bob" "am_adam"
+reader characters add "Alice" "af_sarah"
+reader characters add "Bob" "am_adam"
 
 # List character mappings
-poetry run reader characters list
+reader characters list
 
 # Remove character mapping
-poetry run reader characters remove "Alice"
+reader characters remove "Alice"
 ```
 
 ### Available Kokoro Voices
@@ -292,7 +292,7 @@ American English: `af_sarah`, `af_nicole`, `am_michael`, `am_adam`
 British English: `bf_emma`, `bf_isabella`, `bm_george`, `bm_lewis`
 And 40+ more across Spanish, French, Italian, Portuguese, Japanese, Korean, Chinese
 
-See full list with: `poetry run reader voices`
+See full list with: `reader voices`
 
 ## Next Steps
 

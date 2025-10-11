@@ -19,7 +19,7 @@ And so began their journey into the world of automated audiobook creation.
 EOF
 
 # Convert to audiobook
-poetry run reader convert --voice "Samantha" --speed 1.0
+reader convert --voice "Samantha" --speed 1.0
 
 # Result: finished/short-story_kokoro_am_michael.mp3
 ```
@@ -38,8 +38,8 @@ echo "# Romance Story
 Under the moonlight..." > text/romance.md
 
 # Convert all with different voices
-poetry run reader config --voice "Daniel"
-poetry run reader convert
+reader config --voice "Daniel"
+reader convert
 
 # Results:
 # - finished/sci-fi_kokoro_am_michael.mp3
@@ -51,20 +51,20 @@ poetry run reader convert
 
 ```bash
 # Find your preferred voice
-poetry run reader voices | head -20
+reader voices | head -20
 
 # Test different Kokoro voices with a sample
 echo "Hello, this is a test of the emergency broadcast system." > text/voice-test.txt
 
-poetry run reader convert --voice af_sarah --file text/voice-test.txt
-poetry run reader convert --voice am_michael --file text/voice-test.txt
-poetry run reader convert --voice bf_emma --file text/voice-test.txt
+reader convert --voice af_sarah --file text/voice-test.txt
+reader convert --voice am_michael --file text/voice-test.txt
+reader convert --voice bf_emma --file text/voice-test.txt
 
 # Set your favorite as default
-poetry run reader config --voice am_michael --speed 1.0
+reader config --voice am_michael --speed 1.0
 
 # Confirm settings
-poetry run reader config
+reader config
 ```
 
 ## Example 4: PDF Document Processing
@@ -93,7 +93,7 @@ Your widget is now assembled and ready for use.
 EOF
 
 # Convert with slower, clear speech for technical content
-poetry run reader convert --voice am_michael --speed 0.9
+reader convert --voice am_michael --speed 0.9
 
 # Result: finished/technical-manual_kokoro_am_michael_speed0p9.mp3
 ```
@@ -131,7 +131,7 @@ You've learned the basics of Python programming!
 EOF
 
 # Convert with clear, educational voice
-poetry run reader convert --voice am_michael --speed 1.0
+reader convert --voice am_michael --speed 1.0
 
 # Result: finished/tutorial_kokoro_am_michael.mp3 (with automatic chapter detection)
 ```
@@ -149,17 +149,17 @@ echo "How to learn programming..." > text/tutorials/coding.txt
 echo "History of ancient Rome..." > text/non-fiction/history.txt
 
 # Process all fiction with one voice
-poetry run reader config --voice af_sarah
-poetry run reader convert --file text/fiction/fantasy.txt
-poetry run reader convert --file text/fiction/sci-fi.txt
+reader config --voice af_sarah
+reader convert --file text/fiction/fantasy.txt
+reader convert --file text/fiction/sci-fi.txt
 
 # Process tutorials with clear, slower voice
-poetry run reader config --voice am_michael --speed 0.9
-poetry run reader convert --file text/tutorials/coding.txt
+reader config --voice am_michael --speed 0.9
+reader convert --file text/tutorials/coding.txt
 
 # Process non-fiction with British narrator
-poetry run reader config --voice bm_george --speed 1.0
-poetry run reader convert --file text/non-fiction/history.txt
+reader config --voice bm_george --speed 1.0
+reader convert --file text/non-fiction/history.txt
 
 # Check results
 ls -la finished/
@@ -174,13 +174,13 @@ echo "Meditation guide: Close your eyes and breathe deeply..." > text/meditation
 echo "Quick recipe: Boil water, add pasta, cook 8 minutes..." > text/recipe.txt
 
 # News - faster pace
-poetry run reader convert --voice am_michael --speed 1.3 --file text/news.txt
+reader convert --voice am_michael --speed 1.3 --file text/news.txt
 
 # Meditation - slow, calming pace
-poetry run reader convert --voice af_sarah --speed 0.7 --file text/meditation.txt
+reader convert --voice af_sarah --speed 0.7 --file text/meditation.txt
 
 # Recipe - normal, clear pace
-poetry run reader convert --voice bf_emma --speed 1.0 --file text/recipe.txt
+reader convert --voice bf_emma --speed 1.0 --file text/recipe.txt
 ```
 
 ## Example 8: Testing Voice Characteristics
@@ -198,7 +198,7 @@ voices=("af_sarah" "am_michael" "bf_emma" "bm_george" "af_nicole")
 
 for voice in "${voices[@]}"; do
     echo "Testing voice: $voice"
-    poetry run reader convert --voice "$voice" --file text/voice-sample.txt
+    reader convert --voice "$voice" --file text/voice-sample.txt
     # Files automatically saved with voice name in filename
 done
 
@@ -213,14 +213,14 @@ chmod +x test-voices.sh
 
 ```bash
 # Check system status
-poetry run reader info
+reader info
 
 # List all available voices with details
-poetry run reader voices > available-voices.txt
+reader voices > available-voices.txt
 echo "Saved voice list to available-voices.txt"
 
 # Check current configuration
-poetry run reader config > current-config.txt
+reader config > current-config.txt
 echo "Saved configuration to current-config.txt"
 
 # Test file detection
@@ -228,22 +228,22 @@ echo "Test file" > text/test.txt
 echo "Test epub" > text/test.epub  
 echo "Test pdf content" > text/test.pdf
 
-poetry run reader info  # Should show 3 supported files
+reader info  # Should show 3 supported files
 ```
 
 ## Example 10: Advanced Configuration
 
 ```bash
 # Test different configurations
-poetry run reader convert --voice af_sarah --speed 1.2 --file text/sample.txt
-poetry run reader convert --voice am_michael --speed 1.0 --file text/sample.txt
-poetry run reader convert --voice bf_emma --speed 0.8 --file text/sample.txt
+reader convert --voice af_sarah --speed 1.2 --file text/sample.txt
+reader convert --voice am_michael --speed 1.0 --file text/sample.txt
+reader convert --voice bf_emma --speed 0.8 --file text/sample.txt
 
 # Compare results - files are named with voice and speed
 echo "Listen to finished/sample_*.mp3 to compare voices and speeds"
 
 # Set preferred config
-poetry run reader config --voice am_michael --speed 1.0
+reader config --voice am_michael --speed 1.0
 ```
 
 ## Tips for Best Results
