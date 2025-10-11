@@ -5,8 +5,8 @@ build-backend = "poetry.core.masonry.api"
 [tool.poetry]
 name = "audiobook-reader"
 version = "0.1.2"
-description = "AI-powered audiobook generator with GPU/NPU acceleration. Features character-aware voices, emotion analysis, and professional audio production with Kokoro-82M TTS."
-authors = ["corsano"]
+description = "AI-powered audiobook generator with GPU/NPU acceleration (up to 6x faster than real-time). Built-in Kokoro-82M TTS with character-aware voices and emotion analysis."
+authors = ["danielcorsano"]
 readme = "README.md"
 license = "MIT"
 homepage = "https://github.com/danielcorsano/reader"

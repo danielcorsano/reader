@@ -84,10 +84,10 @@ poetry run reader info
 - **`.rst`** - ReStructuredText files
 
 ### Output Formats
-- **`.mp3`** - 48kHz mono, optimized for audiobooks (default)
-- **`.wav`** - Uncompressed audio
-- **`.m4a`** - Apple-friendly format
-- **`.m4b`** - Audiobook format with chapter support
+- **`.mp3`** - 48kHz mono, 48kbps VBR (optimized for speech, default)
+- **`.wav`** - 48kHz mono PCM, uncompressed (highest quality)
+- **`.m4a`** - 48kHz AAC 128kbps (Apple ecosystem)
+- **`.m4b`** - 48kHz AAC 128kbps with chapter markers (professional audiobook format)
 
 ## Examples
 
@@ -205,7 +205,6 @@ poetry run reader voices
 - Kokoro TTS provides professional neural voices
 - Output: 48kHz mono MP3, optimized for audiobooks
 - Adjust `--speed` to find comfortable pace
-- Limited storage/processing? Try reader-small package
 
 ## Configuration File
 
@@ -213,7 +212,7 @@ Settings are saved to `config/settings.yaml`:
 
 ```yaml
 tts:
-  engine: kokoro          # kokoro or pyttsx3
+  engine: kokoro          # TTS engine (kokoro)
   voice: am_michael       # Kokoro voice ID
   speed: 1.0
   volume: 1.0

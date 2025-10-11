@@ -200,7 +200,7 @@ poetry run reader convert --characters --file text/mybook.txt
 
 - **[Usage Guide](https://github.com/danielcorsano/reader/blob/main/docs/USAGE.md)** - Complete command reference and workflows
 - **[Examples](https://github.com/danielcorsano/reader/blob/main/docs/EXAMPLES.md)** - Real-world examples and use cases
-- **[Phase 3 Features](https://github.com/danielcorsano/reader/blob/main/docs/PHASE3_FEATURES.md)** - Advanced audiobook production features
+- **[Advanced Features](https://github.com/danielcorsano/reader/blob/main/docs/ADVANCED_FEATURES.md)** - Professional audiobook production features
 - **[Kokoro Setup](https://github.com/danielcorsano/reader/blob/main/docs/KOKORO_SETUP.md)** - Neural TTS model setup guide
 
 ## 🎙️ Command Reference
@@ -213,8 +213,7 @@ poetry run reader convert --file text/book.epub
 # Convert with specific voice
 poetry run reader convert --file text/book.epub --voice am_michael
 
-# Kokoro is the only engine in this package
-# For limited storage/processing power, see reader-small package
+# Kokoro is the TTS engine
 
 # Enable debug mode to see Neural Engine status
 poetry run reader convert --file text/book.epub --debug
@@ -241,7 +240,7 @@ poetry run reader convert --progress-style timeseries --file "book.epub"
 # Save permanent settings to config file
 poetry run reader config --engine kokoro --voice am_michael --format mp3
 
-# List available voices (both pyttsx3 and Kokoro)
+# List available Kokoro voices
 poetry run reader voices
 
 # View current configuration
@@ -261,8 +260,8 @@ Example:
 # Save your preferred settings
 poetry run reader config --engine kokoro --voice am_michael --format mp3
 
-# Use temporary override (doesn't change your saved config)  
-poetry run reader convert --engine pyttsx3 --voice af_sarah
+# Use temporary override (doesn't change your saved config)
+poetry run reader convert --voice af_sarah
 
 # Your config file still has kokoro/am_michael/mp3 saved
 ```
@@ -294,7 +293,7 @@ reader/
 ├── config/                 # ⚙️ Configuration files
 ├── models/                 # 🤖 Kokoro TTS models
 └── reader/
-    ├── engines/           # 🎙️ TTS engines (Kokoro, pyttsx3)
+    ├── engines/           # 🎙️ TTS engine (Kokoro)
     ├── parsers/           # 📖 File format parsers
     ├── batch/             # 💾 Neural Engine processor
     ├── analysis/          # 🎭 Emotion/dialogue detection
@@ -342,7 +341,7 @@ Settings are saved to `config/settings.yaml`:
 
 ```yaml
 tts:
-  engine: kokoro           # TTS engine (kokoro or pyttsx3)
+  engine: kokoro           # TTS engine (Kokoro)
   voice: am_michael        # Default voice
   speed: 1.0               # Speech rate multiplier
   volume: 1.0              # Volume level
@@ -372,7 +371,7 @@ class MyCustomTTS(TTSEngine):
 
 ## 🎯 Quick Examples
 
-See **[docs/EXAMPLES.md](docs/EXAMPLES.md)** for detailed examples including:
+See **[docs/EXAMPLES.md](https://github.com/danielcorsano/reader/blob/main/docs/EXAMPLES.md)** for detailed examples including:
 - Voice testing and selection
 - PDF processing workflows  
 - Markdown chapter handling
@@ -446,7 +445,7 @@ reader download-models
 - Ensure you're on Apple Silicon (M1/M2/M3/M4 Mac)
 - Update macOS to latest version
 - Reinstall onnxruntime: `poetry remove onnxruntime && poetry add onnxruntime`
-- CPU fallback works fine but is slower
+- CPU processing works fine but is slower than GPU/NPU
 
 ### Permission Errors
 **Error**: `Permission denied` when creating directories

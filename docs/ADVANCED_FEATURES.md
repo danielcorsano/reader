@@ -1,30 +1,8 @@
-# Phase 3 Features Documentation
+# Advanced Features Documentation
 
 ## Overview
 
-Phase 3 transforms the reader CLI into a professional audiobook production system with advanced features for processing, analysis, and batch conversion.
-
-## 🎯 Processing Levels
-
-### Configurable Processing Modes
-
-Switch between different feature sets based on your needs:
-
-```bash
-# Basic mode - pyttsx3 only, WAV output
-reader config --processing-level phase1
-
-# Neural TTS mode - Kokoro voices + emotion analysis  
-reader config --processing-level phase2
-
-# Professional mode - All features enabled
-reader config --processing-level phase3
-```
-
-**Benefits**: 
-- Test different quality levels easily
-- Use simpler processing for quick prototypes
-- Full features for final production
+Professional audiobook production system with advanced features for processing, analysis, and batch conversion.
 
 ---
 
@@ -130,14 +108,14 @@ ls comparison/
 Process books with minimal memory usage and automatic resume capability:
 
 ```bash
-# Convert with streaming checkpoints (recommended)
-reader convert book.epub --batch-mode --voice am_michael --engine kokoro
+# Convert with automatic checkpoints
+reader convert book.epub --voice am_michael --engine kokoro
 
-# Resume interrupted conversion automatically
-reader convert book.epub --batch-mode  # Detects existing progress and continues
+# Resume interrupted conversion (detects existing progress automatically)
+reader convert book.epub
 
-# Custom checkpoint frequency (default: every 25 chunks)
-reader convert book.epub --batch-mode --checkpoint-interval 50
+# Custom checkpoint frequency (default: every 50 chunks)
+reader convert book.epub --checkpoint-interval 100
 ```
 
 ### How Stream Checkpoints Work
@@ -199,7 +177,6 @@ reader batch clear
 
 ```bash
 # Setup: Convert entire book collection
-reader config --processing-level phase3
 reader config --format m4b  # Professional audiobook format
 
 # Add all books recursively
@@ -237,7 +214,7 @@ reader batch process --max-workers 4 --save-progress
 
 ### Professional Audiobook Production
 
-Phase 3 supports multiple output formats with metadata:
+The system supports multiple output formats with metadata:
 
 ```bash
 # Standard MP3 with metadata
@@ -273,7 +250,7 @@ M4B files include:
 
 ### Advanced Text Processing
 
-Phase 3 analyzes text for intelligent voice assignment:
+The system analyzes text for intelligent voice assignment:
 
 ```bash
 # Enable dialogue detection
@@ -316,12 +293,11 @@ reader config
 
 # Sample output:
 # Current configuration:
-#   Processing level: phase3
-#   Engine: pyttsx3  
+#   Engine: kokoro  
 #   Voice: default
 #   Speed: 1.0x
 #   Audio format: wav
-#   Phase 3 Features:
+#   Advanced Features:
 #     Dialogue detection: true
 #     Advanced audio formats: true
 #     Chapter metadata: true
@@ -330,13 +306,7 @@ reader config
 ### Workflow-Specific Configs
 
 ```bash
-# Quick draft mode
-reader config --processing-level phase1 --speed 1.5
-
-# Quality production mode  
-reader config --processing-level phase3 --format m4b
-
-# Character-heavy fiction
+# Enable character-specific voices with emotion analysis
 reader config --characters --emotion --dialogue
 ```
 
@@ -348,7 +318,6 @@ reader config --characters --emotion --dialogue
 
 ```bash
 # Setup for high-quality audiobook
-reader config --processing-level phase3
 reader config --format m4b
 
 # Preview voices to choose narrator
@@ -368,7 +337,6 @@ reader convert novel.epub --voice af_sarah --chapters --dialogue --emotion
 
 ```bash
 # Setup batch processing
-reader config --processing-level phase2  # Good balance of quality/speed
 reader config --format mp3
 
 # Add entire library
@@ -407,13 +375,13 @@ reader convert harry_potter.epub --characters --dialogue --emotion
 
 | Mode | Speed | Quality | Use Case |
 |------|-------|---------|----------|
-| Phase 1 | Fastest | Basic | Quick drafts, testing |
-| Phase 2 | Medium | High | Most audiobooks |
-| Phase 3 | Slower | Highest | Professional production |
+| Fast conversion | Fastest | Good | Quick drafts, testing |
+| Standard conversion | Medium | High | Most audiobooks |
+| Full feature conversion | Slower | Highest | Maximum quality with all features |
 
 ### Optimization Tips
 
-1. **Use Phase 1** for initial testing and iteration
+1. **Use Basic mode** for initial testing and iteration
 2. **Batch Processing** is more efficient than individual conversions
 3. **Match workers** to your CPU cores (typically 2-8 workers)
 4. **WAV format** is fastest, M4B takes longer due to processing
@@ -434,7 +402,7 @@ reader convert harry_potter.epub --characters --dialogue --emotion
 
 **Kokoro Models Not Found**
 ```
-Info: Kokoro models not yet downloaded. Using pyttsx3 for now.
+Info: Kokoro models not yet downloaded. Will auto-download on first use.
 ```
 - **Solution**: Models download automatically on first successful use with internet
 
@@ -442,7 +410,7 @@ Info: Kokoro models not yet downloaded. Using pyttsx3 for now.
 ```
 Error: Format conversion requires FFmpeg and pydub
 ```
-- **Solution**: Install with `poetry install` (Phase 3 dependencies)
+- **Solution**: Install with `poetry install` (The system dependencies)
 
 **Batch Queue Empty**
 ```
@@ -469,9 +437,9 @@ reader chapters --help
 
 ## 🎉 Summary
 
-Phase 3 transforms a simple TTS tool into a professional audiobook production system:
+The system transforms a simple TTS tool into a professional audiobook production system:
 
-- ✅ **Intelligent Processing**: 3 configurable levels for any workflow
+- ✅ **Intelligent Processing**: multiple processing options for any workflow
 - ✅ **Chapter Management**: Automatic detection and professional metadata  
 - ✅ **Voice System**: Preview, compare, and assign voices intelligently
 - ✅ **Batch Processing**: Efficient bulk conversion with progress tracking
