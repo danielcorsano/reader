@@ -7,5 +7,5 @@ Features emotion detection, character voice mapping, and professional audio outp
 For system TTS fallback support, see reader-small package.
 """
 
-__version__ = "0.1.2"
-__author__ = "corsano"
+__version__ = "0.1.3"
+__author__ = "danielcorsano"
