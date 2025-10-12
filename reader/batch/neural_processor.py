@@ -476,11 +476,23 @@ class NeuralProcessor:
             # For MP3: check temp WAV file, for WAV: check output file
             actual_file = self.temp_wav_path if self.is_mp3_output else self.output_path
 
-            # Verify file exists and has expected size
-            if not actual_file.exists() or actual_file.stat().st_size != checkpoint.output_size:
-                print("⚠️ Output file corrupted or missing, starting fresh")
+            # Verify file exists
+            if not actual_file.exists():
+                print("⚠️ Output file missing, starting fresh")
                 self._cleanup_checkpoint()
                 return 0, 0
+
+            # Check file integrity
+            file_size = actual_file.stat().st_size
+            if file_size < checkpoint.output_size:
+                print(f"⚠️ File corrupted (truncated), starting fresh")
+                self._cleanup_checkpoint()
+                return 0, 0
+            elif file_size > checkpoint.output_size:
+                # Truncate extra data written after last checkpoint
+                print(f"📐 Truncating {file_size - checkpoint.output_size} bytes of partial data")
+                with open(actual_file, 'r+b') as f:
+                    f.truncate(checkpoint.output_size)
 
             return checkpoint.current_chunk, checkpoint.output_size
             

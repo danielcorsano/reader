@@ -384,8 +384,6 @@ class KokoroEngine(TTSEngine):
             if not chunk.strip():
                 continue
 
-            print(f"Processing chunk {i+1}/{total_chunks}...")
-
             try:
                 # Sanitize chunk text
                 sanitized_chunk = self._sanitize_text(chunk.strip())
@@ -442,8 +440,6 @@ class KokoroEngine(TTSEngine):
             for i, chunk in enumerate(chunks):
                 if not chunk.strip():
                     continue
-
-                print(f"Processing chunk {i+1}/{total_chunks} (streaming mode)...")
 
                 try:
                     # Sanitize chunk text
