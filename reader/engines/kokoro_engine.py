@@ -94,9 +94,11 @@ class KokoroEngine(TTSEngine):
                     os.environ["ORT_COREML_FLAGS"] = "COREML_FLAG_ENABLE_ON_SUBGRAPH"
                     if self.debug:
                         print(f"🔍 DEBUG: Set ORT_COREML_FLAGS={os.environ.get('ORT_COREML_FLAGS')}", flush=True)
-                    print("🧠 Attempting Apple Neural Engine acceleration via CoreML...", flush=True)
+                    if self.debug:
+                        print("🧠 Attempting Apple Neural Engine acceleration via CoreML...", flush=True)
                 else:
-                    print("⚠️ Not an Apple Silicon Mac - Neural Engine not available", flush=True)
+                    if self.debug:
+                        print("⚠️ Not an Apple Silicon Mac - Neural Engine not available", flush=True)
                 
                 if self.debug:
                     print(f"🔍 DEBUG: Initializing Kokoro with model: {model_path}", flush=True)
@@ -112,8 +114,9 @@ class KokoroEngine(TTSEngine):
                 
                 # Check if CoreML acceleration worked
                 if platform.system() == "Darwin" and platform.machine() == "arm64":
-                    print("✅ Kokoro initialized with Neural Engine acceleration (CoreML)", flush=True)
-                    print(f"🚀 Optimized settings: 48k mono MP3, Neural Engine acceleration", flush=True)
+                    if self.debug:
+                        print("✅ Kokoro initialized with Neural Engine acceleration (CoreML)", flush=True)
+                        print(f"🚀 Optimized settings: 48k mono MP3, Neural Engine acceleration", flush=True)
                     
                     # Test inference speed
                     if self.debug:

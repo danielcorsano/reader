@@ -74,7 +74,7 @@ class SimpleProgressDisplay(ProgressDisplay):
         pass
 
 
-def create_progress_display(style: str) -> ProgressDisplay:
+def create_progress_display(style: str, debug: bool = False) -> ProgressDisplay:
     """Factory function to create progress display instances."""
     if style == "simple":
         return SimpleProgressDisplay()
@@ -95,7 +95,7 @@ def create_progress_display(style: str) -> ProgressDisplay:
     elif style == "timeseries":
         try:
             from .timeseries_progress import TimeseriesProgressDisplay
-            return TimeseriesProgressDisplay()
+            return TimeseriesProgressDisplay(debug=debug)
         except ImportError:
             print("⚠️ Plotext not available, falling back to simple display")
             return SimpleProgressDisplay()
@@ -108,12 +108,21 @@ class NeuralProcessor:
     """Neural Engine optimized processor with streaming output and checkpoints."""
 
     def __init__(self, output_path: Path, checkpoint_interval: int = DEFAULT_CHECKPOINT_INTERVAL,
-                 progress_style: str = "timeseries", character_mapper=None, dialogue_detector=None):
+                 progress_style: str = "timeseries", character_mapper=None, dialogue_detector=None, debug: bool = False):
         self.output_path = output_path
         self.checkpoint_interval = checkpoint_interval
         self.checkpoint_path = output_path.with_suffix('.checkpoint')
         self.progress_style = progress_style
-        self.progress_display = create_progress_display(progress_style)
+        self.debug = debug
+        self.progress_display = create_progress_display(progress_style, debug=debug)
+
+        # Debug: log processor initialization
+        if self.debug:
+            debug_log = Path("/Users/corsano/Documents/code/reader/checkpoint_debug.log")
+            with open(debug_log, 'a') as f:
+                import os
+                f.write(f"\n=== NeuralProcessor.__init__ called at {time.time()} (PID {os.getpid()}) ===\n")
+                f.write(f"Progress display type: {type(self.progress_display).__name__}\n")
 
         # Character voice support
         self.character_mapper = character_mapper
@@ -221,14 +230,17 @@ class NeuralProcessor:
                 audio_data = self._process_single_chunk(chunk_text, i, total_chunks, tts_engine, voice_blend, speed)
                 
                 # Confirm Neural Engine is running after first successful chunk
+                # (suppress for screen-clearing displays to avoid visual clutter)
                 if not neural_engine_confirmed and audio_data:
-                    print(f"✅ Neural Engine processing active - generating audio at optimized speed", flush=True)
+                    if self.progress_style == "simple":
+                        print(f"✅ Neural Engine processing active - generating audio at optimized speed", flush=True)
                     neural_engine_confirmed = True
-                    
+
             except Exception as e:
                 if not neural_engine_confirmed:
-                    print(f"❌ Neural Engine processing failed: {str(e)}", flush=True)
-                    print(f"🔄 Falling back to CPU processing", flush=True)
+                    if self.progress_style == "simple":
+                        print(f"❌ Neural Engine processing failed: {str(e)}", flush=True)
+                        print(f"🔄 Falling back to CPU processing", flush=True)
                     neural_engine_confirmed = True  # Don't spam error messages
                 raise  # Re-raise to handle at higher level
             
@@ -464,9 +476,25 @@ class NeuralProcessor:
                 data = json.load(f)
             
             checkpoint = NeuralCheckpoint(**data)
-            
+
+            # Normalize file_path to relative for comparison with checkpoint
+            try:
+                relative_path = str(Path(file_path).relative_to(Path.cwd()))
+            except ValueError:
+                # If file is outside cwd, use absolute path
+                relative_path = str(file_path)
+
+            # Debug: show checkpoint verification details (write to debug log file)
+            import sys
+            debug_log = Path("/Users/corsano/Documents/code/reader/checkpoint_debug.log")
+            with open(debug_log, 'a') as f:
+                f.write(f"\n=== Checkpoint verification at {time.time()} ===\n")
+                f.write(f"File: '{checkpoint.file_path}' == '{relative_path}' ? {checkpoint.file_path == relative_path}\n")
+                f.write(f"Chunks: {checkpoint.total_chunks} == {total_chunks} ? {checkpoint.total_chunks == total_chunks}\n")
+                f.write(f"Settings: '{checkpoint.settings_hash}' == '{settings_hash}' ? {checkpoint.settings_hash == settings_hash}\n")
+
             # Verify checkpoint is for same file and settings
-            if (checkpoint.file_path != str(file_path) or
+            if (checkpoint.file_path != relative_path or
                 checkpoint.total_chunks != total_chunks or
                 checkpoint.settings_hash != settings_hash):
                 print("🔄 Settings changed, starting fresh")
@@ -475,6 +503,8 @@ class NeuralProcessor:
 
             # For MP3: check temp WAV file, for WAV: check output file
             actual_file = self.temp_wav_path if self.is_mp3_output else self.output_path
+            with open(debug_log, 'a') as f:
+                f.write(f"Output file: {actual_file}\n")
 
             # Verify file exists
             if not actual_file.exists():
@@ -484,6 +514,9 @@ class NeuralProcessor:
 
             # Check file integrity
             file_size = actual_file.stat().st_size
+            with open(debug_log, 'a') as f:
+                f.write(f"Size: {file_size} vs checkpoint {checkpoint.output_size}\n")
+
             if file_size < checkpoint.output_size:
                 print(f"⚠️ File corrupted (truncated), starting fresh")
                 self._cleanup_checkpoint()
@@ -494,6 +527,8 @@ class NeuralProcessor:
                 with open(actual_file, 'r+b') as f:
                     f.truncate(checkpoint.output_size)
 
+            with open(debug_log, 'a') as f:
+                f.write(f"✅ RESUME SUCCESS: chunk {checkpoint.current_chunk}\n")
             return checkpoint.current_chunk, checkpoint.output_size
             
         except Exception as e:
@@ -517,12 +552,8 @@ class NeuralProcessor:
             with open(self.checkpoint_path, 'w') as f:
                 json.dump(asdict(checkpoint), f)
             
-            # Provide informative checkpoint message based on output format
-            size_mb = output_size / 1024 / 1024
-            if self.is_mp3_output:
-                print(f"💾 Checkpoint: {current_chunk}/{total_chunks} chunks ({size_mb:.1f}MB temp WAV)", flush=True)
-            else:
-                print(f"💾 Checkpoint: {current_chunk}/{total_chunks} chunks ({size_mb:.1f}MB)", flush=True)
+            # Suppress checkpoint messages for screen-clearing displays to avoid visual clutter
+            # (timeseries/rich displays clear screen and show their own progress)
         except Exception as e:
             print(f"⚠️ Failed to save checkpoint: {e}")
     
