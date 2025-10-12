@@ -72,10 +72,16 @@ class EPUBParser(TextParser):
                 # Optimize BeautifulSoup parsing for large documents
                 content = item.get_content()
                 if len(content) > 100000:  # Large chapter
-                    # Use faster parser for large content
-                    soup = BeautifulSoup(content, 'lxml' if self._has_lxml() else 'html.parser')
+                    # Use XML parser for EPUB content (which is XHTML)
+                    if self._has_lxml():
+                        soup = BeautifulSoup(content, 'xml')
+                    else:
+                        soup = BeautifulSoup(content, 'html.parser')
                 else:
-                    soup = BeautifulSoup(content, 'html.parser')
+                    if self._has_lxml():
+                        soup = BeautifulSoup(content, 'xml')
+                    else:
+                        soup = BeautifulSoup(content, 'html.parser')
                 
                 # Extract text more efficiently
                 text = self._extract_text_optimized(soup)

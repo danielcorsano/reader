@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+- Checkpoint resume path comparison now correctly handles relative vs absolute paths
+- Timeseries progress visualization no longer displays duplicate/stacked charts
+- Character voices now only enabled when explicitly using --characters flag
+- EPUB parser uses correct XML parser instead of HTML parser (eliminates warning)
+- Non-critical initialization messages suppressed in timeseries/rich progress modes
+
+### Added
+- Optional debug logging throughout checkpoint and progress systems (--debug flag)
+- Proper terminal state clearing in timeseries progress display
+
 ## [0.1.3] - 2025-10-11
 
 ### Changed

@@ -13,13 +13,14 @@ except ImportError:
 
 class TimeseriesProgressDisplay(ProgressDisplay):
     """Timeseries visualization with ASCII charts showing processing speed over time."""
-    
-    def __init__(self):
+
+    def __init__(self, debug: bool = False):
         self.start_time = None
         self.speed_history = deque(maxlen=50)  # Keep last 50 data points
         self.time_history = deque(maxlen=50)
         self.last_update_time = None
         self.last_chunk = 0
+        self.debug = debug
         
     def start(self, total_chunks: int, file_name: str):
         if not PLOTEXT_AVAILABLE:
@@ -36,10 +37,11 @@ class TimeseriesProgressDisplay(ProgressDisplay):
     
     def update(self, current_chunk: int, total_chunks: int, elapsed_time: float, eta_seconds: float):
         # Debug: log update calls
-        from pathlib import Path
-        debug_log = Path("/Users/corsano/Documents/code/reader/checkpoint_debug.log")
-        with open(debug_log, 'a') as f:
-            f.write(f"TimeseriesProgressDisplay.update({current_chunk}/{total_chunks}) at {time.time()} (instance id: {id(self)})\n")
+        if self.debug:
+            from pathlib import Path
+            debug_log = Path("/Users/corsano/Documents/code/reader/checkpoint_debug.log")
+            with open(debug_log, 'a') as f:
+                f.write(f"TimeseriesProgressDisplay.update({current_chunk}/{total_chunks}) at {time.time()} (instance id: {id(self)})\n")
 
         current_time = time.time()
         progress_pct = (current_chunk / total_chunks) * 100
@@ -71,6 +73,7 @@ class TimeseriesProgressDisplay(ProgressDisplay):
         if len(self.speed_history) > 1:
             plt.clear_figure()
             plt.clear_data()
+            plt.clear_terminal()  # Clear plotext's internal terminal state
             plt.plot(list(self.time_history), list(self.speed_history), marker="dot", color="cyan")
             plt.title("🚀 Processing Speed Over Time")
             plt.ylabel("Speed (chunks/min)")
@@ -90,12 +93,16 @@ class TimeseriesProgressDisplay(ProgressDisplay):
             plt.plotsize(80, 15)
             plt.theme("dark")
             plt.show()
+            import sys
+            sys.stdout.flush()  # Ensure chart is fully written before progress bar
 
         # Draw progress bar
         bar_width = 60
         filled_width = int((current_chunk / total_chunks) * bar_width)
         bar = "█" * filled_width + "░" * (bar_width - filled_width)
         print(f"Progress: [{bar}] {progress_pct:.1f}%")
+        import sys
+        sys.stdout.flush()  # Ensure progress bar is written before next clear
         
         # Update tracking variables
         self.last_update_time = current_time

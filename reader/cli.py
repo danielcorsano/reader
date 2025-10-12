@@ -232,18 +232,20 @@ class ReaderApp:
             print(f"   Audio: format={audio_config.format}")
             print(f"   Processing: level={processing_config.level}, characters={processing_config.character_voices}")
         
-        # Character voice loading and analysis
+        # Character voice loading and analysis (only when explicitly enabled with --characters)
         if self.character_mapper and processing_config.character_voices:
-            # Load character config from file if provided or auto-detect
+            # Determine which config file to use
             if character_config and character_config.exists():
-                count = self.character_mapper.load_from_file(character_config)
-                click.echo(f"Loaded {count} character mappings from {character_config.name}")
+                # Use explicitly provided config file
+                config_to_load = character_config
             else:
-                # Try to auto-detect character config file next to source
-                auto_config = file_path.with_suffix('.characters.yaml')
-                if auto_config.exists():
-                    count = self.character_mapper.load_from_file(auto_config)
-                    click.echo(f"Loaded {count} character mappings from {auto_config.name}")
+                # Auto-detect: use filename.characters.yaml next to source file
+                config_to_load = file_path.with_suffix('.characters.yaml')
+
+            # Load existing config if it exists
+            if config_to_load.exists():
+                count = self.character_mapper.load_from_file(config_to_load)
+                click.echo(f"Loaded {count} character mappings from {config_to_load.name}")
 
             click.echo("Analyzing characters and dialogue...")
             voice_analysis = self.character_mapper.analyze_text_for_voices(parsed_content.content)
@@ -272,7 +274,8 @@ class ReaderApp:
             checkpoint_interval=checkpoint_interval,
             progress_style=progress_style,
             character_mapper=self.character_mapper if processing_config.character_voices else None,
-            dialogue_detector=self.dialogue_detector if processing_config.character_voices else None
+            dialogue_detector=self.dialogue_detector if processing_config.character_voices else None,
+            debug=debug
         )
 
         # Split content into optimized chunks aligned with Kokoro's processing

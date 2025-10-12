@@ -485,13 +485,14 @@ class NeuralProcessor:
                 relative_path = str(file_path)
 
             # Debug: show checkpoint verification details (write to debug log file)
-            import sys
-            debug_log = Path("/Users/corsano/Documents/code/reader/checkpoint_debug.log")
-            with open(debug_log, 'a') as f:
-                f.write(f"\n=== Checkpoint verification at {time.time()} ===\n")
-                f.write(f"File: '{checkpoint.file_path}' == '{relative_path}' ? {checkpoint.file_path == relative_path}\n")
-                f.write(f"Chunks: {checkpoint.total_chunks} == {total_chunks} ? {checkpoint.total_chunks == total_chunks}\n")
-                f.write(f"Settings: '{checkpoint.settings_hash}' == '{settings_hash}' ? {checkpoint.settings_hash == settings_hash}\n")
+            if self.debug:
+                import sys
+                debug_log = Path("/Users/corsano/Documents/code/reader/checkpoint_debug.log")
+                with open(debug_log, 'a') as f:
+                    f.write(f"\n=== Checkpoint verification at {time.time()} ===\n")
+                    f.write(f"File: '{checkpoint.file_path}' == '{relative_path}' ? {checkpoint.file_path == relative_path}\n")
+                    f.write(f"Chunks: {checkpoint.total_chunks} == {total_chunks} ? {checkpoint.total_chunks == total_chunks}\n")
+                    f.write(f"Settings: '{checkpoint.settings_hash}' == '{settings_hash}' ? {checkpoint.settings_hash == settings_hash}\n")
 
             # Verify checkpoint is for same file and settings
             if (checkpoint.file_path != relative_path or
@@ -503,8 +504,9 @@ class NeuralProcessor:
 
             # For MP3: check temp WAV file, for WAV: check output file
             actual_file = self.temp_wav_path if self.is_mp3_output else self.output_path
-            with open(debug_log, 'a') as f:
-                f.write(f"Output file: {actual_file}\n")
+            if self.debug:
+                with open(debug_log, 'a') as f:
+                    f.write(f"Output file: {actual_file}\n")
 
             # Verify file exists
             if not actual_file.exists():
@@ -514,8 +516,9 @@ class NeuralProcessor:
 
             # Check file integrity
             file_size = actual_file.stat().st_size
-            with open(debug_log, 'a') as f:
-                f.write(f"Size: {file_size} vs checkpoint {checkpoint.output_size}\n")
+            if self.debug:
+                with open(debug_log, 'a') as f:
+                    f.write(f"Size: {file_size} vs checkpoint {checkpoint.output_size}\n")
 
             if file_size < checkpoint.output_size:
                 print(f"⚠️ File corrupted (truncated), starting fresh")
@@ -527,8 +530,9 @@ class NeuralProcessor:
                 with open(actual_file, 'r+b') as f:
                     f.truncate(checkpoint.output_size)
 
-            with open(debug_log, 'a') as f:
-                f.write(f"✅ RESUME SUCCESS: chunk {checkpoint.current_chunk}\n")
+            if self.debug:
+                with open(debug_log, 'a') as f:
+                    f.write(f"✅ RESUME SUCCESS: chunk {checkpoint.current_chunk}\n")
             return checkpoint.current_chunk, checkpoint.output_size
             
         except Exception as e:
