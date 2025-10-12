@@ -187,6 +187,9 @@ class KokoroEngine(TTSEngine):
         
         try:
             # Generate audio with Kokoro for short text
+            # Sanitize text to avoid index errors
+            text = self._sanitize_text(text)
+
             if len(voice_blend) == 1:
                 # Single voice
                 voice_id, _ = list(voice_blend.items())[0]
@@ -205,10 +208,15 @@ class KokoroEngine(TTSEngine):
                     speed=speed,
                     lang=self._get_voice_lang(primary_voice)
                 )
-            
+
             # Convert to WAV bytes
             return self._samples_to_wav_bytes(samples, sample_rate)
-            
+
+        except IndexError as e:
+            # Handle index out of bounds errors in Kokoro
+            if "out of bounds" in str(e):
+                raise RuntimeError(f"Kokoro synthesis failed due to problematic text content: {e}")
+            raise RuntimeError(f"Kokoro synthesis failed: {e}")
         except Exception as e:
             raise RuntimeError(f"Kokoro synthesis failed: {e}")
     
@@ -312,7 +320,7 @@ class KokoroEngine(TTSEngine):
         """Get language code for voice."""
         if voice_id in self.VOICES:
             return self.VOICES[voice_id]["lang"]
-        
+
         # Infer from voice ID prefix
         if voice_id.startswith('af_') or voice_id.startswith('am_'):
             return "en-us"
@@ -324,7 +332,36 @@ class KokoroEngine(TTSEngine):
             return "fr"
         else:
             return "en-us"  # Default
-    
+
+    def _sanitize_text(self, text: str) -> str:
+        """Sanitize text to avoid Kokoro synthesis errors."""
+        import re
+
+        # Remove control characters except newlines and tabs
+        text = ''.join(char for char in text if char.isprintable() or char in '\n\t ')
+
+        # Replace problematic unicode characters
+        replacements = {
+            '\u2018': "'",  # Left single quote
+            '\u2019': "'",  # Right single quote
+            '\u201c': '"',  # Left double quote
+            '\u201d': '"',  # Right double quote
+            '\u2013': '-',  # En dash
+            '\u2014': '-',  # Em dash
+            '\u2026': '...',  # Ellipsis
+        }
+        for old, new in replacements.items():
+            text = text.replace(old, new)
+
+        # Limit consecutive whitespace
+        text = re.sub(r'\s+', ' ', text)
+
+        # Ensure text is not empty
+        if not text.strip():
+            text = "."
+
+        return text.strip()
+
     def _synthesize_long_text(self, text: str, voice_blend: Dict[str, float], speed: float) -> bytes:
         """Synthesize long text by intelligent chunking with streaming to prevent memory issues."""
         # Split text into chunks at natural break points
@@ -346,15 +383,18 @@ class KokoroEngine(TTSEngine):
         for i, chunk in enumerate(chunks):
             if not chunk.strip():
                 continue
-                
+
             print(f"Processing chunk {i+1}/{total_chunks}...")
-            
+
             try:
+                # Sanitize chunk text
+                sanitized_chunk = self._sanitize_text(chunk.strip())
+
                 if len(voice_blend) == 1:
                     # Single voice
                     voice_id, _ = list(voice_blend.items())[0]
                     samples, chunk_sample_rate = self.kokoro.create(
-                        text=chunk.strip(),
+                        text=sanitized_chunk,
                         voice=voice_id,
                         speed=speed,
                         lang=self._get_voice_lang(voice_id)
@@ -363,19 +403,20 @@ class KokoroEngine(TTSEngine):
                     # Voice blending - use primary voice (highest weight)
                     primary_voice = max(voice_blend.items(), key=lambda x: x[1])[0]
                     samples, chunk_sample_rate = self.kokoro.create(
-                        text=chunk.strip(),
+                        text=sanitized_chunk,
                         voice=primary_voice,
                         speed=speed,
                         lang=self._get_voice_lang(primary_voice)
                     )
-                
+
                 audio_segments.append(samples)
                 if sample_rate is None:
                     sample_rate = chunk_sample_rate
-                    
+
             except Exception as e:
                 # Log the error but continue with other chunks
-                print(f"Warning: Failed to synthesize chunk '{chunk[:50]}...': {e}")
+                print(f"⚠️  Warning: Skipping chunk {i+1} due to synthesis error: {e}")
+                print(f"    Chunk preview: {chunk[:80]}...")
                 continue
         
         if not audio_segments:
@@ -401,15 +442,18 @@ class KokoroEngine(TTSEngine):
             for i, chunk in enumerate(chunks):
                 if not chunk.strip():
                     continue
-                
+
                 print(f"Processing chunk {i+1}/{total_chunks} (streaming mode)...")
-                
+
                 try:
+                    # Sanitize chunk text
+                    sanitized_chunk = self._sanitize_text(chunk.strip())
+
                     if len(voice_blend) == 1:
                         # Single voice
                         voice_id, _ = list(voice_blend.items())[0]
                         samples, chunk_sample_rate = self.kokoro.create(
-                            text=chunk.strip(),
+                            text=sanitized_chunk,
                             voice=voice_id,
                             speed=speed,
                             lang=self._get_voice_lang(voice_id)
@@ -418,25 +462,26 @@ class KokoroEngine(TTSEngine):
                         # Voice blending - use primary voice (highest weight)
                         primary_voice = max(voice_blend.items(), key=lambda x: x[1])[0]
                         samples, chunk_sample_rate = self.kokoro.create(
-                            text=chunk.strip(),
+                            text=sanitized_chunk,
                             voice=primary_voice,
                             speed=speed,
                             lang=self._get_voice_lang(primary_voice)
                         )
-                    
+
                     if sample_rate is None:
                         sample_rate = chunk_sample_rate
-                    
+
                     # Save to temporary file
                     temp_file = tempfile.NamedTemporaryFile(suffix='.wav', delete=False)
                     wav_data = self._samples_to_wav_bytes(samples, chunk_sample_rate)
                     temp_file.write(wav_data)
                     temp_file.close()
                     temp_files.append(temp_file.name)
-                    
+
                 except Exception as e:
                     # Log the error but continue with other chunks
-                    print(f"Warning: Failed to synthesize chunk '{chunk[:50]}...': {e}")
+                    print(f"⚠️  Warning: Skipping chunk {i+1} due to synthesis error: {e}")
+                    print(f"    Chunk preview: {chunk[:80]}...")
                     continue
             
             if not temp_files:
