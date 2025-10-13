@@ -5,18 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.1.4] - 2025-10-13
 
 ### Fixed
+- Automatic chunk splitting for texts exceeding Kokoro's 510 phoneme limit (primarily affects non-English text like Greek, Cyrillic, Arabic)
 - Checkpoint resume path comparison now correctly handles relative vs absolute paths
-- Timeseries progress visualization no longer displays duplicate/stacked charts
+- Kokoro library warnings suppressed in non-debug mode
 - Character voices now only enabled when explicitly using --characters flag
-- EPUB parser uses correct XML parser instead of HTML parser (eliminates warning)
-- Non-critical initialization messages suppressed in timeseries/rich progress modes
 
 ### Added
-- Optional debug logging throughout checkpoint and progress systems (--debug flag)
-- Proper terminal state clearing in timeseries progress display
+- Enhanced debug logging throughout checkpoint and progress systems (--debug flag)
+- Automatic sentence-level splitting for chunks with high phoneme counts
+- Graceful handling of academic texts with mixed languages and special characters
 
 ## [0.1.3] - 2025-10-11
 
