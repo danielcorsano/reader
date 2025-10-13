@@ -71,9 +71,8 @@ class TimeseriesProgressDisplay(ProgressDisplay):
 
         # Draw timeseries chart
         if len(self.speed_history) > 1:
-            plt.clear_figure()
             plt.clear_data()
-            plt.clear_terminal()  # Clear plotext's internal terminal state
+            plt.clear_figure()
             plt.plot(list(self.time_history), list(self.speed_history), marker="dot", color="cyan")
             plt.title("🚀 Processing Speed Over Time")
             plt.ylabel("Speed (chunks/min)")
