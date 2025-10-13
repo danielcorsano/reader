@@ -1,9 +1,9 @@
 # AI Audiobook Generator: CLI Tool with GPU & NPU Acceleration
 
-[![PyPI](https://img.shields.io/pypi/v/reader)](https://pypi.org/project/reader/)
-[![Python](https://img.shields.io/pypi/pyversions/reader)](https://pypi.org/project/reader/)
-[![License](https://img.shields.io/pypi/l/reader)](https://github.com/danielcorsano/reader/blob/main/LICENSE)
-[![Downloads](https://img.shields.io/pypi/dm/reader)](https://pypi.org/project/reader/)
+[![PyPI](https://img.shields.io/pypi/v/audiobook-reader)](https://pypi.org/project/audiobook-reader/)
+[![Python](https://img.shields.io/pypi/pyversions/audiobook-reader)](https://pypi.org/project/audiobook-reader/)
+[![License](https://img.shields.io/pypi/l/audiobook-reader)](https://github.com/danielcorsano/reader/blob/main/LICENSE)
+[![Downloads](https://img.shields.io/pypi/dm/audiobook-reader)](https://pypi.org/project/audiobook-reader/)
 
 **Transform long-form text into professional audiobooks with character-aware voices, emotion analysis, and intelligent processing.**
 
@@ -171,9 +171,35 @@ reader characters detect text/mybook.txt --auto-assign
 reader convert --characters --file text/mybook.txt
 ```
 
+### 🐍 Python API (Jupyter Notebooks & Scripts)
+
+For programmatic access in Python scripts or Jupyter notebooks:
+
+```python
+import reader
+
+# Simple conversion
+output = reader.convert("mybook.epub")
+print(f"Audiobook created: {output}")
+
+# Advanced usage
+from reader import Reader
+r = Reader()
+output = r.convert(
+    "mybook.epub",
+    voice="af_sarah",
+    speed=1.2,
+    character_voices=True,
+    progress_style="tqdm"
+)
+```
+
+See **[Programmatic API](https://github.com/danielcorsano/reader/blob/main/docs/API.md)** for full documentation.
+
 ## 📖 Documentation
 
 - **[Usage Guide](https://github.com/danielcorsano/reader/blob/main/docs/USAGE.md)** - Complete command reference and workflows
+- **[Programmatic API](https://github.com/danielcorsano/reader/blob/main/docs/API.md)** - Python API for Jupyter notebooks and scripts
 - **[Examples](https://github.com/danielcorsano/reader/blob/main/docs/EXAMPLES.md)** - Real-world examples and use cases
 - **[Advanced Features](https://github.com/danielcorsano/reader/blob/main/docs/ADVANCED_FEATURES.md)** - Professional audiobook production features
 - **[Kokoro Setup](https://github.com/danielcorsano/reader/blob/main/docs/KOKORO_SETUP.md)** - Neural TTS model setup guide

@@ -9,3 +9,8 @@ For system TTS fallback support, see reader-small package.
 
 __version__ = "0.1.4"
 __author__ = "danielcorsano"
+
+# Public API
+from .api import Reader, convert, list_voices
+
+__all__ = ["Reader", "convert", "list_voices"]

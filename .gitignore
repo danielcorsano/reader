@@ -131,8 +131,9 @@ sample_chapters.json
 logs/
 .cache/
 
-# Claude Code instructions
+# Claude Code instructions and agents
 CLAUDE.md
+.claude/
 
 # Planning documents (private)
 plan/

@@ -4,6 +4,7 @@ This directory contains comprehensive documentation for the Reader audiobook gen
 
 ## Quick Start
 - **[USAGE.md](USAGE.md)** - Complete usage guide and command reference
+- **[API.md](API.md)** - Programmatic Python API for notebooks and scripts
 - **[EXAMPLES.md](EXAMPLES.md)** - Step-by-step examples and workflows
 
 ## Setup Guides
