@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.5] - 2025-10-13
+
+### Added
+- **Programmatic Python API** for Jupyter notebooks and scripts
+  - `Reader` class for object-oriented usage
+  - `convert()` convenience function for simple conversions
+  - `list_voices()` function to query available voices
+  - Comprehensive API documentation in `docs/API.md`
+- Python API quick start section in README
+
+### Fixed
+- PyPI badge links now correctly point to `audiobook-reader` package
+
+### Changed
+- Performance claim updated to "up to 8x faster than real-time" (from 6x)
+
 ## [0.1.4] - 2025-10-13
 
 ### Fixed

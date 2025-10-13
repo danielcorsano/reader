@@ -12,7 +12,7 @@ Perfect for novels, articles, textbooks, research papers, and other long-form co
 ## ✨ Core Features
 
 ### ⚡ **High-Performance Conversion**
-- **Up to 6x faster than real-time** on Apple Silicon (M1/M2/M3/M4) with Neural Engine
+- **Up to 8x faster than real-time** on Apple Silicon (M1/M2/M3/M4) with Neural Engine
 - **GPU acceleration** for NVIDIA (CUDA), AMD/Intel (DirectML on Windows)
 - **Efficient CPU processing** on all platforms
 - Kokoro-82M engine optimized for speed + quality balance
