@@ -83,6 +83,8 @@ reader info
 - **`.md`** - Markdown files (header-based chapters)
 - **`.rst`** - ReStructuredText files
 
+**Need to convert other formats?** Use [convertext](https://pypi.org/project/convertext/) to convert DOCX, ODT, MOBI, HTML, and other document formats to supported formats.
+
 ### Output Formats
 - **`.mp3`** - 48kHz mono, 48kbps VBR (optimized for speech, default)
 - **`.wav`** - 48kHz mono PCM, uncompressed (highest quality)

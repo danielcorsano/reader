@@ -83,7 +83,7 @@ def convert(
 ```
 
 **Parameters:**
-- **file_path** (str): Path to input file (EPUB, PDF, TXT, MD, RST)
+- **file_path** (str): Path to input file (EPUB, PDF, TXT, MD, RST). For other formats like DOCX, MOBI, or HTML, use [convertext](https://pypi.org/project/convertext/) to convert first.
 - **voice** (str, optional): Voice ID (e.g., 'am_michael', 'af_sarah'). Defaults to config.
 - **speed** (float, optional): Speech speed multiplier (0.5-2.0). Default: 1.0
 - **output_format** (str, optional): Audio format ('mp3', 'wav', 'm4a', 'm4b'). Default: 'mp3'

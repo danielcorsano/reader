@@ -76,6 +76,8 @@ The developers of audiobook-reader do not condone or support copyright infringem
 
 EPUB, PDF, TXT, Markdown, ReStructuredText
 
+**Need to convert other formats first?** Use [convertext](https://pypi.org/project/convertext/) to convert DOCX, ODT, MOBI, HTML, and other document formats to supported formats like EPUB or TXT.
+
 ## 📦 Installation
 
 ### Using pip (recommended for users)
@@ -278,6 +280,8 @@ reader convert --voice af_sarah
 | Markdown | `.md` | ✅ Header-based |
 | ReStructuredText | `.rst` | ✅ Header-based |
 
+**Need other formats?** Use [convertext](https://pypi.org/project/convertext/) to convert DOCX, ODT, MOBI, HTML, and more to supported formats.
+
 ### Output Formats
 - **MP3** (default) - 48kHz mono, configurable bitrate (32k-64k, default 48k)
 - **WAV** - Uncompressed, high quality
@@ -473,9 +477,14 @@ pip install --force-reinstall audiobook-reader
 
 **Solution**:
 ```bash
-# Convert your file to a supported format first
-# For Word docs: Save as .txt or .pdf
-# For HTML: Save as .txt or use pandoc to convert
+# Use convertext to convert other formats first
+pip install convertext
+convertext document.docx --format epub  # DOCX to EPUB
+convertext book.mobi --format epub      # MOBI to EPUB
+convertext file.html --format txt       # HTML to TXT
+
+# Then convert to audiobook
+reader convert --file document.epub
 ```
 
 ### GPU Acceleration Issues
