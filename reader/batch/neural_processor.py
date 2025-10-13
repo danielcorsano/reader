@@ -116,12 +116,14 @@ class NeuralProcessor:
         self.debug = debug
         self.progress_display = create_progress_display(progress_style, debug=debug)
 
-        # Debug: log processor initialization
+        # Debug: log processor initialization (clear log at start of new run)
         if self.debug:
             debug_log = Path("/Users/corsano/Documents/code/reader/checkpoint_debug.log")
-            with open(debug_log, 'a') as f:
+            # Clear log at start of new run
+            debug_log.unlink(missing_ok=True)
+            with open(debug_log, 'w') as f:
                 import os
-                f.write(f"\n=== NeuralProcessor.__init__ called at {time.time()} (PID {os.getpid()}) ===\n")
+                f.write(f"=== NeuralProcessor.__init__ called at {time.time()} (PID {os.getpid()}) ===\n")
                 f.write(f"Progress display type: {type(self.progress_display).__name__}\n")
 
         # Character voice support
@@ -201,14 +203,21 @@ class NeuralProcessor:
             if lock_path.exists():
                 lock_path.unlink()
     
-    def _process_all_chunks(self, output_file, text_chunks: List[str], 
+    def _process_all_chunks(self, output_file, text_chunks: List[str],
                            tts_engine, voice_blend: Dict[str, float], speed: float,
-                           start_chunk: int, total_chunks: int, 
+                           start_chunk: int, total_chunks: int,
                            file_path: Path, settings_hash: str):
         """Sequential chunk processing optimized for Neural Engine."""
         start_time = time.time()
         neural_engine_confirmed = False
-        
+
+        if self.debug:
+            debug_log = Path("/Users/corsano/Documents/code/reader/checkpoint_debug.log")
+            with open(debug_log, 'a') as f:
+                f.write(f"\n=== _process_all_chunks called ===\n")
+                f.write(f"start_chunk={start_chunk}, total_chunks={total_chunks}\n")
+                f.write(f"Processing chunks {start_chunk} to {total_chunks-1}\n\n")
+
         for i in range(start_chunk, total_chunks):
             chunk_text = text_chunks[i]
             
@@ -223,6 +232,14 @@ class NeuralProcessor:
                 eta_seconds = 0
             
             # Update progress display (handles all output formatting)
+            if self.debug:
+                debug_log = Path("/Users/corsano/Documents/code/reader/checkpoint_debug.log")
+                with open(debug_log, 'a') as f:
+                    import traceback
+                    f.write(f"\n>>> Calling progress_display.update({i+1}/{total_chunks})\n")
+                    f.write("Call stack:\n")
+                    for line in traceback.format_stack()[-5:-1]:  # Last 4 frames
+                        f.write(line)
             self.progress_display.update(i + 1, total_chunks, elapsed, eta_seconds)
             
             # Process chunk with Neural Engine
@@ -237,12 +254,70 @@ class NeuralProcessor:
                     neural_engine_confirmed = True
 
             except Exception as e:
-                if not neural_engine_confirmed:
-                    if self.progress_style == "simple":
-                        print(f"❌ Neural Engine processing failed: {str(e)}", flush=True)
-                        print(f"🔄 Falling back to CPU processing", flush=True)
-                    neural_engine_confirmed = True  # Don't spam error messages
-                raise  # Re-raise to handle at higher level
+                error_str = str(e)
+
+                # Check if this is the Kokoro phoneme limit bug (510 phonemes)
+                if "510" in error_str and "out of bounds" in error_str:
+                    print(f"\n⚠️  Chunk {i+1} exceeds phoneme limit - splitting into smaller pieces", flush=True)
+
+                    # Split chunk into smaller pieces and process each
+                    # Find sentence boundaries for clean splits
+                    sentences = []
+                    current = []
+                    for char in chunk_text:
+                        current.append(char)
+                        if char in '.!?':
+                            sentences.append(''.join(current).strip())
+                            current = []
+                    if current:
+                        sentences.append(''.join(current).strip())
+
+                    # Process each sentence separately
+                    audio_parts = []
+                    for j, sentence in enumerate(sentences):
+                        if not sentence.strip():
+                            continue
+                        try:
+                            audio_part = self._process_single_chunk(sentence, i, total_chunks, tts_engine, voice_blend, speed)
+                            # Strip WAV header from all but first part
+                            if j > 0 and len(audio_part) > 44:
+                                audio_part = audio_part[44:]
+                            audio_parts.append(audio_part)
+                        except Exception as sent_error:
+                            # If even a single sentence fails, split it in half
+                            half = len(sentence) // 2
+                            try:
+                                part1 = self._process_single_chunk(sentence[:half], i, total_chunks, tts_engine, voice_blend, speed)
+                                part2 = self._process_single_chunk(sentence[half:], i, total_chunks, tts_engine, voice_blend, speed)
+                                audio_parts.append(part1)
+                                if len(part2) > 44:
+                                    audio_parts.append(part2[44:])
+                            except Exception as final_error:
+                                print(f"❌ Cannot process chunk {i+1} even after splitting: {final_error}", flush=True)
+                                raise
+
+                    audio_data = b''.join(audio_parts)
+                    print(f"✅ Successfully processed chunk {i+1} in {len(sentences)} pieces", flush=True)
+                else:
+                    # Other errors - log and re-raise
+                    if self.debug:
+                        debug_log = Path("/Users/corsano/Documents/code/reader/checkpoint_debug.log")
+                        with open(debug_log, 'a') as f:
+                            import traceback
+                            f.write(f"\n!!! EXCEPTION in chunk {i+1} (index {i}) !!!\n")
+                            f.write(f"Error: {e}\n")
+                            f.write(f"Chunk text length: {len(chunk_text)}\n")
+                            f.write(f"Chunk text: {chunk_text}\n")
+                            f.write("Traceback:\n")
+                            f.write(traceback.format_exc())
+                            f.write("\n")
+
+                    if not neural_engine_confirmed:
+                        if self.progress_style == "simple":
+                            print(f"❌ Neural Engine processing failed: {str(e)}", flush=True)
+                            print(f"🔄 Falling back to CPU processing", flush=True)
+                        neural_engine_confirmed = True  # Don't spam error messages
+                    raise  # Re-raise to handle at higher level
             
             # Convert and write immediately for streaming
             self._convert_and_write_chunk(output_file, audio_data)

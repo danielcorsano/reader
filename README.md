@@ -7,7 +7,7 @@
 
 **Transform long-form text into professional audiobooks with character-aware voices, emotion analysis, and intelligent processing.**
 
-Perfect for novels, articles, textbooks, research papers, and any long-form content. Built with Kokoro-82M TTS for production-quality narration. Works on all platforms with optimizations for Apple Silicon (M1/M2/M3/M4 Neural Engine), NVIDIA GPUs, and AMD/Intel GPUs.
+Perfect for novels, articles, textbooks, research papers, and other long-form content that you want to be able to listen to on your own time or offline. Built with Kokoro-82M TTS for production-quality narration. Works on all platforms with optimizations for Apple Silicon (M1/M2/M3/M4 Neural Engine), NVIDIA GPUs, and AMD/Intel GPUs.
 
 ## ✨ Core Features
 
@@ -19,7 +19,7 @@ Perfect for novels, articles, textbooks, research papers, and any long-form cont
 
 ### 🎭 **Character-Aware Narration**
 - **Automatic character detection** in dialogue
-- **Auto-assign different voices** with automatic gender detection when possible
+- **Auto-assign different voices** with automatic gender detection where possible
 - Assigns gender-appropriate voices (e.g., Alice gets `af_sarah`, Bob gets `am_adam`)
 - Perfect for fiction, interviews, dialogues, and multi-speaker content
 
@@ -39,10 +39,10 @@ Perfect for novels, articles, textbooks, research papers, and any long-form cont
 - Chapter timestamps and navigation
 
 ### 📊 **Professional Production Tools**
-- **4 progress visualization styles**: simple, tqdm, rich, timeseries charts
+- **4 progress visualization styles**: simple, tqdm, rich, timeseries
 - **Real-time metrics**: processing speed, ETA, completion percentage
 - **Batch processing** with queue management
-- **Multiple output formats**: MP3 (48kHz mono optimized), WAV, M4A, M4B
+- **Multiple output formats**: MP3 (48kHz mono optimized by default), WAV, M4A, M4B
 
 ### 🎙️ **Production-Quality TTS**
 - **Kokoro-82M**: 48 high-quality neural voices across 8 languages
@@ -327,22 +327,6 @@ audio:
 processing:
   chunk_size: 400          # Text chunk size for processing (Kokoro optimal)
   auto_detect_chapters: true  # Chapter detection
-```
-
-## 🛠️ Development
-
-**Modular Architecture Benefits:**
-- **Easy TTS upgrades**: pyttsx3 → Kokoro → Custom engines
-- **New format support**: Add parsers for Word, HTML, etc.  
-- **Enhanced processing**: Audio effects, normalization, etc.
-- **Cloud integration**: Azure, AWS, Google TTS services
-
-**Component Swapping:**
-```python
-# Each component implements abstract interfaces
-class MyCustomTTS(TTSEngine):
-    def synthesize(self, text, voice, speed): ...
-    def list_voices(self): ...
 ```
 
 ## 🎯 Quick Examples

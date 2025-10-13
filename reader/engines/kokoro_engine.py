@@ -193,24 +193,53 @@ class KokoroEngine(TTSEngine):
             # Sanitize text to avoid index errors
             text = self._sanitize_text(text)
 
-            if len(voice_blend) == 1:
-                # Single voice
-                voice_id, _ = list(voice_blend.items())[0]
-                samples, sample_rate = self.kokoro.create(
-                    text=text,
-                    voice=voice_id,
-                    speed=speed,
-                    lang=self._get_voice_lang(voice_id)
-                )
+            # Suppress Kokoro library warnings unless in debug mode
+            import warnings
+            import logging
+            if not self.debug:
+                kokoro_logger = logging.getLogger('kokoro_onnx')
+                original_level = kokoro_logger.level
+                kokoro_logger.setLevel(logging.ERROR)
+                with warnings.catch_warnings():
+                    warnings.filterwarnings('ignore')
+                    if len(voice_blend) == 1:
+                        # Single voice
+                        voice_id, _ = list(voice_blend.items())[0]
+                        samples, sample_rate = self.kokoro.create(
+                            text=text,
+                            voice=voice_id,
+                            speed=speed,
+                            lang=self._get_voice_lang(voice_id)
+                        )
+                    else:
+                        # Voice blending - use primary voice (highest weight)
+                        primary_voice = max(voice_blend.items(), key=lambda x: x[1])[0]
+                        samples, sample_rate = self.kokoro.create(
+                            text=text,
+                            voice=primary_voice,
+                            speed=speed,
+                            lang=self._get_voice_lang(primary_voice)
+                        )
+                kokoro_logger.setLevel(original_level)
             else:
-                # Voice blending - use primary voice (highest weight)
-                primary_voice = max(voice_blend.items(), key=lambda x: x[1])[0]
-                samples, sample_rate = self.kokoro.create(
-                    text=text,
-                    voice=primary_voice,
-                    speed=speed,
-                    lang=self._get_voice_lang(primary_voice)
-                )
+                if len(voice_blend) == 1:
+                    # Single voice
+                    voice_id, _ = list(voice_blend.items())[0]
+                    samples, sample_rate = self.kokoro.create(
+                        text=text,
+                        voice=voice_id,
+                        speed=speed,
+                        lang=self._get_voice_lang(voice_id)
+                    )
+                else:
+                    # Voice blending - use primary voice (highest weight)
+                    primary_voice = max(voice_blend.items(), key=lambda x: x[1])[0]
+                    samples, sample_rate = self.kokoro.create(
+                        text=text,
+                        voice=primary_voice,
+                        speed=speed,
+                        lang=self._get_voice_lang(primary_voice)
+                    )
 
             # Convert to WAV bytes
             return self._samples_to_wav_bytes(samples, sample_rate)
