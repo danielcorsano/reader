@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.7] - 2025-10-18
+
+### Changed
+- Working files now use `/tmp/audiobook-reader-{session}/` with auto-cleanup (no directory pollution)
+- Config moved to `~/.config/audiobook-reader/` (XDG standard)
+- Default output is now `~/Downloads/` (configurable via `--output-dir` or config)
+
+### Added
+- `--output-dir` option: `downloads`, `same` (next to source), or custom path
+- `output_dir` parameter in Python API
+
+### Upcoming App
+- Clean temp file handling suitable for GUI integration
+- Predictable output locations for macOS/Windows app file pickers
+
 ## [0.1.6] - 2025-10-13
 
 ### Added
