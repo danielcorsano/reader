@@ -45,7 +45,7 @@ Perfect for novels, articles, textbooks, research papers, and other long-form co
 - **Multiple output formats**: MP3 (48kHz mono optimized by default), WAV, M4A, M4B
 
 ### 🎙️ **Production-Quality TTS**
-- **Kokoro-82M**: 48 high-quality neural voices across 8 languages
+- **Kokoro-82M**: 54 high-quality neural voices across 9 languages
 - **Near-human quality** narration
 - **Consistent voice** throughout long documents
 - No voice cloning overhead
@@ -403,7 +403,7 @@ See **[docs/EXAMPLES.md](https://github.com/danielcorsano/reader/blob/main/docs/
 
 **Kokoro TTS** (primary engine):
 - ✅ Near-human quality neural voices
-- ✅ 48 voices across 8 languages
+- ✅ 54 voices across 9 languages (American/British English, Spanish, French, Italian, Portuguese, Japanese, Chinese, Hindi)
 - ✅ Apple Neural Engine acceleration
 - ✅ Professional audiobook production
 - ✅ Consistent narration (no hallucinations)

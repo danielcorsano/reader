@@ -82,7 +82,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - **Neural Engine Optimization**: Apple M1/M2/M3/M4 acceleration via CoreML for ultra-fast TTS processing
-- **Kokoro TTS Integration**: 48 high-quality voices across 8 languages
+- **Kokoro TTS Integration**: 54 high-quality voices across 9 languages
 - **Character Voice Mapping**: Automatic dialogue detection and character-specific voice assignment
 - **Emotion Analysis**: VADER sentiment analysis for dynamic prosody and emotional inflection
 - **Multiple Input Formats**: Support for EPUB, PDF, TXT, and reStructuredText files

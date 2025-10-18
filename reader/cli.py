@@ -44,7 +44,9 @@ class ReaderApp:
     
     def __init__(self, init_tts=False):
         """Initialize the reader application."""
-        self.config_manager = ConfigManager()
+        # Use system-standard config location (works in CLI, GUI, and app bundles)
+        config_path = Path.home() / ".config/audiobook-reader/settings.yaml"
+        self.config_manager = ConfigManager(config_path)
 
         # Use system temp for working files (session-specific workspace)
         self.temp_workspace = Path(tempfile.mkdtemp(prefix="audiobook-reader-"))
@@ -949,7 +951,7 @@ def info():
     click.echo("  docs/EXAMPLES.md - Real-world examples and workflows")
 
     click.echo("\n🎯 Features:")
-    click.echo("  ✅ Neural TTS (Kokoro) with 48+ voices")
+    click.echo("  ✅ Neural TTS (Kokoro) with 54 voices across 9 languages")
     click.echo("  ✅ Apple Neural Engine acceleration (M1/M2/M3)")
     click.echo("  ✅ Professional audio formats (MP3, M4A, M4B)")
     click.echo("  ✅ Emotion detection and dialogue analysis")

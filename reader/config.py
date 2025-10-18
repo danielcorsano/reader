@@ -54,12 +54,17 @@ class ConfigManager:
         """Initialize configuration manager."""
         if config_path is None:
             config_path = Path.cwd() / "config" / "settings.yaml"
-        
+
         self.config_path = config_path
         self.config_path.parent.mkdir(parents=True, exist_ok=True)
-        
+
         # Load or create default config
+        config_exists = self.config_path.exists()
         self.config = self.load_config()
+
+        # Save default config file if it doesn't exist (makes it discoverable/editable)
+        if not config_exists:
+            self.save_config()
     
     def load_config(self) -> AppConfig:
         """Load configuration from file or create default."""

@@ -136,7 +136,7 @@ poetry run reader convert --characters --file test/wizard.txt
 - User can manually edit generated config for missed characters
 
 **Voice Assignment:**
-- No voice cloning (uses 48 pre-trained Kokoro voices)
+- No voice cloning (uses 54 pre-trained Kokoro voices)
 - Gender-based auto-assignment alternates male/female voices
 - Manual assignment recommended for best results
 

@@ -257,7 +257,7 @@ reader config --voice am_michael --speed 1.0
 ## Advanced Features
 
 ✅ **Currently Available:**
-- 48 neural Kokoro voices across 8 languages
+- 54 neural Kokoro voices across 9 languages
 - Emotion detection and prosody adjustment
 - Character voice mapping for dialogue
 - MP3/M4A/M4B output with metadata
