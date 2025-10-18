@@ -44,6 +44,7 @@ class AppConfig:
     text_dir: str = "text"
     audio_dir: str = "audio"
     config_dir: str = "config"
+    output_dir: str = "downloads"
 
 
 class ConfigManager:
@@ -88,7 +89,8 @@ class ConfigManager:
                     processing=ProcessingConfig(**processing_data),
                     text_dir=config_data.get('text_dir', 'text'),
                     audio_dir=config_data.get('audio_dir', 'audio'),
-                    config_dir=config_data.get('config_dir', 'config')
+                    config_dir=config_data.get('config_dir', 'config'),
+                    output_dir=config_data.get('output_dir', 'downloads')
                 )
             except Exception as e:
                 print(f"Warning: Could not load config from {self.config_path}: {e}")
@@ -191,7 +193,29 @@ class ConfigManager:
     def get_config_dir(self) -> Path:
         """Get configuration directory path."""
         return Path(self.config.config_dir)
-    
+
+    def get_output_dir(self, source_file: Path = None) -> Path:
+        """Get output directory path based on configuration.
+
+        Args:
+            source_file: Source file path (used when output_dir is 'same')
+
+        Returns:
+            Resolved output directory path
+        """
+        output_dir_config = self.config.output_dir
+
+        if output_dir_config == "downloads":
+            return Path.home() / "Downloads"
+        elif output_dir_config == "same" and source_file:
+            return source_file.parent
+        elif output_dir_config == "same":
+            # Fallback if no source file provided
+            return Path.cwd()
+        else:
+            # Treat as explicit path
+            return Path(output_dir_config)
+
     def list_available_voices(self) -> Dict[str, Any]:
         """Get available voices from TTS engines."""
         # This will be populated by the TTS engines

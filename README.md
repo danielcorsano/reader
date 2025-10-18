@@ -139,17 +139,18 @@ pip install audiobook-reader
 # 1. Install
 pip install audiobook-reader
 
-# 2. Models auto-download on first use (~310MB)
+# 2. Models auto-download on first use (~310MB to ~/.cache/)
 #    Or manually: reader download models
-#    For permanent local storage: reader download models --local
 
-# 3. Add a text file
-echo "Hello world! This is my first audiobook." > text/hello.txt
+# 3. Convert any text file directly
+reader convert --file mybook.epub
 
-# 4. Convert to audiobook (Neural Engine optimized)
-reader convert
+# 4. Find your audiobook in ~/Downloads/mybook_kokoro_am_michael.mp3
 
-# 5. Listen to finished/hello_kokoro_am_michael.mp3
+# Choose output location:
+reader convert --file mybook.epub --output-dir downloads  # ~/Downloads/ (default)
+reader convert --file mybook.epub --output-dir same       # Next to source
+reader convert --file mybook.epub --output-dir /custom    # Custom path
 ```
 
 ### 🎭 Character Voices (Optional)
@@ -241,7 +242,11 @@ reader convert --progress-style timeseries --file "book.epub"
 ### Configuration Management
 ```bash
 # Save permanent settings to config file
-reader config --engine kokoro --voice am_michael --format mp3
+reader config --voice am_michael --format mp3 --output-dir downloads
+
+# Set custom default output directory
+reader config --output-dir /audiobooks
+reader config --output-dir same  # Save next to source files
 
 # List available Kokoro voices
 reader voices
@@ -288,34 +293,41 @@ reader convert --voice af_sarah
 - **M4A** - Apple-friendly format
 - **M4B** - Audiobook format with chapter support
 
-## 🏗️ Project Structure
+## 🏗️ File Locations
 
-```
-reader/
-├── text/                   # 📂 Input files (your books)
-├── audio/                  # 🔊 Temporary processing
-├── finished/               # ✅ Completed audiobooks
-├── config/                 # ⚙️ Configuration files
-├── models/                 # 🤖 Kokoro TTS models
-└── reader/
-    ├── engines/           # 🎙️ TTS engine (Kokoro)
-    ├── parsers/           # 📖 File format parsers
-    ├── batch/             # 💾 Neural Engine processor
-    ├── analysis/          # 🎭 Emotion/dialogue detection
-    └── cli.py             # 💻 Command-line interface
-```
+Reader uses system-standard directories for clean organization:
+
+**Working Files (Temporary):**
+- **Temp workspace**: `/tmp/audiobook-reader-{session}/` (auto-cleaned on exit)
+- Session-specific, isolated from your files
+- Automatically removed when conversion completes
+
+**Persistent Data:**
+- **Models**: `~/.cache/audiobook-reader/models/` (~310MB, shared across all conversions)
+- **Config**: `~/.config/audiobook-reader/` (settings and character mappings)
+
+**Output Files (Your Audiobooks):**
+- **Default**: `~/Downloads/` (configurable)
+- **Options**:
+  - `--output-dir downloads` → `~/Downloads/`
+  - `--output-dir same` → Next to source file
+  - `--output-dir /custom/path` → Custom location
+
+**No directory pollution** - only your final audiobooks appear in the output location!
 
 ## 🎨 Example Workflows
 
 ### Simple Book Conversion
 ```bash
-# Add your book
-cp "My Novel.epub" text/
+# Convert any book directly
+reader convert --file "My Novel.epub"
 
-# Convert with Neural Engine acceleration
-reader convert
+# Result: ~/Downloads/My Novel_kokoro_am_michael.mp3
 
-# Result: finished/My Novel_kokoro_am_michael.mp3
+# Or output next to source file
+reader convert --file "My Novel.epub" --output-dir same
+
+# Result: My Novel_kokoro_am_michael.mp3 (in same directory as source)
 ```
 
 ### Voice Comparison
@@ -330,19 +342,21 @@ reader convert --voice bf_emma --file text/sample.txt
 
 ### Batch Processing
 ```bash
-# Add multiple books
-cp book1.epub book2.pdf story.txt text/
+# Convert multiple files with custom output location
+reader convert --file book1.epub --output-dir /audiobooks
+reader convert --file book2.pdf --output-dir /audiobooks
+reader convert --file story.txt --output-dir /audiobooks
 
-# Set default voice and convert all
-reader config --voice am_michael --speed 1.0
-reader convert
+# Results: /audiobooks/book1_*.mp3, /audiobooks/book2_*.mp3, /audiobooks/story_*.mp3
 
-# Results: finished/book1_*.mp3, finished/book2_*.mp3, finished/story_*.mp3
+# Or set default output directory in config
+reader config --output-dir /audiobooks
+reader convert --file book1.epub  # → /audiobooks/
 ```
 
 ## ⚙️ Configuration
 
-Settings are saved to `config/settings.yaml`:
+Settings are saved to `~/.config/audiobook-reader/settings.yaml`:
 
 ```yaml
 tts:
@@ -357,6 +371,7 @@ audio:
 processing:
   chunk_size: 400          # Text chunk size for processing (Kokoro optimal)
   auto_detect_chapters: true  # Chapter detection
+output_dir: downloads      # Output location: "downloads", "same", or path
 ```
 
 ## 🎯 Quick Examples
@@ -429,14 +444,11 @@ reader download models --local
 reader download models --force
 ```
 
-**Model Storage Options:**
-- **Cache** (default): System cache directory, shared across installations
-  - macOS: `~/Library/Caches/audiobook-reader/models/`
-  - Linux: `~/.cache/audiobook-reader/models/`
-  - Windows: `%LOCALAPPDATA%\audiobook-reader\models\`
-- **Local** (`--local` flag): `models/` folder in package root
-  - Permanent local storage, survives cache clears
-  - Priority: Reader checks `models/` first, then falls back to cache
+**Model & File Locations:**
+- **Models**: `~/.cache/audiobook-reader/models/` (all platforms, ~310MB)
+- **Config**: `~/.config/audiobook-reader/` (settings and character mappings)
+- **Temp Files**: `/tmp/audiobook-reader-{session}/` (auto-cleaned on exit)
+- **Output**: `~/Downloads/` by default (configurable with `--output-dir`)
 
 ### Neural Engine Not Detected (Apple Silicon)
 **Error**: `Neural Engine not available, using CPU`

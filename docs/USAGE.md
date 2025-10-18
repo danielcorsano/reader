@@ -7,18 +7,30 @@
    pip install audiobook-reader
    ```
 
-2. **Place text files in the `text/` folder:**
+2. **Convert any text file directly:**
    ```bash
-   cp my-book.epub text/
-   cp document.pdf text/
+   reader convert --file my-book.epub
    ```
 
-3. **Convert to audiobook:**
-   ```bash
-   reader convert
-   ```
+3. **Find your audiobook in `~/Downloads/`!**
 
-4. **Find your audiobook in the `finished/` folder!**
+## Output Directory Options
+
+Control where your audiobooks are saved:
+
+```bash
+# Default: ~/Downloads/
+reader convert --file book.epub
+
+# Next to source file
+reader convert --file book.epub --output-dir same
+
+# Custom location
+reader convert --file book.epub --output-dir /path/to/audiobooks
+
+# Set default in config
+reader config --output-dir /path/to/audiobooks
+```
 
 ## Commands Reference
 
@@ -96,13 +108,13 @@ reader info
 ### Basic Usage
 
 ```bash
-# 1. Add a book
-echo "Hello world! This is my first audiobook." > text/hello.txt
+# 1. Create a text file
+echo "Hello world! This is my first audiobook." > hello.txt
 
 # 2. Convert it
-reader convert
+reader convert --file hello.txt
 
-# 3. Listen to finished/hello_kokoro_am_michael.mp3
+# 3. Listen to ~/Downloads/hello_kokoro_am_michael.mp3
 ```
 
 ### Custom Voice Examples
@@ -121,16 +133,15 @@ reader convert --voice "Alex" --speed 1.3
 ### Batch Processing
 
 ```bash
-# Add multiple books
-cp book1.epub book2.pdf story.txt text/
-
-# Convert all at once
-reader convert
+# Convert multiple files to same location
+reader convert --file book1.epub --output-dir /audiobooks
+reader convert --file book2.pdf --output-dir /audiobooks
+reader convert --file story.txt --output-dir /audiobooks
 
 # Results:
-# - finished/book1_kokoro_am_michael.mp3
-# - finished/book2_kokoro_am_michael.mp3
-# - finished/story_kokoro_am_michael.mp3
+# - /audiobooks/book1_kokoro_am_michael.mp3
+# - /audiobooks/book2_kokoro_am_michael.mp3
+# - /audiobooks/story_kokoro_am_michael.mp3
 ```
 
 ### EPUB Example
@@ -210,7 +221,7 @@ reader voices
 
 ## Configuration File
 
-Settings are saved to `config/settings.yaml`:
+Settings are saved to `~/.config/audiobook-reader/settings.yaml`:
 
 ```yaml
 tts:
@@ -222,12 +233,27 @@ audio:
   format: mp3             # mp3, wav, m4a, m4b
   add_metadata: true
 processing:
-  chunk_size: 1200
+  chunk_size: 400         # Optimized for Kokoro
   pause_between_chapters: 1.0
   auto_detect_chapters: true
-text_dir: text
-finished_dir: finished    # Output directory
+output_dir: downloads     # "downloads", "same", or custom path
 ```
+
+## File Locations
+
+Reader uses system-standard directories:
+
+**Temporary Files:**
+- `/tmp/audiobook-reader-{session}/` - Working files (auto-cleaned on exit)
+
+**Persistent Data:**
+- `~/.cache/audiobook-reader/models/` - TTS models (~310MB)
+- `~/.config/audiobook-reader/` - Configuration and character mappings
+
+**Output Files:**
+- `~/Downloads/` (default, configurable with `output_dir`)
+- `--output-dir same` - Next to source file
+- `--output-dir /custom` - Custom path
 
 ## Advanced Features
 

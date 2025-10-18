@@ -5,6 +5,9 @@ from typing import List, Optional
 import sys
 import warnings
 import yaml
+import tempfile
+import atexit
+import shutil
 
 # Suppress known warnings from dependencies
 warnings.filterwarnings("ignore", 
@@ -43,13 +46,26 @@ class ReaderApp:
         """Initialize the reader application."""
         self.config_manager = ConfigManager()
 
-        # Ensure directories exist first
-        base_path = Path.cwd()
-        self.config_manager.get_text_dir().mkdir(exist_ok=True, parents=True)
-        self.config_manager.get_audio_dir().mkdir(exist_ok=True, parents=True)
-        self.config_manager.get_config_dir().mkdir(exist_ok=True, parents=True)
-        Path("finished").mkdir(exist_ok=True)
-        Path("models").mkdir(exist_ok=True)
+        # Use system temp for working files (session-specific workspace)
+        self.temp_workspace = Path(tempfile.mkdtemp(prefix="audiobook-reader-"))
+        self.text_dir = self.temp_workspace / "text"
+        self.audio_dir = self.temp_workspace / "audio"
+        self.text_dir.mkdir(parents=True, exist_ok=True)
+        self.audio_dir.mkdir(parents=True, exist_ok=True)
+
+        # Use standard system locations for persistent data
+        self.models_dir = Path.home() / ".cache/audiobook-reader/models"
+        self.config_dir = Path.home() / ".config/audiobook-reader"
+        self.models_dir.mkdir(parents=True, exist_ok=True)
+        self.config_dir.mkdir(parents=True, exist_ok=True)
+
+        # Register cleanup on exit
+        atexit.register(self._cleanup_temp_workspace)
+
+        # Update config manager to use new locations
+        self.config_manager.config.text_dir = str(self.text_dir)
+        self.config_manager.config.audio_dir = str(self.audio_dir)
+        self.config_manager.config.config_dir = str(self.config_dir)
 
         self.tts_engine = None
         if init_tts:
@@ -64,13 +80,21 @@ class ReaderApp:
 
         # Analysis and processing components
         try:
-            self.character_mapper = CharacterVoiceMapper(self.config_manager.get_config_dir())
+            self.character_mapper = CharacterVoiceMapper(self.config_dir)
             self.dialogue_detector = DialogueDetector()
             self.chapter_manager = ChapterManager()
             self.audio_processor = get_audio_processor()
             self.voice_previewer = get_voice_previewer()
         except Exception as e:
             print(f"⚠️  Warning: Some advanced features not available: {e}")
+
+    def _cleanup_temp_workspace(self):
+        """Clean up temporary workspace on exit."""
+        try:
+            if hasattr(self, 'temp_workspace') and self.temp_workspace.exists():
+                shutil.rmtree(self.temp_workspace, ignore_errors=True)
+        except Exception:
+            pass  # Ignore cleanup errors
     
     def get_tts_engine(self):
         """Get TTS engine, initializing if needed."""
@@ -159,13 +183,16 @@ class ReaderApp:
     
     def find_text_files(self) -> List[Path]:
         """Find all supported text files in text directory."""
-        text_dir = self.config_manager.get_text_dir()
+        # Use temp workspace text directory
+        text_dir = self.text_dir
         supported_files = []
-        
-        for file_path in text_dir.iterdir():
-            if file_path.is_file() and self.get_parser_for_file(file_path):
-                supported_files.append(file_path)
-        
+
+        # Check if directory exists and has files
+        if text_dir.exists():
+            for file_path in text_dir.iterdir():
+                if file_path.is_file() and self.get_parser_for_file(file_path):
+                    supported_files.append(file_path)
+
         return supported_files
     
     def convert_file(
@@ -182,7 +209,8 @@ class ReaderApp:
         turbo_mode: bool = False,
         debug: bool = False,
         progress_style: str = "timeseries",
-        character_config: Optional[Path] = None
+        character_config: Optional[Path] = None,
+        output_dir: Optional[str] = None
     ) -> Path:
         """Convert a single file to audiobook."""
         # Get parser
@@ -264,8 +292,21 @@ class ReaderApp:
         # Generate audio with Neural Engine processing
         click.echo(f"Generating audio for '{parsed_content.title}'...")
 
-        # Create output file path
+        # Create temp output path in workspace (will be moved to final location after completion)
         output_path = self._create_output_path(parsed_content.title, tts_config, audio_config, processing_config)
+
+        # Determine final output directory
+        if output_dir:
+            # CLI override
+            if output_dir == "downloads":
+                final_output_dir = Path.home() / "Downloads"
+            elif output_dir == "same":
+                final_output_dir = file_path.parent
+            else:
+                final_output_dir = Path(output_dir)
+        else:
+            # Use config
+            final_output_dir = self.config_manager.get_output_dir(file_path)
 
         # Create Neural Engine processor with optimized settings
         # Pass character mapper and dialogue detector if character voices enabled
@@ -275,7 +316,8 @@ class ReaderApp:
             progress_style=progress_style,
             character_mapper=self.character_mapper if processing_config.character_voices else None,
             dialogue_detector=self.dialogue_detector if processing_config.character_voices else None,
-            debug=debug
+            debug=debug,
+            final_output_dir=final_output_dir
         )
 
         # Split content into optimized chunks aligned with Kokoro's processing
@@ -356,8 +398,9 @@ class ReaderApp:
         # Generate the same output path that would be created
         return self._create_output_path(parsed_content.title, tts_config, audio_config, processing_config)
     def _create_output_path(self, title, tts_config, audio_config, processing_config):
-        """Create standardized output path for audio files."""
-        audio_dir = self.config_manager.get_audio_dir()
+        """Create standardized output path for temp audio files in workspace."""
+        # Use temp workspace audio directory
+        audio_dir = self.audio_dir
 
         # Build descriptive filename
         engine = tts_config.engine
@@ -378,28 +421,6 @@ class ReaderApp:
         output_filename = f"{'_'.join(filename_parts)}.{audio_config.format}"
         return audio_dir / output_filename
 
-    def _move_to_finished(self, output_path: Path) -> Path:
-        """Move completed file to finished folder."""
-        import shutil
-
-        # Get project root from config manager
-        audio_dir = self.config_manager.get_audio_dir()
-        project_root = audio_dir.parent
-        finished_dir = project_root / "finished"
-
-        # Ensure finished directory exists
-        finished_dir.mkdir(exist_ok=True)
-
-        # Create destination path
-        finished_path = finished_dir / output_path.name
-
-        # Move the file if it exists
-        if output_path.exists():
-            shutil.move(str(output_path), str(finished_path))
-            return finished_path
-        else:
-            return output_path  # Return original if file doesn't exist
-
 
 # CLI Commands
 @click.group()
@@ -413,7 +434,7 @@ def cli():
 @click.option('--voice', '-v', help='Voice to use for synthesis (e.g., am_michael, af_sarah)')
 @click.option('--speed', '-s', type=float, help='Speech speed multiplier - 1.0 is normal, 1.2 is 20% faster (e.g., 1.2)')
 @click.option('--format', '-f', type=click.Choice(['wav', 'mp3', 'm4a', 'm4b']), help='Output audio format (default: mp3)')
-@click.option('--file', '-F', type=click.Path(exists=True), help='Convert specific file instead of all files in text/ folder')
+@click.option('--file', '-F', type=click.Path(exists=True), help='Convert specific file (required)')
 @click.option('--characters/--no-characters', default=None, help='Enable/disable character voice mapping for dialogue')
 @click.option('--character-config', type=click.Path(exists=True), help='Path to character voice config YAML file (e.g., mybook.characters.yaml)')
 @click.option('--chapters/--no-chapters', default=None, help='Enable/disable chapter detection and metadata in audiobook')
@@ -424,9 +445,10 @@ def cli():
 @click.option('--turbo-mode', is_flag=True, default=False, help='Maximum speed - uses 95% CPU, minimal delays')
 @click.option('--debug', is_flag=True, default=False, help='Show detailed debug output including Neural Engine status')
 @click.option('--progress-style', type=click.Choice(['simple', 'tqdm', 'rich', 'timeseries']), default='timeseries', help='Progress display: simple (text), tqdm (bars), rich (fancy), timeseries (charts)')
-def convert(voice, speed, format, file, characters, character_config, chapters, dialogue, processing_level, batch_mode, checkpoint_interval, turbo_mode, debug, progress_style):
-    """Convert text files in text/ folder to audiobooks.
-    
+@click.option('--output-dir', help='Output directory: "downloads" (~/Downloads), "same" (next to source), or explicit path')
+def convert(voice, speed, format, file, characters, character_config, chapters, dialogue, processing_level, batch_mode, checkpoint_interval, turbo_mode, debug, progress_style, output_dir):
+    """Convert text file to audiobook.
+
     All options are temporary overrides and won't be saved to config.
     Use 'reader config' to permanently save settings."""
     app = ReaderApp()
@@ -459,47 +481,19 @@ def convert(voice, speed, format, file, characters, character_config, chapters, 
                 file_path, voice, speed, format, characters, chapters, dialogue,
                 batch_mode=batch_mode, checkpoint_interval=checkpoint_interval,
                 turbo_mode=turbo_mode, debug=debug, progress_style=progress_style,
-                character_config=Path(character_config) if character_config else None
+                character_config=Path(character_config) if character_config else None,
+                output_dir=output_dir
             )
             click.echo(f"✓ Conversion complete: {output_path}")
         except Exception as e:
             click.echo(f"✗ Error converting {file_path}: {e}", err=True)
             sys.exit(1)
     else:
-        # Scan text directory
-        text_files = app.find_text_files()
-        
-        if not text_files:
-            click.echo("No supported text files found in text/ directory.")
-            click.echo("Supported formats: .epub, .pdf, .txt, .md, .rst")
-            return
-        
-        click.echo(f"Found {len(text_files)} file(s) to convert:")
-        for file_path in text_files:
-            click.echo(f"  - {file_path.name}")
-        
-        # Convert each file (skip if already converted, continue if partial)
-        for file_path in text_files:
-            # Check if already converted with same settings
-            expected_output = app._get_expected_output_path(file_path, voice, speed, format, characters, chapters, dialogue, processing_level, turbo_mode)
-            checkpoint_path = expected_output.with_suffix('.checkpoint')
-
-            if expected_output.exists() and not checkpoint_path.exists():
-                click.echo(f"⏭️ Skipping {file_path.name} (already converted: {expected_output.name})")
-                continue
-            elif checkpoint_path.exists():
-                click.echo(f"📂 Resuming {file_path.name} from checkpoint...")
-
-            try:
-                output_path = app.convert_file(
-                    file_path, voice, speed, format, characters, chapters, dialogue,
-                    batch_mode=batch_mode, checkpoint_interval=checkpoint_interval,
-                    turbo_mode=turbo_mode, progress_style=progress_style,
-                    character_config=Path(character_config) if character_config else None
-                )
-                click.echo(f"✓ {file_path.name} -> {output_path.name}")
-            except Exception as e:
-                click.echo(f"✗ Error converting {file_path.name}: {e}", err=True)
+        # No file specified - show usage
+        click.echo("Error: --file option is required")
+        click.echo("Usage: reader convert --file mybook.epub")
+        click.echo("Supported formats: .epub, .pdf, .txt, .md, .rst")
+        sys.exit(1)
 
 
 @cli.command()
@@ -898,44 +892,36 @@ def config(voice, speed, format, characters, processing_level):
 def info():
     """Show application information and quick start guide."""
     app = ReaderApp()
-    
-    text_dir = app.config_manager.get_text_dir()
-    audio_dir = app.config_manager.get_audio_dir()
-    
+
+    # Get relevant directories
+    models_dir = app.models_dir
+    config_dir = app.config_dir
+    output_dir = app.config_manager.get_output_dir()
+
     # Header
     click.echo(f"📖 Reader: Text-to-Audiobook CLI (Neural Engine Optimized)")
     click.echo("=" * 50)
-    
+
     # System info
-    click.echo(f"📂 Text directory: {text_dir.absolute()}")
-    click.echo(f"🔊 Audio directory: {audio_dir.absolute()}")
-    
-    # Count files
-    text_files = app.find_text_files()
-    try:
-        audio_files = list(audio_dir.glob("*.wav"))
-    except Exception:
-        # Fallback if glob fails
-        audio_files = []
-    
-    click.echo(f"📚 Text files found: {len(text_files)}")
-    click.echo(f"🎵 Audio files: {len(audio_files)}")
-    
+    click.echo(f"\n📂 File Locations:")
+    click.echo(f"  Models: {models_dir}")
+    click.echo(f"  Config: {config_dir}")
+    click.echo(f"  Output: {output_dir}")
+    click.echo(f"  Temp workspace: /tmp/audiobook-reader-* (session-based)")
+
     # Quick start
     click.echo("\n🚀 Quick Start:")
-    click.echo("1. Add text files to text/ folder (.epub, .pdf, .txt, .md)")
-    click.echo("2. Run: reader convert")
-    click.echo("3. Find audiobooks in finished/ folder")
+    click.echo("1. Convert any text file: reader convert --file mybook.epub")
+    click.echo("2. Find audiobook in configured output directory")
+    click.echo("3. Choose output: --output-dir downloads|same|/custom/path")
     
     # Basic commands
     click.echo("\n💻 Basic Commands:")
-    click.echo("  reader convert              # Convert all text files")
-    click.echo("  reader convert --voice Alex # Use specific voice")
-    if KOKORO_AVAILABLE:
-        click.echo("  reader convert --engine kokoro # Use neural TTS")
-        click.echo("  reader convert --characters # Enable character voices")
-    click.echo("  reader voices               # List available voices")
-    click.echo("  reader config               # View/set preferences")
+    click.echo("  reader convert --file book.epub           # Convert file")
+    click.echo("  reader convert --file book.epub --voice am_michael  # Use specific voice")
+    click.echo("  reader convert --file book.epub --characters  # Enable character voices")
+    click.echo("  reader voices                             # List available voices")
+    click.echo("  reader config                             # View/set preferences")
 
     click.echo("\n🎭 Advanced Commands:")
     click.echo("  reader characters add NAME VOICE # Map character to voice")
@@ -974,14 +960,10 @@ def info():
     click.echo("  ✅ 5 input formats (EPUB, PDF, TXT, MD, RST)")
     
     # Tips
-    if len(text_files) == 0:
-        click.echo("\n💡 Tip: Add text files to get started!")
-        click.echo("  echo 'Hello world!' > text/hello.txt")
-        click.echo("  reader convert")
-    elif len(audio_files) == 0:
-        click.echo("\n💡 Tip: Run 'reader convert' to create audiobooks!")
-    else:
-        click.echo("\n🎉 Great! You have text and audio files ready.")
+    click.echo("\n💡 Tips:")
+    click.echo("  • Convert any file directly: reader convert --file book.epub")
+    click.echo("  • Set default output: reader config --output-dir /audiobooks")
+    click.echo("  • Models auto-download to cache on first use (~310MB)")
 
 
 @cli.command('download')

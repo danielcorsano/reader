@@ -15,9 +15,10 @@ pip install audiobook-reader
 ```python
 import reader
 
-# Convert with defaults
+# Convert with defaults (outputs to ~/Downloads/)
 output = reader.convert("mybook.epub")
 print(f"Audiobook created: {output}")
+# Output: Audiobook created: /Users/name/Downloads/mybook_kokoro_am_michael.mp3
 ```
 
 ### Customized Conversion
@@ -30,7 +31,8 @@ output = reader.convert(
     "mybook.epub",
     voice="af_sarah",           # Female voice
     speed=1.2,                  # 20% faster
-    output_format="mp3"         # MP3 format
+    output_format="mp3",        # MP3 format
+    output_dir="same"           # Output next to source file
 )
 ```
 
@@ -78,7 +80,8 @@ def convert(
     character_config: Optional[str] = None,
     checkpoint_interval: int = 50,
     progress_style: str = "simple",
-    debug: bool = False
+    debug: bool = False,
+    output_dir: Optional[str] = None
 ) -> Path
 ```
 
@@ -92,9 +95,10 @@ def convert(
 - **checkpoint_interval** (int): Save progress every N chunks. Default: 50
 - **progress_style** (str): Progress display ('simple', 'tqdm', 'rich', 'timeseries'). Default: 'simple'
 - **debug** (bool): Enable debug logging. Default: False
+- **output_dir** (str, optional): Output directory ('downloads', 'same', or explicit path). Default: 'downloads' (~/Downloads/)
 
 **Returns:**
-- **Path**: Path to generated audiobook file in `finished/` directory
+- **Path**: Path to generated audiobook file in specified output directory
 
 **Raises:**
 - **FileNotFoundError**: If input file doesn't exist
@@ -181,7 +185,8 @@ output = r.convert(
     character_voices=True,
     character_config="characters.yaml",
     speed=1.1,
-    progress_style="rich"
+    progress_style="rich",
+    output_dir="/audiobooks"  # Custom output location
 )
 ```
 
@@ -281,10 +286,25 @@ import reader
 reader.convert("book.epub")  # Uses configured voice/format/speed
 ```
 
+## File Locations
+
+### Temporary Files
+- `/tmp/audiobook-reader-{session}/` - Working files (auto-cleaned on exit)
+- Session-specific workspace, isolated from your files
+
+### Persistent Data
+- `~/.cache/audiobook-reader/models/` - TTS models (~310MB, shared)
+- `~/.config/audiobook-reader/` - Configuration and character mappings
+
+### Output Files
+- `~/Downloads/` (default) - Configurable with `output_dir` parameter
+- Options: `"downloads"`, `"same"` (next to source), or custom path
+
 ## Notes
 
 - All conversions use checkpoint/resume for reliability
-- Output files are placed in `finished/` directory
-- Temporary files are cleaned up automatically
+- Output files placed in configured output directory
+- Temporary files cleaned up automatically on exit
 - Supports Apple Silicon Neural Engine acceleration
 - Handles non-English text (Greek, Cyrillic, Arabic, etc.)
+- No directory pollution - only final audiobooks in output location

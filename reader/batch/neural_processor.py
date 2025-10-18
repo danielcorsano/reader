@@ -108,13 +108,15 @@ class NeuralProcessor:
     """Neural Engine optimized processor with streaming output and checkpoints."""
 
     def __init__(self, output_path: Path, checkpoint_interval: int = DEFAULT_CHECKPOINT_INTERVAL,
-                 progress_style: str = "timeseries", character_mapper=None, dialogue_detector=None, debug: bool = False):
+                 progress_style: str = "timeseries", character_mapper=None, dialogue_detector=None, debug: bool = False,
+                 final_output_dir: Path = None):
         self.output_path = output_path
         self.checkpoint_interval = checkpoint_interval
         self.checkpoint_path = output_path.with_suffix('.checkpoint')
         self.progress_style = progress_style
         self.debug = debug
         self.progress_display = create_progress_display(progress_style, debug=debug)
+        self.final_output_dir = final_output_dir or (Path.home() / "Downloads")
 
         # Debug: log processor initialization (clear log at start of new run)
         if self.debug:
@@ -645,23 +647,19 @@ class NeuralProcessor:
             self.temp_wav_path.unlink()
 
     def _move_to_finished(self) -> Path:
-        """Move completed file to finished folder."""
+        """Move completed file to final output directory."""
         import shutil
 
-        # Get project root (output_path is in audio/ folder, so parent.parent is project root)
-        project_root = self.output_path.parent.parent
-        finished_dir = project_root / "finished"
-
-        # Ensure finished directory exists
-        finished_dir.mkdir(exist_ok=True)
+        # Ensure output directory exists
+        self.final_output_dir.mkdir(parents=True, exist_ok=True)
 
         # Create destination path
-        finished_path = finished_dir / self.output_path.name
+        final_path = self.final_output_dir / self.output_path.name
 
         # Move the file if it exists
         if self.output_path.exists():
-            shutil.move(str(self.output_path), str(finished_path))
-            return finished_path
+            shutil.move(str(self.output_path), str(final_path))
+            return final_path
         else:
             return self.output_path  # Return original if file doesn't exist
 

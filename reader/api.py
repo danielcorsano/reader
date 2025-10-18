@@ -22,7 +22,8 @@ class Reader:
         character_config: Optional[str] = None,
         checkpoint_interval: int = 50,
         progress_style: str = "simple",
-        debug: bool = False
+        debug: bool = False,
+        output_dir: Optional[str] = None
     ) -> Path:
         """
         Convert text file to audiobook.
@@ -37,6 +38,7 @@ class Reader:
             checkpoint_interval: Save progress every N chunks
             progress_style: Progress display ('simple', 'tqdm', 'rich', 'timeseries')
             debug: Enable debug logging
+            output_dir: Output directory ('downloads', 'same', or explicit path)
 
         Returns:
             Path to generated audiobook file
@@ -52,7 +54,8 @@ class Reader:
             ...     voice="af_sarah",
             ...     speed=1.2,
             ...     character_voices=True,
-            ...     progress_style="timeseries"
+            ...     progress_style="timeseries",
+            ...     output_dir="downloads"
             ... )
         """
         file_path = Path(file_path)
@@ -72,7 +75,8 @@ class Reader:
             checkpoint_interval=checkpoint_interval,
             turbo_mode=False,
             debug=debug,
-            progress_style=progress_style
+            progress_style=progress_style,
+            output_dir=output_dir
         )
 
     def list_voices(self) -> Dict[str, Any]:
