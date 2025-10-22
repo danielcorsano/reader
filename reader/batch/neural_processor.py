@@ -220,6 +220,7 @@ class NeuralProcessor:
                 f.write(f"start_chunk={start_chunk}, total_chunks={total_chunks}\n")
                 f.write(f"Processing chunks {start_chunk} to {total_chunks-1}\n\n")
 
+        skipped_chunks = []
         for i in range(start_chunk, total_chunks):
             chunk_text = text_chunks[i]
             
@@ -319,10 +320,16 @@ class NeuralProcessor:
                             print(f"❌ Neural Engine processing failed: {str(e)}", flush=True)
                             print(f"🔄 Falling back to CPU processing", flush=True)
                         neural_engine_confirmed = True  # Don't spam error messages
+                    # If this is the known fatal error, skip and continue
+                    if "Failed to synthesize any chunks" in error_str:
+                        skipped_chunks.append(i + 1)
+                        print(f"\n⚠️  Warning: Skipping unrecoverable chunk {i+1}. It will be omitted from the final audio.", flush=True)
+                        continue
                     raise  # Re-raise to handle at higher level
-            
-            # Convert and write immediately for streaming
-            self._convert_and_write_chunk(output_file, audio_data)
+                
+                # Convert and write immediately for streaming
+                self._convert_and_write_chunk(output_file, audio_data)
+
 
             # Save checkpoint periodically (time-based with chunk-based fallback)
             current_time = time.time()
@@ -338,6 +345,11 @@ class NeuralProcessor:
                 current_size = output_file.tell()  # Actual file size (WAV or temp WAV)
                 self._save_checkpoint(file_path, i + 1, total_chunks, current_size, settings_hash)
                 self.last_checkpoint_time = current_time
+
+        # After processing all chunks, report any skipped ones
+        if skipped_chunks:
+            skipped_str = ", ".join(str(idx) for idx in skipped_chunks)
+            print(f"\n⚠️  Conversion completed with skipped chunks: {skipped_str}. These sections could not be synthesized and were omitted from the final audio.", flush=True)
     
     def _process_single_chunk(self, chunk_text: str, chunk_idx: int, total_chunks: int,
                              tts_engine, voice_blend: Dict[str, float], speed: float) -> bytes:

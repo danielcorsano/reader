@@ -7,7 +7,12 @@ Features emotion detection, character voice mapping, and professional audio outp
 For system TTS fallback support, see reader-small package.
 """
 
-__version__ = "0.1.6"
+try:
+    from importlib.metadata import version as _pkg_version
+    __version__ = _pkg_version("audiobook-reader")
+except Exception:
+    __version__ = "0.1.7"  # fallback if metadata not available
+
 __author__ = "danielcorsano"
 
 # Public API

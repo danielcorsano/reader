@@ -78,4 +78,4 @@ def test_convert_help(runner):
     """Test convert command help."""
     result = runner.invoke(cli, ["convert", "--help"])
     assert result.exit_code == 0
-    assert "Convert text files" in result.output
+    assert "Convert text file to audiobook." in result.output

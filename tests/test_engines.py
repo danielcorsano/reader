@@ -34,13 +34,13 @@ def test_kokoro_voice_languages():
     """Test Kokoro voices have correct language codes."""
     voice_data = KokoroEngine.VOICES
 
-    # Check American English voices
+# Check American English voices
     assert voice_data["am_michael"]["lang"] == "en-us"
     assert voice_data["af_sarah"]["lang"] == "en-us"
 
     # Check British English voices
-    assert voice_data["bm_oliver"]["lang"] == "en-uk"
-    assert voice_data["bf_emma"]["lang"] == "en-uk"
+    assert voice_data["bm_george"]["lang"] == "en-gb"
+    assert voice_data["bf_emma"]["lang"] == "en-gb"
 
 
 @pytest.mark.skipif(not KOKORO_AVAILABLE, reason="Kokoro not installed")
