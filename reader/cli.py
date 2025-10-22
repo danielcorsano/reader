@@ -425,9 +425,8 @@ class ReaderApp:
 
 
 # CLI Commands
-from reader import __version__
 @click.group()
-@click.version_option(version=__version__)
+@click.version_option(version="0.1.0")
 def cli():
     """Reader: Convert text files to audiobooks."""
     pass
