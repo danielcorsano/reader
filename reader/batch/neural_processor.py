@@ -118,15 +118,15 @@ class NeuralProcessor:
         self.progress_display = create_progress_display(progress_style, debug=debug)
         self.final_output_dir = final_output_dir or (Path.home() / "Downloads")
 
-        # Debug: log processor initialization (clear log at start of new run)
+        # Debug logging
+        self.debug_log = Path.home() / ".cache/audiobook-reader/debug.log" if debug else None
         if self.debug:
-            debug_log = Path("/Users/corsano/Documents/code/reader/checkpoint_debug.log")
-            # Clear log at start of new run
-            debug_log.unlink(missing_ok=True)
-            with open(debug_log, 'w') as f:
+            self.debug_log.parent.mkdir(parents=True, exist_ok=True)
+            self.debug_log.unlink(missing_ok=True)
+            with open(self.debug_log, 'w') as f:
                 import os
-                f.write(f"=== NeuralProcessor.__init__ called at {time.time()} (PID {os.getpid()}) ===\n")
-                f.write(f"Progress display type: {type(self.progress_display).__name__}\n")
+                f.write(f"=== NeuralProcessor.__init__ at {time.time()} (PID {os.getpid()}) ===\n")
+                f.write(f"Progress display: {type(self.progress_display).__name__}\n")
 
         # Character voice support
         self.character_mapper = character_mapper
@@ -214,12 +214,11 @@ class NeuralProcessor:
         neural_engine_confirmed = False
 
         if self.debug:
-            debug_log = Path("/Users/corsano/Documents/code/reader/checkpoint_debug.log")
-            with open(debug_log, 'a') as f:
-                f.write(f"\n=== _process_all_chunks called ===\n")
+            with open(self.debug_log, 'a') as f:
+                f.write(f"\n=== _process_all_chunks ===\n")
                 f.write(f"start_chunk={start_chunk}, total_chunks={total_chunks}\n")
-                f.write(f"Processing chunks {start_chunk} to {total_chunks-1}\n\n")
 
+        skipped_chunks = []
         for i in range(start_chunk, total_chunks):
             chunk_text = text_chunks[i]
             
@@ -233,15 +232,7 @@ class NeuralProcessor:
                 elapsed = 0
                 eta_seconds = 0
             
-            # Update progress display (handles all output formatting)
-            if self.debug:
-                debug_log = Path("/Users/corsano/Documents/code/reader/checkpoint_debug.log")
-                with open(debug_log, 'a') as f:
-                    import traceback
-                    f.write(f"\n>>> Calling progress_display.update({i+1}/{total_chunks})\n")
-                    f.write("Call stack:\n")
-                    for line in traceback.format_stack()[-5:-1]:  # Last 4 frames
-                        f.write(line)
+            # Update progress display
             self.progress_display.update(i + 1, total_chunks, elapsed, eta_seconds)
             
             # Process chunk with Neural Engine
@@ -295,24 +286,24 @@ class NeuralProcessor:
                                 if len(part2) > 44:
                                     audio_parts.append(part2[44:])
                             except Exception as final_error:
-                                print(f"❌ Cannot process chunk {i+1} even after splitting: {final_error}", flush=True)
-                                raise
+                                print(f"⚠️  Cannot synthesize part of chunk {i+1}, skipping this segment", flush=True)
+                                continue
+
+                    if not audio_parts:
+                        skipped_chunks.append(i + 1)
+                        print(f"\n⚠️  Warning: Skipping chunk {i+1} entirely - no segments could be synthesized", flush=True)
+                        continue
 
                     audio_data = b''.join(audio_parts)
                     print(f"✅ Successfully processed chunk {i+1} in {len(sentences)} pieces", flush=True)
                 else:
                     # Other errors - log and re-raise
                     if self.debug:
-                        debug_log = Path("/Users/corsano/Documents/code/reader/checkpoint_debug.log")
-                        with open(debug_log, 'a') as f:
+                        with open(self.debug_log, 'a') as f:
                             import traceback
-                            f.write(f"\n!!! EXCEPTION in chunk {i+1} (index {i}) !!!\n")
-                            f.write(f"Error: {e}\n")
-                            f.write(f"Chunk text length: {len(chunk_text)}\n")
-                            f.write(f"Chunk text: {chunk_text}\n")
-                            f.write("Traceback:\n")
+                            f.write(f"\n!!! EXCEPTION chunk {i+1} !!!\n")
+                            f.write(f"{e}\nLength: {len(chunk_text)}\n")
                             f.write(traceback.format_exc())
-                            f.write("\n")
 
                     if not neural_engine_confirmed:
                         if self.progress_style == "simple":
@@ -338,6 +329,10 @@ class NeuralProcessor:
                 current_size = output_file.tell()  # Actual file size (WAV or temp WAV)
                 self._save_checkpoint(file_path, i + 1, total_chunks, current_size, settings_hash)
                 self.last_checkpoint_time = current_time
+
+        # Report skipped chunks summary
+        if skipped_chunks:
+            print(f"\n⚠️  Completed with {len(skipped_chunks)} skipped chunk(s): {', '.join(map(str, skipped_chunks))}")
     
     def _process_single_chunk(self, chunk_text: str, chunk_idx: int, total_chunks: int,
                              tts_engine, voice_blend: Dict[str, float], speed: float) -> bytes:
@@ -561,15 +556,13 @@ class NeuralProcessor:
                 # If file is outside cwd, use absolute path
                 relative_path = str(file_path)
 
-            # Debug: show checkpoint verification details (write to debug log file)
+            # Debug: checkpoint verification
             if self.debug:
-                import sys
-                debug_log = Path("/Users/corsano/Documents/code/reader/checkpoint_debug.log")
-                with open(debug_log, 'a') as f:
-                    f.write(f"\n=== Checkpoint verification at {time.time()} ===\n")
-                    f.write(f"File: '{checkpoint.file_path}' == '{relative_path}' ? {checkpoint.file_path == relative_path}\n")
-                    f.write(f"Chunks: {checkpoint.total_chunks} == {total_chunks} ? {checkpoint.total_chunks == total_chunks}\n")
-                    f.write(f"Settings: '{checkpoint.settings_hash}' == '{settings_hash}' ? {checkpoint.settings_hash == settings_hash}\n")
+                with open(self.debug_log, 'a') as f:
+                    f.write(f"\n=== Checkpoint verification ===\n")
+                    f.write(f"File match: {checkpoint.file_path == relative_path}\n")
+                    f.write(f"Chunks match: {checkpoint.total_chunks == total_chunks}\n")
+                    f.write(f"Settings match: {checkpoint.settings_hash == settings_hash}\n")
 
             # Verify checkpoint is for same file and settings
             if (checkpoint.file_path != relative_path or
@@ -581,9 +574,6 @@ class NeuralProcessor:
 
             # For MP3: check temp WAV file, for WAV: check output file
             actual_file = self.temp_wav_path if self.is_mp3_output else self.output_path
-            if self.debug:
-                with open(debug_log, 'a') as f:
-                    f.write(f"Output file: {actual_file}\n")
 
             # Verify file exists
             if not actual_file.exists():
@@ -593,9 +583,6 @@ class NeuralProcessor:
 
             # Check file integrity
             file_size = actual_file.stat().st_size
-            if self.debug:
-                with open(debug_log, 'a') as f:
-                    f.write(f"Size: {file_size} vs checkpoint {checkpoint.output_size}\n")
 
             if file_size < checkpoint.output_size:
                 print(f"⚠️ File corrupted (truncated), starting fresh")
@@ -607,9 +594,6 @@ class NeuralProcessor:
                 with open(actual_file, 'r+b') as f:
                     f.truncate(checkpoint.output_size)
 
-            if self.debug:
-                with open(debug_log, 'a') as f:
-                    f.write(f"✅ RESUME SUCCESS: chunk {checkpoint.current_chunk}\n")
             return checkpoint.current_chunk, checkpoint.output_size
             
         except Exception as e:

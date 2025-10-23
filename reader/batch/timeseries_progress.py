@@ -1,6 +1,7 @@
 """Timeseries visualization progress display for Neural Engine processing."""
 import time
 import os
+from pathlib import Path
 from collections import deque
 from .neural_processor import ProgressDisplay
 
@@ -36,13 +37,6 @@ class TimeseriesProgressDisplay(ProgressDisplay):
         self.time_history.append(0.0)
     
     def update(self, current_chunk: int, total_chunks: int, elapsed_time: float, eta_seconds: float):
-        # Debug: log update calls
-        if self.debug:
-            from pathlib import Path
-            debug_log = Path("/Users/corsano/Documents/code/reader/checkpoint_debug.log")
-            with open(debug_log, 'a') as f:
-                f.write(f"TimeseriesProgressDisplay.update({current_chunk}/{total_chunks}) at {time.time()} (instance id: {id(self)})\n")
-
         current_time = time.time()
         progress_pct = (current_chunk / total_chunks) * 100
 
