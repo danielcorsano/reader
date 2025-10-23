@@ -1,23 +1,27 @@
 # Kokoro TTS Setup Guide
 
 ## Overview
-Reader uses Kokoro-82M, a high-quality neural TTS model with 54 voices across 9 languages. The model files are large (~310MB) and are downloaded automatically on first use.
+Reader uses Kokoro-82M, a high-quality neural TTS model with 54 voices across 9 languages.
 
 ## Current Status
-- ✅ Kokoro ONNX library installed via Poetry
-- ✅ Engine implementation complete in `reader/engines/kokoro_engine.py`
-- ⚠️ Model files need to be downloaded manually (large files - ~300MB total)
+- ✅ Kokoro ONNX library installed
+- ✅ Engine implementation complete
+- ✅ **Models auto-download on first use** (~310MB to `~/.cache/audiobook-reader/models/`)
 
-## Required Model Files
-Download these files to `models/kokoro/`:
+## Model Download
 
+Models automatically download to system cache on first use. No manual setup required!
+
+**Manual download** (optional):
 ```bash
-mkdir -p models/kokoro
-cd models/kokoro
+# Auto-download to cache (default)
+reader download models
 
-# Download model files (310MB each)
-curl -L -o kokoro-v1.0.onnx https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/kokoro-v1.0.onnx
-curl -L -o voices-v1.0.bin https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/voices-v1.0.bin
+# Force re-download
+reader download models --force
+
+# Download to local models/ folder (development)
+reader download models --local
 ```
 
 ## Installation Dependencies
@@ -65,16 +69,19 @@ reader voices
 
 ## Troubleshooting
 
-**Models not found:**
-- Verify files are in `models/kokoro/` directory
-- Check filenames match exactly: `kokoro-v1.0.onnx` and `voices-v1.0.bin`
-- Models are ~310MB (onnx) and ~27MB (bin)
+**Models not downloading:**
+- Check internet connection
+- Try manual download: `reader download models`
+- Models cache: `~/.cache/audiobook-reader/models/`
+- Total size: ~310MB (kokoro-v1.0.onnx) + ~27MB (voices-v1.0.bin)
 
 **Neural Engine not detected:**
-- Apple Silicon only (M1/M2/M3 Macs)
+- Apple Silicon only (M1/M2/M3/M4 Macs)
 - On Intel/Windows/Linux, uses CPU (still fast)
 - Debug mode shows acceleration status: `--debug`
 
-**Models required:**
-- Kokoro models are required for this package (~300MB)
-- Models auto-download to cache on first use
+**FFmpeg not found:**
+- Required for audio conversion
+- macOS: `brew install ffmpeg`
+- Windows: `winget install ffmpeg`
+- Linux: `sudo apt install ffmpeg`

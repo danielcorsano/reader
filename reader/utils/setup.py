@@ -14,17 +14,11 @@ def check_ffmpeg() -> Tuple[bool, str]:
     error_msg = """
 ❌ FFmpeg not found
 
-FFmpeg is required for audio conversion. Please install:
+FFmpeg is required for audio conversion. Install with:
 
-macOS:
-  brew install ffmpeg
-
-Ubuntu/Debian:
-  sudo apt-get install ffmpeg
-
-Windows:
-  choco install ffmpeg
-  or download from https://ffmpeg.org/download.html
+  macOS:     brew install ffmpeg
+  Windows:   winget install ffmpeg
+  Linux:     sudo apt install ffmpeg
 """
     return False, error_msg
 

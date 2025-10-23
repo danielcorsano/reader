@@ -80,6 +80,23 @@ EPUB, PDF, TXT, Markdown, ReStructuredText
 
 ## 📦 Installation
 
+### Prerequisites
+
+**FFmpeg Required** - Install before using audiobook-reader:
+
+```bash
+# macOS
+brew install ffmpeg
+
+# Windows
+winget install ffmpeg
+
+# Linux
+sudo apt install ffmpeg
+```
+
+FFmpeg is required for audio format conversion (MP3, M4A, M4B). Models (~310MB) auto-download on first use.
+
 ### Using pip (recommended for users)
 ```bash
 # Default installation (Kokoro TTS + core features)

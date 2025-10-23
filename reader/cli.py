@@ -41,9 +41,14 @@ from .utils.setup import validate_environment, check_ffmpeg
 
 class ReaderApp:
     """Main application class."""
-    
+
     def __init__(self, init_tts=False):
         """Initialize the reader application."""
+        # Early FFmpeg warning (non-blocking)
+        if not shutil.which("ffmpeg"):
+            print("⚠️  FFmpeg not detected (required for audio conversion)")
+            print("💡 Install: brew install ffmpeg (macOS) | winget install ffmpeg (Windows) | sudo apt install ffmpeg (Linux)\n")
+
         # Use system-standard config location (works in CLI, GUI, and app bundles)
         config_path = Path.home() / ".config/audiobook-reader/settings.yaml"
         self.config_manager = ConfigManager(config_path)
