@@ -234,11 +234,14 @@ reader convert --file text/book.epub
 # Convert with specific voice
 reader convert --file text/book.epub --voice am_michael
 
-# Kokoro is the TTS engine
+# Disable text cleanup (keep broken words, bibliography, etc.)
+reader convert --file text/book.epub --no-clean-text
 
 # Enable debug mode to see Neural Engine status
 reader convert --file text/book.epub --debug
 ```
+
+**Note:** Text cleanup is enabled by default. It fixes broken words (common in PDFs) and skips non-narrative chapters (Bibliography, Index, etc.) for better audio quality.
 
 ### 📊 Progress Visualization Options
 

@@ -217,7 +217,8 @@ class ReaderApp:
         debug: bool = False,
         progress_style: str = "timeseries",
         character_config: Optional[Path] = None,
-        output_dir: Optional[str] = None
+        output_dir: Optional[str] = None,
+        clean_text: bool = True
     ) -> Path:
         """Convert a single file to audiobook."""
         # Get parser
@@ -228,7 +229,24 @@ class ReaderApp:
         # Parse content
         click.echo(f"Parsing {file_path.name}...")
         parsed_content = parser.parse(file_path)
-        
+
+        # Clean text for better TTS processing
+        if clean_text:
+            from ..text_processing.text_cleaner import TextCleaner
+            cleaner = TextCleaner()
+            parsed_content.content = cleaner.clean(parsed_content.content)
+
+            # Filter out non-narrative chapters
+            if parsed_content.chapters:
+                original_count = len(parsed_content.chapters)
+                parsed_content.chapters = [
+                    ch for ch in parsed_content.chapters
+                    if not cleaner.should_skip_chapter(ch.get('title', ''))
+                ]
+                skipped = original_count - len(parsed_content.chapters)
+                if skipped > 0:
+                    click.echo(f"Skipped {skipped} non-narrative chapter(s) (bibliography, index, etc.)")
+
         # Get configuration
         tts_config = self.config_manager.get_tts_config()
         audio_config = self.config_manager.get_audio_config()
@@ -453,7 +471,8 @@ def cli():
 @click.option('--debug', is_flag=True, default=False, help='Show detailed debug output including Neural Engine status')
 @click.option('--progress-style', type=click.Choice(['simple', 'tqdm', 'rich', 'timeseries']), default='timeseries', help='Progress display: simple (text), tqdm (bars), rich (fancy), timeseries (charts)')
 @click.option('--output-dir', help='Output directory: "downloads" (~/Downloads), "same" (next to source), or explicit path')
-def convert(voice, speed, format, file, characters, character_config, chapters, dialogue, processing_level, batch_mode, checkpoint_interval, turbo_mode, debug, progress_style, output_dir):
+@click.option('--no-clean-text', is_flag=True, help='Disable text cleanup (keep broken words, bibliography, etc.)')
+def convert(voice, speed, format, file, characters, character_config, chapters, dialogue, processing_level, batch_mode, checkpoint_interval, turbo_mode, debug, progress_style, output_dir, no_clean_text):
     """Convert text file to audiobook.
 
     All options are temporary overrides and won't be saved to config.
@@ -489,7 +508,8 @@ def convert(voice, speed, format, file, characters, character_config, chapters, 
                 batch_mode=batch_mode, checkpoint_interval=checkpoint_interval,
                 turbo_mode=turbo_mode, debug=debug, progress_style=progress_style,
                 character_config=Path(character_config) if character_config else None,
-                output_dir=output_dir
+                output_dir=output_dir,
+                clean_text=not no_clean_text
             )
             click.echo(f"✓ Conversion complete: {output_path}")
         except Exception as e:
