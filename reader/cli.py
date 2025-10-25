@@ -232,7 +232,7 @@ class ReaderApp:
 
         # Clean text for better TTS processing
         if clean_text:
-            from ..text_processing.text_cleaner import TextCleaner
+            from reader.text_processing.text_cleaner import TextCleaner
             cleaner = TextCleaner()
             parsed_content.content = cleaner.clean(parsed_content.content)
 

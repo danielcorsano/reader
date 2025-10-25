@@ -24,7 +24,11 @@ def get_cache_dir() -> Path:
     return cache
 
 
-def download_models(verbose: bool = True, target_dir: Path = None) -> bool:
+def download_models(
+    verbose: bool = True,
+    target_dir: Path = None,
+    base_url: str = "https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0"
+) -> bool:
     """Download Kokoro models (~310MB)."""
     cache = (target_dir or get_cache_dir()) / "kokoro"
     cache.mkdir(parents=True, exist_ok=True)
@@ -35,8 +39,6 @@ def download_models(verbose: bool = True, target_dir: Path = None) -> bool:
     if model.exists() and voices.exists():
         return True
 
-    base = "https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0"
-
     try:
         if verbose:
             print(f"📥 Downloading Kokoro models to {cache}")
@@ -45,7 +47,7 @@ def download_models(verbose: bool = True, target_dir: Path = None) -> bool:
             if not path.exists():
                 if verbose:
                     print(f"   {name}...", end=" ", flush=True)
-                urllib.request.urlretrieve(f"{base}/{name}", path)
+                urllib.request.urlretrieve(f"{base_url}/{name}", path)
                 if verbose:
                     print("✓")
 
