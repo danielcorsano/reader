@@ -10,7 +10,10 @@ class TextCleaner:
     SKIP_CHAPTERS: Set[str] = {
         'bibliography', 'references', 'index',
         'also by', 'about the author', 'acknowledgments',
-        'other works', 'praise for', 'notes'
+        'other works', 'praise for', 'notes',
+        'contents', 'table of contents',
+        'about the publisher', 'novels and story collections',
+        'books by'
     }
 
     def __init__(self):
