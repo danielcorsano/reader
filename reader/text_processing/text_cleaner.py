@@ -20,6 +20,8 @@ class TextCleaner:
         # Pre-compile patterns for performance
         self.hyphen_break = re.compile(r'(\w+)-\s*\n\s*(\w+)')
         self.isbn_line = re.compile(r'^.*ISBN[-:\s]*\d{10,13}.*$', re.MULTILINE | re.IGNORECASE)
+        # Detect book catalogs: 5+ capitalized titles without proper punctuation
+        self.catalog_pattern = re.compile(r'([A-Z][A-Za-z\s]{10,60}\s*){5,}', re.MULTILINE)
 
     def clean(self, text: str, fix_words: bool = True, remove_metadata: bool = True) -> str:
         """
@@ -51,6 +53,15 @@ class TextCleaner:
         """Remove standalone ISBN and metadata lines."""
         # Remove ISBN lines
         text = self.isbn_line.sub('', text)
+
+        # Remove book catalog sections (e.g., "LE GUIN NOVELS Always Coming Home The Beginning Place...")
+        # Only remove if it's a large block of capitalized titles
+        for match in self.catalog_pattern.finditer(text):
+            catalog_text = match.group(0)
+            # Only remove if it's long enough to be a real catalog (> 200 chars)
+            if len(catalog_text) > 200:
+                text = text.replace(catalog_text, '')
+
         return text
 
     def should_skip_chapter(self, title: str) -> bool:
@@ -71,3 +82,34 @@ class TextCleaner:
                 return True
 
         return False
+
+    def extract_narrative_content(self, chapters: list) -> str:
+        """
+        Extract only narrative content by finding start/end boundaries.
+
+        Args:
+            chapters: List of chapter dicts with 'title' and 'content'
+
+        Returns:
+            Combined narrative content only
+        """
+        if not chapters:
+            return ""
+
+        # Find first narrative chapter (skip front matter)
+        start_idx = 0
+        for i, ch in enumerate(chapters):
+            if not self.should_skip_chapter(ch.get('title', '')):
+                start_idx = i
+                break
+
+        # Find last narrative chapter (skip back matter)
+        end_idx = len(chapters)
+        for i in range(len(chapters) - 1, -1, -1):
+            if not self.should_skip_chapter(chapters[i].get('title', '')):
+                end_idx = i + 1
+                break
+
+        # Extract only narrative chapters
+        narrative_chapters = chapters[start_idx:end_idx]
+        return ' '.join(ch.get('content', '') for ch in narrative_chapters)

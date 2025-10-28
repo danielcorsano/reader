@@ -234,18 +234,23 @@ class ReaderApp:
         if clean_text:
             from reader.text_processing.text_cleaner import TextCleaner
             cleaner = TextCleaner()
-            parsed_content.content = cleaner.clean(parsed_content.content)
 
-            # Filter out non-narrative chapters
+            # Extract only narrative content (removes front/back matter)
             if parsed_content.chapters:
                 original_count = len(parsed_content.chapters)
+                # Rebuild content from narrative chapters only
+                parsed_content.content = cleaner.extract_narrative_content(parsed_content.chapters)
+                # Filter chapter list
                 parsed_content.chapters = [
                     ch for ch in parsed_content.chapters
                     if not cleaner.should_skip_chapter(ch.get('title', ''))
                 ]
                 skipped = original_count - len(parsed_content.chapters)
                 if skipped > 0:
-                    click.echo(f"Skipped {skipped} non-narrative chapter(s) (bibliography, index, etc.)")
+                    click.echo(f"Skipped {skipped} non-narrative chapter(s) (TOC, bibliography, etc.)")
+
+            # Apply text cleaning to final content
+            parsed_content.content = cleaner.clean(parsed_content.content)
 
         # Get configuration
         tts_config = self.config_manager.get_tts_config()
