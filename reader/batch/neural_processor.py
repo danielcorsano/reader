@@ -4,6 +4,7 @@ import time
 import hashlib
 import wave
 import io
+import struct
 from pathlib import Path
 from typing import List, Dict, Any
 from dataclasses import dataclass, asdict
@@ -461,6 +462,16 @@ class NeuralProcessor:
                 with wave.open(wav_buffer, 'rb') as wav_file:
                     sample_rate = wav_file.getframerate()
                     frames = wav_file.readframes(wav_file.getnframes())
+
+                    # Trim to zero crossing in last ~10ms to prevent clicks
+                    search_len = min(440, len(frames))  # 220 samples * 2 bytes
+                    if search_len >= 4:
+                        samples = struct.unpack(f'<{search_len//2}h', frames[-search_len:])
+                        for i in range(len(samples)-1, 0, -1):
+                            if samples[i] * samples[i-1] <= 0:  # Zero crossing
+                                frames = frames[:len(frames)-(len(samples)-i)*2]
+                                break
+
                     all_audio_data.append(frames)
             except Exception as e:
                 # Skip corrupted segments

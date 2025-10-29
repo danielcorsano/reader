@@ -241,7 +241,13 @@ reader convert --file text/book.epub --no-clean-text
 reader convert --file text/book.epub --debug
 ```
 
-**Note:** Text cleanup is enabled by default. It fixes broken words (common in PDFs) and skips non-narrative chapters (Bibliography, Index, etc.) for better audio quality.
+**Text Cleanup (Enabled by Default):**
+- **Fixes broken words**: `"exam-\nple"` → `"example"` (common in PDFs)
+- **Removes metadata**: ISBN lines, book catalogs
+- **Skips non-narrative chapters**: TOC, Bibliography, Index, "About the Author", "Acknowledgments", etc.
+- **Extracts narrative boundaries**: Excludes all front/back matter
+- **Result**: Cleaner audio, faster processing, no mispronunciations or metadata narration
+- **Opt-out**: Use `--no-clean-text` to disable
 
 ### 📊 Progress Visualization Options
 
