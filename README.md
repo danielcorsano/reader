@@ -4,6 +4,7 @@
 [![Python](https://img.shields.io/pypi/pyversions/audiobook-reader)](https://pypi.org/project/audiobook-reader/)
 [![License](https://img.shields.io/pypi/l/audiobook-reader)](https://github.com/danielcorsano/reader/blob/main/LICENSE)
 [![Downloads](https://img.shields.io/pypi/dm/audiobook-reader)](https://pypi.org/project/audiobook-reader/)
+[![Sponsor](https://img.shields.io/github/sponsors/danielcorsano?label=Sponsor&logo=github)](https://github.com/sponsors/danielcorsano)
 
 **Transform long-form text into professional audiobooks with character-aware voices, emotion analysis, and intelligent processing.**
 
@@ -555,6 +556,14 @@ This project uses the [Kokoro-82M](https://huggingface.co/hexgrad/Kokoro-82M) te
 
 ### Reader Package
 This audiobook CLI tool is licensed under the MIT License. See `LICENSE` file for details.
+
+---
+
+## 💝 Support This Project
+
+If you find this tool helpful, please consider [sponsoring the project](https://github.com/sponsors/danielcorsano). I created and maintain this software alone as a public service, and donations help me improve it and develop requested features.
+
+Your support makes a real difference in keeping this project active and growing. Thank you!
 
 ---
 

@@ -22,3 +22,9 @@ This directory contains comprehensive documentation for the Reader audiobook gen
 5. **Find results** in the `finished/` folder
 
 For detailed instructions, see [USAGE.md](USAGE.md).
+
+---
+
+## 💝 Support This Project
+
+If you find this tool helpful, please consider [sponsoring the project](https://github.com/sponsors/danielcorsano). I created and maintain this software alone as a public service, and donations help me improve it and develop requested features. Your support makes a real difference!
