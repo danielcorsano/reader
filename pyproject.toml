@@ -12,7 +12,6 @@ license = "MIT"
 homepage = "https://github.com/danielcorsano/reader"
 repository = "https://github.com/danielcorsano/reader"
 documentation = "https://github.com/danielcorsano/reader/tree/main/docs"
-funding = "https://github.com/sponsors/danielcorsano"
 keywords = [
     "audiobook",
     "text-to-speech",
