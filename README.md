@@ -2,9 +2,8 @@
 
 [![PyPI](https://img.shields.io/pypi/v/audiobook-reader)](https://pypi.org/project/audiobook-reader/)
 [![Python](https://img.shields.io/pypi/pyversions/audiobook-reader)](https://pypi.org/project/audiobook-reader/)
-[![License](https://img.shields.io/pypi/l/audiobook-reader)](https://github.com/danielcorsano/reader/blob/main/LICENSE)
 [![Downloads](https://img.shields.io/pypi/dm/audiobook-reader)](https://pypi.org/project/audiobook-reader/)
-[![Sponsor](https://img.shields.io/github/sponsors/danielcorsano?label=Sponsor&logo=github)](https://github.com/sponsors/danielcorsano)
+
 
 **Transform long-form text into professional audiobooks with character-aware voices, emotion analysis, and intelligent processing.**
 
@@ -544,7 +543,7 @@ pip install onnxruntime-directml
 - Run with debug mode: `reader convert --debug --file yourfile.txt`
 - Verify Python version: `python --version` (requires 3.10-3.13)
 
-## 📜 Credits & Licensing
+## 📜 Credits
 
 ### Kokoro TTS Model
 This project uses the [Kokoro-82M](https://huggingface.co/hexgrad/Kokoro-82M) text-to-speech model by [hexgrad](https://github.com/hexgrad/kokoro), licensed under Apache 2.0.
@@ -554,17 +553,13 @@ This project uses the [Kokoro-82M](https://huggingface.co/hexgrad/Kokoro-82M) te
 - ONNX Wrapper: [kokoro-onnx](https://github.com/thewh1teagle/kokoro-onnx) by thewh1teagle (MIT)
 - Training datasets: Koniwa (CC BY 3.0), SIWIS (CC BY 4.0)
 
-### Reader Package
-This audiobook CLI tool is licensed under the MIT License. See `LICENSE` file for details.
-
----
-
 ## 💝 Support This Project
 
-If you find this tool helpful, please consider [sponsoring the project](https://github.com/sponsors/danielcorsano). I created and maintain this software alone as a public service, and donations help me improve it and develop requested features.
+If you find this tool helpful, please consider [sponsoring the project](https://github.com/sponsors/danielcorsano). I created and maintain this software alone as a public service, and donations help me improve it and develop requested features. If I get $99 of donations, I will use it to pay for the Apple developer program so I can make iOS versions of all my open source apps.
 
 Your support makes a real difference in keeping this project active and growing. Thank you!
 
----
+### License
+This tookl is licensed under the MIT License. See `LICENSE` file for details.
 
 **Ready to create your first audiobook?** Check out the **[Usage Guide](https://github.com/danielcorsano/reader/blob/main/docs/USAGE.md)** for step-by-step instructions!
