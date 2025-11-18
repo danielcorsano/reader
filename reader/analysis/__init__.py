@@ -1,1 +1,1 @@
-"""Text analysis modules for emotion detection and smart acting."""
+"""Text analysis modules for dialogue detection and character analysis."""

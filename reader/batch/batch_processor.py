@@ -21,8 +21,6 @@ except ImportError:
     KOKORO_AVAILABLE = False
 
 try:
-    from ..analysis.emotion_detector import EmotionDetector
-    from ..analysis.ssml_generator import SSMLGenerator
     from ..voices.character_mapper import CharacterVoiceMapper
     from ..chapters.chapter_manager import ChapterManager
     from ..processors.ffmpeg_processor import get_audio_processor
@@ -180,8 +178,34 @@ class BatchProcessor:
         # Auto-generate output file if not provided
         if output_file is None:
             audio_config = self.config_manager.get_audio_config()
-            format_ext = audio_config.format
-            output_file = input_file.with_suffix(f'.{format_ext}')
+            tts_config = self.config_manager.get_tts_config()
+            processing_config = self.config_manager.get_processing_config()
+
+            # Build filename: stem_voice[_settings].format
+            stem = input_file.stem
+            voice = tts_config.voice or "am_michael"
+            parts = [stem, voice]
+
+            # Add non-default settings
+            settings = []
+            if tts_config.speed != 1.0:
+                settings.append(f"sp{tts_config.speed}".replace(".", "p"))
+            if processing_config.character_voices:
+                settings.append("chr")
+            if processing_config.dialogue_detection:
+                settings.append("dlg")
+            if audio_config.format != "mp3":
+                settings.append(audio_config.format)
+
+            if settings:
+                parts.append("_".join(settings))
+
+            filename = "_".join(parts)
+            # Limit length
+            if len(filename) > 200:
+                filename = filename[:200]
+
+            output_file = input_file.parent / f"{filename}.{audio_config.format}"
         
         # Merge configuration
         job_config = self._merge_job_config(config_overrides)
@@ -230,11 +254,13 @@ class BatchProcessor:
         for pattern in file_patterns:
             for input_file in input_dir.glob(f"{search_pattern}.{pattern.split('.')[-1]}"):
                 if input_file.is_file():
-                    # Generate corresponding output file
-                    relative_path = input_file.relative_to(input_dir)
-                    output_file = output_dir / relative_path.with_suffix('.wav')  # Default format
-                    
-                    job_id = self.add_job(input_file, output_file)
+                    # Let add_job generate the filename, then we'll move to output_dir
+                    job_id = self.add_job(input_file, None)
+                    # Update output path to use output_dir while preserving relative structure
+                    job = self.get_job_status(job_id)
+                    if job:
+                        relative_path = input_file.relative_to(input_dir)
+                        job.output_file = output_dir / relative_path.parent / job.output_file.name
                     job_ids.append(job_id)
         
         return job_ids
