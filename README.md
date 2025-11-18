@@ -560,6 +560,6 @@ If you find this tool helpful, please consider [sponsoring the project](https://
 Your support makes a real difference in keeping this project active and growing. Thank you!
 
 ### License
-This tookl is licensed under the MIT License. See `LICENSE` file for details.
+This tool is licensed under the MIT License. See `LICENSE` file for details.
 
 **Ready to create your first audiobook?** Check out the **[Usage Guide](https://github.com/danielcorsano/reader/blob/main/docs/USAGE.md)** for step-by-step instructions!
