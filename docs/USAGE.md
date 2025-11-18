@@ -291,21 +291,12 @@ Reader uses system-standard directories:
 
 ## Advanced Features
 
-Current features include neural TTS, emotion detection, and character voice mapping.
+Current features include neural TTS, dialogue detection, and character voice mapping.
 
 ### Neural TTS with Kokoro (Default)
 ```bash
 # Use Kokoro neural TTS (54 voices, 9 languages)
 reader convert --engine kokoro
-
-# Explicitly set Kokoro (already default)
-reader convert --engine kokoro
-```
-
-### Emotion-Aware Conversion
-```bash
-# Enable emotion detection
-reader convert --emotion
 
 # With character voice mapping
 reader convert --characters --file text/novel.txt
