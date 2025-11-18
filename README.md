@@ -4,6 +4,7 @@
 [![Python](https://img.shields.io/pypi/pyversions/audiobook-reader)](https://pypi.org/project/audiobook-reader/)
 [![Downloads](https://img.shields.io/pypi/dm/audiobook-reader)](https://pypi.org/project/audiobook-reader/)
 
+If you like this, please consider supporting via [GitHub Sponsors](https://github.com/sponsors/danielcorsano). I created and maintain this alone.
 
 **Transform long-form text into professional audiobooks with character-aware voices, dialogue detection, and intelligent processing.**
 
