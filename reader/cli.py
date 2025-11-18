@@ -428,27 +428,47 @@ class ReaderApp:
         # Generate the same output path that would be created
         return self._create_output_path(parsed_content.title, tts_config, audio_config, processing_config)
     def _create_output_path(self, title, tts_config, audio_config, processing_config):
-        """Create standardized output path for temp audio files in workspace."""
-        # Use temp workspace audio directory
+        """Create standardized output path for temp audio files in workspace.
+
+        Format: title_voice[_settings].format
+        Settings are abbreviated and only included if non-default.
+        """
         audio_dir = self.audio_dir
+        voice = tts_config.voice or "am_michael"
 
-        # Build descriptive filename
-        engine = tts_config.engine
-        voice = tts_config.voice or "default"
+        # Build filename: title_voice
+        filename_parts = [title, voice]
 
-        # Build filename parts
-        filename_parts = [title, engine, voice]
+        # Add non-default settings in short format
+        settings = []
 
-        # Only add speed if non-default (not 1.0)
+        # Speed (default: 1.0)
         if tts_config.speed != 1.0:
-            speed_str = f"speed{tts_config.speed}".replace(".", "p")
-            filename_parts.append(speed_str)
+            settings.append(f"sp{tts_config.speed}".replace(".", "p"))
 
-        # Add feature flags (only if enabled)
+        # Character voices (default: False)
         if processing_config.character_voices:
-            filename_parts.append("characters")
+            settings.append("chr")
 
-        output_filename = f"{'_'.join(filename_parts)}.{audio_config.format}"
+        # Dialogue detection (default: False)
+        if processing_config.dialogue_detection:
+            settings.append("dlg")
+
+        # Format if not default mp3
+        if audio_config.format != "mp3":
+            settings.append(audio_config.format)
+
+        # Add settings to filename
+        if settings:
+            filename_parts.append("_".join(settings))
+
+        # Build filename and limit length (max 200 chars before extension)
+        base_filename = "_".join(filename_parts)
+        max_length = 200
+        if len(base_filename) > max_length:
+            base_filename = base_filename[:max_length]
+
+        output_filename = f"{base_filename}.{audio_config.format}"
         return audio_dir / output_filename
 
 
@@ -468,8 +488,8 @@ def cli():
 @click.option('--characters/--no-characters', default=None, help='Enable/disable character voice mapping for dialogue')
 @click.option('--character-config', type=click.Path(exists=True), help='Path to character voice config YAML file (e.g., mybook.characters.yaml)')
 @click.option('--chapters/--no-chapters', default=None, help='Enable/disable chapter detection and metadata in audiobook')
-@click.option('--dialogue/--no-dialogue', default=None, help='Enable/disable dialogue detection with emotion analysis')
-@click.option('--processing-level', type=click.Choice(['phase1', 'phase2', 'phase3']), help='Set processing level: phase1 (basic), phase2 (emotion), phase3 (full features)')
+@click.option('--dialogue/--no-dialogue', default=None, help='Enable/disable dialogue detection')
+@click.option('--processing-level', type=click.Choice(['phase1', 'phase2', 'phase3']), help='Set processing level: phase1 (basic), phase2 (characters), phase3 (full features)')
 @click.option('--batch-mode', is_flag=True, help='Enable checkpoint recovery - resume interrupted conversions')
 @click.option('--checkpoint-interval', type=int, default=50, help='Save progress every N chunks for recovery (default: 50)')
 @click.option('--turbo-mode', is_flag=True, default=False, help='Maximum speed - uses 95% CPU, minimal delays')
