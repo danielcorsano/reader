@@ -68,29 +68,20 @@ Generate audio samples to choose the perfect narrator:
 # Basic voice preview
 reader preview af_sarah --engine kokoro
 
-# Emotional preview with custom text
-reader preview af_sarah --emotion dramatic --text "This is a test of dramatic narration!"
+# Preview with custom text
+reader preview af_sarah --text "This is a test of dramatic narration!"
 
 # Save previews to specific directory
 reader preview af_michael --output-dir voice_tests/
 ```
 
-### Emotional Styles Available
-
-- `neutral` - Standard reading voice
-- `excited` - Energetic and enthusiastic  
-- `sad` - Melancholy and slow
-- `angry` - Intense and forceful
-- `whisper` - Soft and intimate
-- `dramatic` - Theatrical with emphasis
-
 ### Voice Comparison Workflow
 
 ```bash
 # Create multiple previews for comparison
-reader preview af_sarah --emotion neutral --output-dir comparison/
-reader preview af_nicole --emotion neutral --output-dir comparison/
-reader preview bf_emma --emotion neutral --output-dir comparison/
+reader preview af_sarah --output-dir comparison/
+reader preview af_nicole --output-dir comparison/
+reader preview bf_emma --output-dir comparison/
 
 # Listen to all previews and choose your favorite
 ls comparison/
@@ -335,7 +326,7 @@ The system analyzes text for intelligent voice assignment:
 reader convert novel.txt --dialogue
 
 # Combine with character voices
-reader convert novel.txt --dialogue --characters --emotion
+reader convert novel.txt --dialogue --characters
 ```
 
 ### How It Works
@@ -343,20 +334,17 @@ reader convert novel.txt --dialogue --characters --emotion
 1. **Dialogue Identification**: Finds quoted speech vs narration
 2. **Speaker Detection**: Attempts to identify who is speaking
 3. **Context Analysis**: Classifies narrative type (action, description, thought)
-4. **Emotion Context**: Detects emotional tone from punctuation and keywords
 
 ### Example Analysis Output
 
 For text: `"I can't believe it!" Sarah exclaimed excitedly.`
 
 - **Is Dialogue**: Yes
-- **Speaker**: Sarah  
-- **Emotion**: Excitement
+- **Speaker**: Sarah
 - **Context**: Speech with attribution
 
 This enables:
 - **Different voices** for different characters
-- **Emotional prosody** based on context
 - **Narrative vs dialogue** distinction
 
 ---
@@ -384,8 +372,8 @@ reader config
 ### Workflow-Specific Configs
 
 ```bash
-# Enable character-specific voices with emotion analysis
-reader config --characters --emotion --dialogue
+# Enable character-specific voices with dialogue detection
+reader config --characters --dialogue
 ```
 
 ---
@@ -399,14 +387,14 @@ reader config --characters --emotion --dialogue
 reader config --format m4b
 
 # Preview voices to choose narrator
-reader preview af_sarah --emotion neutral
-reader preview bf_emma --emotion neutral
+reader preview af_sarah
+reader preview bf_emma
 
 # Extract and review chapters
 reader chapters extract novel.epub --output analysis.json
 
 # Convert with all features
-reader convert novel.epub --voice af_sarah --chapters --dialogue --emotion
+reader convert novel.epub --voice af_sarah --chapters --dialogue
 
 # Result: professional M4B audiobook with chapters and metadata
 ```
@@ -440,7 +428,7 @@ reader characters add "Hagrid" "bf_oliver"
 reader blend create "wizard_voice" "af_michael:70,bf_oliver:30"
 
 # Convert with character mapping
-reader convert harry_potter.epub --characters --dialogue --emotion
+reader convert harry_potter.epub --characters --dialogue
 
 # Characters will automatically use assigned voices
 ```

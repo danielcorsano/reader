@@ -5,7 +5,7 @@
 [![Downloads](https://img.shields.io/pypi/dm/audiobook-reader)](https://pypi.org/project/audiobook-reader/)
 
 
-**Transform long-form text into professional audiobooks with character-aware voices, emotion analysis, and intelligent processing.**
+**Transform long-form text into professional audiobooks with character-aware voices, dialogue detection, and intelligent processing.**
 
 Perfect for novels, articles, textbooks, research papers, and other long-form content that you want to be able to listen to on your own time or offline. Built with Kokoro-82M TTS for production-quality narration. Works on all platforms with optimizations for Apple Silicon (M1/M2/M3/M4 Neural Engine), NVIDIA GPUs, and AMD/Intel GPUs.
 
@@ -22,11 +22,6 @@ Perfect for novels, articles, textbooks, research papers, and other long-form co
 - **Auto-assign different voices** with automatic gender detection where possible
 - Assigns gender-appropriate voices (e.g., Alice gets `af_sarah`, Bob gets `am_adam`)
 - Perfect for fiction, interviews, dialogues, and multi-speaker content
-
-### 😊 **Emotion Analysis**
-- **VADER sentiment analysis** adjusts prosody in real-time
-- Excitement, sadness, tension automatically reflected in voice tone
-- Natural emotional narration without manual SSML tagging
 
 ### 💾 **Checkpoint Resumption**
 - **Resume interrupted conversions** from where you left off

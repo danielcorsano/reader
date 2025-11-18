@@ -29,7 +29,7 @@ keywords = [
     "audio",
     "conversion",
     "character-voices",
-    "emotion-analysis"
+    "dialogue-detection"
 ]
 classifiers = [
     "Development Status :: 4 - Beta",
