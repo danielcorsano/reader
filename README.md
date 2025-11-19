@@ -1,14 +1,14 @@
-# AI Audiobook Generator: CLI Tool with GPU & NPU Acceleration
+# Audiobook Reader: a CLI Tool with GPU & NPU Acceleration
 
 [![PyPI](https://img.shields.io/pypi/v/audiobook-reader)](https://pypi.org/project/audiobook-reader/)
 [![Python](https://img.shields.io/pypi/pyversions/audiobook-reader)](https://pypi.org/project/audiobook-reader/)
 [![Downloads](https://img.shields.io/pypi/dm/audiobook-reader)](https://pypi.org/project/audiobook-reader/)
 
-If you like this, please consider supporting via [GitHub Sponsors](https://github.com/sponsors/danielcorsano). I created and maintain this alone.
-
-**Transform long-form text into professional audiobooks with character-aware voices, dialogue detection, and intelligent processing.**
+**Transform long-form text into audiobooks with realistic, dialogue-aware AI voices.**
 
 Perfect for novels, articles, textbooks, research papers, and other long-form content that you want to be able to listen to on your own time or offline. Built with Kokoro-82M TTS for production-quality narration. Works on all platforms with optimizations for Apple Silicon (M1/M2/M3/M4 Neural Engine), NVIDIA GPUs, and AMD/Intel GPUs.
+
+If you find this useful, please consider supporting via [GitHub Sponsors](https://github.com/sponsors/danielcorsano).
 
 ## ✨ Core Features
 
