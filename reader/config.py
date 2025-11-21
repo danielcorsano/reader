@@ -45,6 +45,8 @@ class AppConfig:
     audio_dir: str = "audio"
     config_dir: str = "config"
     output_dir: str = "downloads"
+    ffmpeg_path: Optional[str] = None  # Custom FFmpeg path (uses PATH if None)
+    models_dir: Optional[str] = None  # Custom models directory (uses cache if None)
 
 
 class ConfigManager:

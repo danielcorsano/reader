@@ -1,13 +1,21 @@
 """Model download utilities for Kokoro TTS."""
+import os
 import urllib.request
 from pathlib import Path
 
 
 def get_cache_dir() -> Path:
-    """Get models directory. Checks models/ folder first, then system cache."""
+    """Get models directory. Checks env var, models/ folder, then system cache."""
     import platform
 
-    # Check package models/ folder first
+    # Check environment variable first
+    env_dir = os.getenv('AUDIOBOOK_READER_MODELS_DIR')
+    if env_dir:
+        custom_dir = Path(env_dir)
+        custom_dir.mkdir(parents=True, exist_ok=True)
+        return custom_dir
+
+    # Check package models/ folder second
     package_models = Path(__file__).parent.parent.parent / "models"
     if package_models.exists():
         return package_models

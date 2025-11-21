@@ -1,14 +1,21 @@
 """First-run setup and validation utilities."""
+import os
 import shutil
 import sys
 from pathlib import Path
 from typing import Tuple, List
 
 
+def get_ffmpeg_path() -> str:
+    """Get FFmpeg executable path from env var or default to PATH lookup."""
+    return os.getenv('AUDIOBOOK_READER_FFMPEG_PATH', 'ffmpeg')
+
+
 def check_ffmpeg() -> Tuple[bool, str]:
     """Check if FFmpeg is installed."""
-    ffmpeg_path = shutil.which("ffmpeg")
-    if ffmpeg_path:
+    ffmpeg_cmd = get_ffmpeg_path()
+    ffmpeg_path = shutil.which(ffmpeg_cmd) if ffmpeg_cmd == 'ffmpeg' else ffmpeg_cmd
+    if ffmpeg_path and (Path(ffmpeg_path).exists() if ffmpeg_cmd != 'ffmpeg' else True):
         return True, f"FFmpeg found at {ffmpeg_path}"
 
     error_msg = """
