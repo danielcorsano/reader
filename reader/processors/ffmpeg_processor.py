@@ -6,6 +6,7 @@ from typing import List, Dict, Any, Optional, Union
 import json
 
 from ..interfaces.audio_processor import AudioProcessor
+from ..utils.setup import get_ffmpeg_path
 
 try:
     from mutagen.mp4 import MP4, MP4Cover
@@ -30,7 +31,7 @@ class FFmpegAudioProcessor(AudioProcessor):
     def _check_ffmpeg(self) -> None:
         """Check if FFmpeg is available on the system."""
         try:
-            subprocess.run(['ffmpeg', '-version'], 
+            subprocess.run([get_ffmpeg_path(), '-version'],
                          capture_output=True, check=True)
         except (subprocess.CalledProcessError, FileNotFoundError):
             print("Warning: FFmpeg not found. Some audio operations may not work.")
@@ -58,7 +59,7 @@ class FFmpegAudioProcessor(AudioProcessor):
             # Use FFmpeg for format conversion
             output_path.parent.mkdir(parents=True, exist_ok=True)
             
-            cmd = ['ffmpeg', '-i', str(input_path)]
+            cmd = [get_ffmpeg_path(), '-i', str(input_path)]
             
             # Add format-specific parameters
             export_params = self._get_export_parameters(target_format)
@@ -293,7 +294,7 @@ class FFmpegAudioProcessor(AudioProcessor):
                 format = output_path.suffix[1:].lower()
                 export_params = self._get_export_parameters(format)
                 
-                cmd = ['ffmpeg', '-f', 'concat', '-safe', '0', '-i', list_file]
+                cmd = [get_ffmpeg_path(), '-f', 'concat', '-safe', '0', '-i', list_file]
                 
                 # Add format-specific parameters
                 if 'codec' in export_params:
@@ -421,7 +422,7 @@ class FFmpegAudioProcessor(AudioProcessor):
         try:
             # Use FFmpeg for audio normalization
             cmd = [
-                'ffmpeg', '-i', str(input_path),
+                get_ffmpeg_path(), '-i', str(input_path),
                 '-af', f'loudnorm=I={target_lufs}:TP=-2.0:LRA=7.0',
                 '-c:a', 'aac', '-b:a', '128k',
                 '-y', str(output_path)
@@ -447,7 +448,7 @@ class FFmpegAudioProcessor(AudioProcessor):
         """
         try:
             # Use FFmpeg to add silence with adelay and apad filters
-            cmd = ['ffmpeg', '-i', str(input_path)]
+            cmd = [get_ffmpeg_path(), '-i', str(input_path)]
             
             filters = []
             if start_silence > 0:
