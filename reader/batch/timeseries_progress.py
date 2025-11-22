@@ -16,16 +16,16 @@ class TimeseriesProgressDisplay(ProgressDisplay):
     """Timeseries visualization with ASCII charts showing processing speed over time."""
 
     def __init__(self, debug: bool = False):
+        if not PLOTEXT_AVAILABLE:
+            raise ImportError("Plotext is not available")
         self.start_time = None
         self.speed_history = deque(maxlen=50)  # Keep last 50 data points
         self.time_history = deque(maxlen=50)
         self.last_update_time = None
         self.last_chunk = 0
         self.debug = debug
-        
+
     def start(self, total_chunks: int, file_name: str):
-        if not PLOTEXT_AVAILABLE:
-            raise ImportError("Plotext is not available")
             
         self.start_time = time.time()
         self.last_update_time = self.start_time
