@@ -979,10 +979,9 @@ type = ["mypy (>=1.14.1)"]
 name = "plotext"
 version = "5.3.2"
 description = "plotext plots directly on terminal"
-optional = true
+optional = false
 python-versions = ">=3.5"
 groups = ["main"]
-markers = "extra == \"progress-full\" or extra == \"progress-timeseries\" or extra == \"all\""
 files = [
     {file = "plotext-5.3.2-py3-none-any.whl", hash = "sha256:394362349c1ddbf319548cfac17ca65e6d5dfc03200c40dfdc0503b3e95a2283"},
     {file = "plotext-5.3.2.tar.gz", hash = "sha256:52d1e932e67c177bf357a3f0fe6ce14d1a96f7f7d5679d7b455b929df517068e"},
@@ -1823,14 +1822,13 @@ files = [
 requests = "*"
 
 [extras]
-all = ["plotext", "psutil", "rich", "tqdm"]
+all = ["psutil", "rich", "tqdm"]
 monitoring = ["psutil"]
-progress-full = ["plotext", "rich", "tqdm"]
+progress-full = ["rich", "tqdm"]
 progress-rich = ["rich"]
-progress-timeseries = ["plotext"]
 progress-tqdm = ["tqdm"]
 
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<3.14"
-content-hash = "2ee7c5087f2ef8c6e343de1193c2bb2040a95a552ddb65c923005a3d9927046c"
+content-hash = "bdd85c44e2c404aa04e50c2673dd5d86625f958599f2a0bf2e2ab4b8ce3cc80d"
