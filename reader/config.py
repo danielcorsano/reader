@@ -29,8 +29,7 @@ class ProcessingConfig:
     pause_between_chapters: float = 1.0
     auto_detect_chapters: bool = True
     level: str = "phase3"  # Use all available features by default
-    character_voices: bool = False  # Off by default
-    dialogue_detection: bool = True
+    character_voices: bool = False  # Off by default (dialogue detection auto-enabled when enabled)
     chapter_metadata: bool = True
     batch_processing: bool = True
 
@@ -85,9 +84,9 @@ class ConfigManager:
                 audio_data = {k: v for k, v in audio_data.items() if k in ['format', 'add_metadata']}
                 
                 processing_data = config_data.get('processing', {})
-                # Remove old fields that no longer exist
+                # Remove old fields that no longer exist (dialogue_detection removed - now auto-enabled with character_voices)
                 valid_fields = ['chunk_size', 'pause_between_chapters', 'auto_detect_chapters', 'level',
-                               'character_voices', 'dialogue_detection', 'chapter_metadata', 'batch_processing']
+                               'character_voices', 'chapter_metadata', 'batch_processing']
                 processing_data = {k: v for k, v in processing_data.items() if k in valid_fields}
                 
                 return AppConfig(

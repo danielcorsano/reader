@@ -163,13 +163,10 @@ class ReaderApp:
             # Auto-configure features based on level (in memory only)
             if level == "phase1":
                 config.processing.character_voices = False
-                config.processing.dialogue_detection = False
             elif level == "phase2":
                 config.processing.character_voices = False
-                config.processing.dialogue_detection = False
             elif level == "phase3":
                 config.processing.character_voices = False
-                config.processing.dialogue_detection = True
         
         # Apply engine override
         if 'engine' in overrides:
@@ -210,7 +207,6 @@ class ReaderApp:
         format: Optional[str] = None,
         character_voices: Optional[bool] = None,
         chapter_detection: Optional[bool] = None,
-        dialogue_detection: Optional[bool] = None,
         batch_mode: bool = False,
         checkpoint_interval: int = 50,
         turbo_mode: bool = False,
@@ -280,9 +276,6 @@ class ReaderApp:
         if chapter_detection is not None:
             if debug: print(f"🔍 DEBUG: Overriding chapters: {processing_config.auto_detect_chapters} -> {chapter_detection}")
             processing_config.auto_detect_chapters = chapter_detection
-        if dialogue_detection is not None:
-            if debug: print(f"🔍 DEBUG: Overriding dialogue: {processing_config.dialogue_detection} -> {dialogue_detection}")
-            processing_config.dialogue_detection = dialogue_detection
 
         if debug:
             print(f"🔍 DEBUG: Final config after overrides:")
@@ -394,7 +387,7 @@ class ReaderApp:
         return final_output
     
     def _get_expected_output_path(self, file_path: Path, voice=None, speed=None, format=None,
-                                characters=None, chapters=None, dialogue=None,
+                                characters=None, chapters=None,
                                 processing_level=None, turbo_mode=False) -> Path:
         """Get expected output path for a file with given settings."""
         # Get parser and parse just the title
@@ -420,8 +413,6 @@ class ReaderApp:
             processing_config.character_voices = characters
         if chapters is not None:
             processing_config.auto_detect_chapters = chapters
-        if dialogue is not None:
-            processing_config.dialogue_detection = dialogue
         if processing_level:
             processing_config.level = processing_level
         
@@ -449,10 +440,6 @@ class ReaderApp:
         # Character voices (default: False)
         if processing_config.character_voices:
             settings.append("chr")
-
-        # Dialogue detection (default: False)
-        if processing_config.dialogue_detection:
-            settings.append("dlg")
 
         # Format if not default mp3
         if audio_config.format != "mp3":
@@ -488,7 +475,6 @@ def cli():
 @click.option('--characters/--no-characters', default=None, help='Enable/disable character voice mapping for dialogue')
 @click.option('--character-config', type=click.Path(exists=True), help='Path to character voice config YAML file (e.g., mybook.characters.yaml)')
 @click.option('--chapters/--no-chapters', default=None, help='Enable/disable chapter detection and metadata in audiobook')
-@click.option('--dialogue/--no-dialogue', default=None, help='Enable/disable dialogue detection')
 @click.option('--processing-level', type=click.Choice(['phase1', 'phase2', 'phase3']), help='Set processing level: phase1 (basic), phase2 (characters), phase3 (full features)')
 @click.option('--batch-mode', is_flag=True, help='Enable checkpoint recovery - resume interrupted conversions')
 @click.option('--checkpoint-interval', type=int, default=50, help='Save progress every N chunks for recovery (default: 50)')
@@ -497,7 +483,7 @@ def cli():
 @click.option('--progress-style', type=click.Choice(['simple', 'tqdm', 'rich', 'timeseries']), default='timeseries', help='Progress display: simple (text), tqdm (bars), rich (fancy), timeseries (charts)')
 @click.option('--output-dir', help='Output directory: "downloads" (~/Downloads), "same" (next to source), or explicit path')
 @click.option('--no-clean-text', is_flag=True, help='Disable text cleanup (keep broken words, bibliography, etc.)')
-def convert(voice, speed, format, file, characters, character_config, chapters, dialogue, processing_level, batch_mode, checkpoint_interval, turbo_mode, debug, progress_style, output_dir, no_clean_text):
+def convert(voice, speed, format, file, characters, character_config, chapters, processing_level, batch_mode, checkpoint_interval, turbo_mode, debug, progress_style, output_dir, no_clean_text):
     """Convert text file to audiobook.
 
     All options are temporary overrides and won't be saved to config.
@@ -525,11 +511,11 @@ def convert(voice, speed, format, file, characters, character_config, chapters, 
             if debug:
                 click.echo(f"🔍 DEBUG: CLI parameters passed to convert_file:")
                 click.echo(f"   voice={voice}, speed={speed}, format={format}")
-                click.echo(f"   characters={characters}, character_config={character_config}, chapters={chapters}, dialogue={dialogue}")
+                click.echo(f"   characters={characters}, character_config={character_config}, chapters={chapters}")
                 click.echo(f"   batch_mode={batch_mode}, turbo_mode={turbo_mode}, progress_style={progress_style}")
 
             output_path = app.convert_file(
-                file_path, voice, speed, format, characters, chapters, dialogue,
+                file_path, voice, speed, format, characters, chapters,
                 batch_mode=batch_mode, checkpoint_interval=checkpoint_interval,
                 turbo_mode=turbo_mode, debug=debug, progress_style=progress_style,
                 character_config=Path(character_config) if character_config else None,
@@ -887,7 +873,7 @@ def checkpoints(list_checkpoints, cleanup, status, summary):
 @click.option('--voice', help='Set default voice (saved to config)')
 @click.option('--speed', type=float, help='Set default speed (saved to config)')
 @click.option('--format', type=click.Choice(['wav', 'mp3', 'm4a', 'm4b']), help='Set default audio format (saved to config)')
-@click.option('--characters/--no-characters', help='Enable/disable character voices by default (saved to config)')
+@click.option('--characters/--no-characters', default=None, help='Enable/disable character voices by default (saved to config)')
 @click.option('--processing-level', type=click.Choice(['phase1', 'phase2', 'phase3']), help='Set default processing level (saved to config)')
 def config(voice, speed, format, characters, processing_level):
     """Configure default settings (permanently saved to config file)."""
@@ -923,7 +909,7 @@ def config(voice, speed, format, characters, processing_level):
         app.config_manager.update_processing_config(**processing_updates)
         click.echo("Processing configuration updated.")
 
-    if not any([voice, speed, format, engine, characters is not None, processing_level]):
+    if not any([voice, speed, format, characters is not None, processing_level]):
         # Display current config
         tts_config = app.config_manager.get_tts_config()
         audio_config = app.config_manager.get_audio_config()
@@ -936,8 +922,7 @@ def config(voice, speed, format, characters, processing_level):
         click.echo(f"  Speed: {tts_config.speed}")
         click.echo(f"  Volume: {tts_config.volume}")
         click.echo(f"  Audio format: {audio_config.format}")
-        click.echo(f"  Character voices: {processing_config.character_voices}")
-        click.echo(f"  Dialogue detection: {processing_config.dialogue_detection}")
+        click.echo(f"  Character voices: {processing_config.character_voices} (dialogue detection auto-enabled)")
 
 
 @cli.command()
