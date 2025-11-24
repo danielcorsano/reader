@@ -45,9 +45,9 @@ def test_default_audio_config(config_manager):
 def test_default_processing_config(config_manager):
     """Test default processing configuration values."""
     proc = config_manager.get_processing_config()
-    assert proc.chunk_size == 1200
+    assert proc.chunk_size == 400  # Optimal for Kokoro
     assert proc.level == "phase3"
-    assert proc.dialogue_detection is True
+    assert proc.character_voices is False  # Dialogue detection auto-enabled with character_voices
 
 
 def test_save_and_load_config(config_manager):

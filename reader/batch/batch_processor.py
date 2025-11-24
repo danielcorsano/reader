@@ -192,8 +192,6 @@ class BatchProcessor:
                 settings.append(f"sp{tts_config.speed}".replace(".", "p"))
             if processing_config.character_voices:
                 settings.append("chr")
-            if processing_config.dialogue_detection:
-                settings.append("dlg")
             if audio_config.format != "mp3":
                 settings.append(audio_config.format)
 
@@ -427,28 +425,7 @@ class BatchProcessor:
     
     def _process_text_content(self, text: str, config: Dict[str, Any]) -> str:
         """Process text content with Phase 2/3 features if enabled."""
-        processing_config = config.get('processing', {})
-        
-        # Phase 3: Dialogue detection
-        if (processing_config.get('dialogue_detection', False) and 
-            PHASE_3_AVAILABLE and self.chapter_manager):
-            try:
-                from ..analysis.dialogue_detector import DialogueDetector
-                dialogue_detector = DialogueDetector()
-                segments = dialogue_detector.analyze_text(text)
-                
-                # Reconstruct text with dialogue markers (simplified)
-                processed_text = ""
-                for segment in segments:
-                    if segment.is_dialogue:
-                        processed_text += f'"{segment.text}" '
-                    else:
-                        processed_text += segment.text + " "
-                
-                return processed_text.strip()
-            except Exception as e:
-                print(f"Warning: Dialogue detection failed: {e}")
-        
+        # Text processing moved to NeuralProcessor for character voices and dialogue detection
         return text
     
     def _generate_audio(self, text: str, engine, config: Dict[str, Any]) -> bytes:
