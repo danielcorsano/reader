@@ -322,11 +322,8 @@ reader convert textbook.pdf
 The system analyzes text for intelligent voice assignment:
 
 ```bash
-# Enable dialogue detection
-reader convert novel.txt --dialogue
-
-# Combine with character voices
-reader convert novel.txt --dialogue --characters
+# Enable character voices (automatically enables dialogue detection)
+reader convert novel.txt --characters
 ```
 
 ### How It Works
@@ -372,8 +369,8 @@ reader config
 ### Workflow-Specific Configs
 
 ```bash
-# Enable character-specific voices with dialogue detection
-reader config --characters --dialogue
+# Enable character-specific voices (dialogue detection auto-enabled)
+reader config --characters
 ```
 
 ---
@@ -393,8 +390,8 @@ reader preview bf_emma
 # Extract and review chapters
 reader chapters extract novel.epub --output analysis.json
 
-# Convert with all features
-reader convert novel.epub --voice af_sarah --chapters --dialogue
+# Convert with chapters
+reader convert novel.epub --voice af_sarah --chapters
 
 # Result: professional M4B audiobook with chapters and metadata
 ```
@@ -427,11 +424,271 @@ reader characters add "Hagrid" "bf_oliver"
 # Create voice blends for unique characters
 reader blend create "wizard_voice" "af_michael:70,bf_oliver:30"
 
-# Convert with character mapping
-reader convert harry_potter.epub --characters --dialogue
+# Convert with character mapping (dialogue detection automatic)
+reader convert harry_potter.epub --characters
 
 # Characters will automatically use assigned voices
 ```
+
+---
+
+## ⚙️ Project-Level Configuration
+
+### Overview
+
+Reader's multi-layer configuration system enables sophisticated workflows with minimal setup. Config files are inherited through your directory tree, making it perfect for organizing large audiobook libraries or team projects.
+
+### Use Case 1: Fiction vs Non-Fiction Libraries
+
+**Scenario:** You have separate libraries for fiction and non-fiction, each requiring different narration styles.
+
+**Setup:**
+
+```bash
+~/audiobooks/
+├── fiction/
+│   ├── .reader.yaml          # Fiction-specific settings
+│   ├── scifi/
+│   ├── mystery/
+│   └── fantasy/
+└── non-fiction/
+    ├── .reader.yaml          # Non-fiction-specific settings
+    ├── history/
+    ├── science/
+    └── business/
+```
+
+**Fiction config** (`~/audiobooks/fiction/.reader.yaml`):
+```yaml
+tts:
+  voice: am_michael      # Dramatic, storytelling voice
+  speed: 1.0             # Normal speed for immersion
+processing:
+  character_voices: true # Enable character detection
+audio:
+  format: m4b           # Audiobook format with chapters
+```
+
+**Non-Fiction config** (`~/audiobooks/non-fiction/.reader.yaml`):
+```yaml
+tts:
+  voice: af_nicole       # Clear, professional voice
+  speed: 1.3             # Faster for educational content
+processing:
+  character_voices: false
+audio:
+  format: mp3            # Standard format for lectures
+```
+
+**Result:** Any book in `fiction/` automatically gets character voices and storytelling narration. Books in `non-fiction/` get faster speed and clear professional voice - no CLI arguments needed!
+
+### Use Case 2: Team Audiobook Production
+
+**Scenario:** Multiple team members producing audiobooks need consistent settings.
+
+**Setup:**
+
+```bash
+# Project lead creates config
+cd audiobook-project/
+cat > .reader.yaml << 'EOF'
+tts:
+  voice: bf_emma
+  speed: 1.0
+audio:
+  format: m4b
+  bitrate: 64k
+processing:
+  character_voices: true
+output_dir: /shared/audiobooks/
+EOF
+
+# Check into version control
+git add .reader.yaml
+git commit -m "Add audiobook production config"
+git push
+
+# Team members clone and work
+git clone project-url
+cd audiobook-project/
+
+# Everyone inherits same settings automatically
+reader convert --file chapter1.txt
+reader convert --file chapter2.txt
+```
+
+**Benefits:**
+- Consistent quality across team
+- No manual config copying
+- Settings versioned with project
+- Easy to update for everyone
+
+### Use Case 3: Multi-Genre Production Studio
+
+**Scenario:** Production studio handles multiple genres, each with specific requirements.
+
+**Setup:**
+
+```bash
+~/production/
+├── .reader.yaml                # Studio-wide defaults
+├── clients/
+│   ├── client-a/
+│   │   ├── .reader.yaml       # Client A preferences
+│   │   ├── book1/
+│   │   └── book2/
+│   └── client-b/
+│       ├── .reader.yaml       # Client B preferences
+│       ├── audiobook1/
+│       └── audiobook2/
+└── internal/
+    ├── fiction/
+    │   └── .reader.yaml
+    └── non-fiction/
+        └── .reader.yaml
+```
+
+**Studio defaults** (`~/production/.reader.yaml`):
+```yaml
+audio:
+  format: m4b
+  add_metadata: true
+processing:
+  auto_detect_chapters: true
+output_dir: /production/output/
+```
+
+**Client A overrides** (`~/production/clients/client-a/.reader.yaml`):
+```yaml
+tts:
+  voice: af_sarah
+  speed: 1.1
+audio:
+  bitrate: 96k    # Premium quality for client A
+```
+
+**Result:** Files in `client-a/book1/` inherit:
+- Studio defaults (format, output_dir, chapters)
+- Client A overrides (voice, speed, bitrate)
+- Config hierarchy ensures consistent quality with client-specific customization
+
+### Use Case 4: Voice Testing Workflow
+
+**Scenario:** Testing multiple voices for a book before committing to full production.
+
+**Setup:**
+
+```bash
+# Extract sample chapter
+mkdir voice-tests/
+cp book.epub voice-tests/sample.epub
+
+# Test voice 1
+mkdir voice-tests/test-1/
+cd voice-tests/test-1/
+echo "tts:\n  voice: am_michael" > .reader.yaml
+reader convert --file ../sample.epub
+
+# Test voice 2
+mkdir voice-tests/test-2/
+cd voice-tests/test-2/
+echo "tts:\n  voice: af_sarah" > .reader.yaml
+reader convert --file ../sample.epub
+
+# Test voice 3
+mkdir voice-tests/test-3/
+cd voice-tests/test-3/
+echo "tts:\n  voice: bf_emma" > .reader.yaml
+reader convert --file ../sample.epub
+
+# Compare outputs in ~/Downloads/
+ls ~/Downloads/sample_*
+```
+
+**Benefits:**
+- Each test isolated by directory
+- User config settings inherited (speed, format, etc.)
+- Only voice changes between tests
+- Easy to compare results
+
+### Use Case 5: Monorepo Audiobook Collection
+
+**Scenario:** Large collection with nested organization and inheritance.
+
+**Setup:**
+
+```bash
+~/library/
+├── .reader.yaml                # Global library defaults
+├── english/
+│   ├── .reader.yaml           # English-specific (inherits global)
+│   ├── fiction/
+│   │   ├── .reader.yaml       # Fiction settings (inherits english + global)
+│   │   ├── scifi/
+│   │   ├── fantasy/
+│   │   └── mystery/
+│   └── non-fiction/
+│       └── .reader.yaml       # Non-fiction settings (inherits english + global)
+└── spanish/
+    ├── .reader.yaml           # Spanish-specific (inherits global)
+    └── literature/
+```
+
+**Global** (`~/library/.reader.yaml`):
+```yaml
+audio:
+  format: m4b
+  add_metadata: true
+processing:
+  auto_detect_chapters: true
+output_dir: /audiobooks/
+```
+
+**English** (`~/library/english/.reader.yaml`):
+```yaml
+tts:
+  speed: 1.2
+```
+
+**English Fiction** (`~/library/english/fiction/.reader.yaml`):
+```yaml
+tts:
+  voice: am_michael
+processing:
+  character_voices: true
+```
+
+**Result for** `~/library/english/fiction/scifi/dune.epub`:
+- Global: m4b format, metadata, chapters, output dir
+- English: speed 1.2
+- Fiction: voice am_michael, character_voices true
+- **All merged together automatically!**
+
+### Configuration Search Behavior
+
+Reader searches upward from your file's directory until it finds a config or reaches your home directory:
+
+```bash
+# Converting: ~/projects/audiobooks/fiction/book.epub
+
+# Search order:
+1. ~/projects/audiobooks/fiction/.reader.yaml         # Check here first
+2. ~/projects/audiobooks/.reader.yaml                 # Then parent
+3. ~/projects/.reader.yaml                            # Then parent
+4. ~/.reader.yaml                                     # Then home
+5. Stop search (don't go to system root)
+
+# Uses first config found + user config (~/.config/audiobook-reader/config.yaml)
+```
+
+### Best Practices
+
+1. **User config for personal defaults** - Set your preferred voice, speed, format once
+2. **Project configs for overrides** - Only specify what changes from user defaults
+3. **Use descriptive filenames** - `.reader.yaml` or `audiobook-reader.yaml` both work
+4. **Version control project configs** - Great for team collaboration
+5. **Test with samples first** - Create test directory with config to verify settings
+6. **Organize by genre/client** - Use directory structure + configs for automatic organization
 
 ---
 
