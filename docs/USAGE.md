@@ -253,36 +253,180 @@ reader voices
 - Output: 48kHz mono MP3, optimized for audiobooks
 - Adjust `--speed` to find comfortable pace
 
-## Configuration File
+## Multi-Layer Configuration System
 
-Settings are saved to `~/.config/audiobook-reader/settings.yaml`:
+Reader uses a hierarchical configuration system that lets you set defaults at different levels:
+
+### Configuration Hierarchy (priority: low → high)
+
+1. **Defaults** - Built-in sensible defaults
+2. **User config** - `~/.config/audiobook-reader/config.yaml` (your personal defaults)
+3. **Project config** - `.reader.yaml` or `audiobook-reader.yaml` (per-project overrides)
+4. **CLI arguments** - Temporary overrides for single conversion
+
+Each layer **merges** with the previous (doesn't replace entirely), so you only need to specify what you want to override.
+
+### User Config
+
+Your personal defaults for all audiobook conversions:
+
+**Location:** `~/.config/audiobook-reader/config.yaml`
 
 ```yaml
 tts:
-  engine: kokoro          # TTS engine (kokoro)
-  voice: am_michael       # Kokoro voice ID
-  speed: 1.0
+  engine: kokoro
+  voice: af_sarah         # Your preferred voice
+  speed: 1.2              # Your preferred speed
   volume: 1.0
 audio:
-  format: mp3             # mp3, wav, m4a, m4b
+  format: m4b             # Audiobook format with chapters
   add_metadata: true
 processing:
-  chunk_size: 400         # Optimized for Kokoro
+  chunk_size: 400
   pause_between_chapters: 1.0
   auto_detect_chapters: true
-output_dir: downloads     # "downloads", "same", or custom path
+output_dir: /audiobooks   # Your audiobook library
+```
+
+### Project Config
+
+Override settings for specific directories/projects. Reader searches upward from your file's directory to find the nearest config.
+
+**Location:** `.reader.yaml` or `audiobook-reader.yaml` (in any parent directory)
+
+**Example - Fiction Books:**
+```yaml
+# ~/books/fiction/.reader.yaml
+tts:
+  voice: am_michael       # Dramatic narrator voice
+  speed: 1.0              # Normal speed for immersion
+processing:
+  character_voices: true  # Enable character-specific voices
+```
+
+**Example - Non-Fiction:**
+```yaml
+# ~/books/non-fiction/.reader.yaml
+tts:
+  voice: af_nicole        # Clear, professional voice
+  speed: 1.3              # Faster for educational content
+audio:
+  format: mp3             # Standard format for lectures
+```
+
+### How Merging Works
+
+**Example:** You have both user and project configs:
+
+```yaml
+# User config: ~/.config/audiobook-reader/config.yaml
+tts:
+  voice: af_sarah
+  speed: 1.2
+audio:
+  format: m4b
+output_dir: /audiobooks
+```
+
+```yaml
+# Project config: ~/books/fiction/.reader.yaml
+tts:
+  voice: am_michael       # Override voice only
+processing:
+  character_voices: true  # Add new setting
+```
+
+**Result when converting `~/books/fiction/novel.epub`:**
+- `voice`: `am_michael` (from project config)
+- `speed`: `1.2` (from user config - inherited!)
+- `format`: `m4b` (from user config - inherited!)
+- `character_voices`: `true` (from project config)
+- `output_dir`: `/audiobooks` (from user config - inherited!)
+
+**Only the voice changed!** All other user settings are preserved.
+
+### Configuration Use Cases
+
+**1. Personal Defaults**
+```bash
+# Set once, applies to all conversions
+reader config --voice af_sarah --speed 1.2 --format m4b
+```
+
+**2. Per-Project Override**
+```bash
+# Create project config for all books in directory
+cd ~/books/fiction
+cat > .reader.yaml << EOF
+tts:
+  voice: am_michael
+processing:
+  character_voices: true
+EOF
+
+# Now all conversions in fiction/ use character voices automatically
+reader convert --file novel.epub
+```
+
+**3. Team Collaboration**
+```bash
+# Check project config into git for team
+cd my-audiobook-project
+cat > .reader.yaml << EOF
+tts:
+  voice: bf_emma
+  speed: 1.0
+audio:
+  format: m4b
+EOF
+
+git add .reader.yaml
+git commit -m "Add audiobook config"
+# Team members inherit these settings automatically!
+```
+
+**4. Testing Voice Combinations**
+```bash
+# User config has your defaults
+# Create test directory with different voice
+mkdir voice-tests
+cd voice-tests
+echo "tts:\n  voice: am_adam" > .reader.yaml
+
+# Convert sample to test - inherits your other settings
+reader convert --file ../sample.txt
+```
+
+**5. Config Inheritance**
+```bash
+# Parent directory config
+~/books/.reader.yaml:
+  audio:
+    format: m4b
+  output_dir: /audiobooks
+
+# Child directory adds character voices
+~/books/fiction/.reader.yaml:
+  processing:
+    character_voices: true
+
+# Files in ~/books/fiction/ get BOTH configs merged!
 ```
 
 ## File Locations
 
 Reader uses system-standard directories:
 
+**Configuration Files:**
+- `~/.config/audiobook-reader/config.yaml` - User-level defaults (all projects)
+- `.reader.yaml` or `audiobook-reader.yaml` - Project-level overrides (searches upward)
+
 **Temporary Files:**
 - `/tmp/audiobook-reader-{session}/` - Working files (auto-cleaned on exit)
 
 **Persistent Data:**
 - `~/.cache/audiobook-reader/models/` - TTS models (~310MB)
-- `~/.config/audiobook-reader/` - Configuration and character mappings
+- `~/.config/audiobook-reader/` - User configuration and character mappings
 
 **Output Files:**
 - `~/Downloads/` (default, configurable with `output_dir`)

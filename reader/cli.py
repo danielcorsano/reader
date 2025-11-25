@@ -10,11 +10,12 @@ import atexit
 import shutil
 
 # Suppress known warnings from dependencies
-warnings.filterwarnings("ignore", 
+warnings.filterwarnings("ignore",
                        message=".*This search incorrectly ignores the root element.*",
                        category=FutureWarning,
                        module="ebooklib.*")
 
+from . import __version__
 from .config import ConfigManager
 from .parsers.epub_parser import EPUBParser
 from .parsers.pdf_parser import PDFParser
@@ -225,6 +226,9 @@ class ReaderApp:
         # Parse content
         click.echo(f"Parsing {file_path.name}...")
         parsed_content = parser.parse(file_path)
+
+        # Load project-specific config (if .reader.yaml exists in directory tree)
+        self.config_manager.load_file_config(file_path)
 
         # Clean text for better TTS processing
         if clean_text:
@@ -461,7 +465,7 @@ class ReaderApp:
 
 # CLI Commands
 @click.group()
-@click.version_option(version="0.1.0")
+@click.version_option(version=__version__)
 def cli():
     """Reader: Convert text files to audiobooks."""
     pass
@@ -484,7 +488,7 @@ def cli():
 @click.option('--output-dir', help='Output directory: "downloads" (~/Downloads), "same" (next to source), or explicit path')
 @click.option('--no-clean-text', is_flag=True, help='Disable text cleanup (keep broken words, bibliography, etc.)')
 def convert(voice, speed, format, file, characters, character_config, chapters, processing_level, batch_mode, checkpoint_interval, turbo_mode, debug, progress_style, output_dir, no_clean_text):
-    """Convert text file to audiobook.
+    """Convert text files to audiobooks.
 
     All options are temporary overrides and won't be saved to config.
     Use 'reader config' to permanently save settings."""

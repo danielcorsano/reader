@@ -3,6 +3,7 @@ import yaml
 from pathlib import Path
 from typing import Dict, Any, Optional
 from dataclasses import dataclass, asdict
+from copy import deepcopy
 
 
 @dataclass
@@ -48,67 +49,129 @@ class AppConfig:
     models_dir: Optional[str] = None  # Custom models directory (uses cache if None)
 
 
+def _deep_merge(base: Dict[str, Any], update: Dict[str, Any]) -> None:
+    """Deep merge update dict into base dict (modifies base in place)."""
+    for key, value in update.items():
+        if key in base and isinstance(base[key], dict) and isinstance(value, dict):
+            _deep_merge(base[key], value)
+        else:
+            base[key] = value
+
+
 class ConfigManager:
     """Manages application configuration."""
     
     def __init__(self, config_path: Optional[Path] = None):
-        """Initialize configuration manager."""
+        """Initialize configuration manager with multi-layer config hierarchy.
+
+        Hierarchy (priority low → high):
+        1. Defaults (dataclass defaults)
+        2. User config (~/.config/audiobook-reader/config.yaml)
+        3. Project config (.reader.yaml - loaded per-file via load_file_config)
+        4. CLI overrides (via override method)
+        """
+        # Use standard user config location
         if config_path is None:
-            config_path = Path.cwd() / "config" / "settings.yaml"
+            config_path = Path.home() / ".config" / "audiobook-reader" / "config.yaml"
 
         self.config_path = config_path
         self.config_path.parent.mkdir(parents=True, exist_ok=True)
 
-        # Load or create default config
-        config_exists = self.config_path.exists()
-        self.config = self.load_config()
-
-        # Save default config file if it doesn't exist (makes it discoverable/editable)
-        if not config_exists:
-            self.save_config()
-    
-    def load_config(self) -> AppConfig:
-        """Load configuration from file or create default."""
-        if self.config_path.exists():
-            try:
-                with open(self.config_path, 'r') as f:
-                    config_data = yaml.safe_load(f)
-                
-                # Convert dict to config objects with backward compatibility
-                tts_data = config_data.get('tts', {})
-                # Remove old fields that no longer exist
-                tts_data = {k: v for k, v in tts_data.items() if k in ['engine', 'voice', 'speed', 'volume']}
-                
-                audio_data = config_data.get('audio', {})
-                # Remove old fields that no longer exist  
-                audio_data = {k: v for k, v in audio_data.items() if k in ['format', 'add_metadata']}
-                
-                processing_data = config_data.get('processing', {})
-                # Remove old fields that no longer exist (dialogue_detection removed - now auto-enabled with character_voices)
-                valid_fields = ['chunk_size', 'pause_between_chapters', 'auto_detect_chapters', 'level',
-                               'character_voices', 'chapter_metadata', 'batch_processing']
-                processing_data = {k: v for k, v in processing_data.items() if k in valid_fields}
-                
-                return AppConfig(
-                    tts=TTSConfig(**tts_data),
-                    audio=AudioConfig(**audio_data),
-                    processing=ProcessingConfig(**processing_data),
-                    text_dir=config_data.get('text_dir', 'text'),
-                    audio_dir=config_data.get('audio_dir', 'audio'),
-                    config_dir=config_data.get('config_dir', 'config'),
-                    output_dir=config_data.get('output_dir', 'downloads')
-                )
-            except Exception as e:
-                print(f"Warning: Could not load config from {self.config_path}: {e}")
-                print("Using default configuration.")
-        
-        # Return default config
-        return AppConfig(
+        # Start with defaults
+        self.config = AppConfig(
             tts=TTSConfig(),
             audio=AudioConfig(),
             processing=ProcessingConfig()
         )
-    
+
+        # Load user config if exists
+        if self.config_path.exists():
+            self._load_and_merge_config(self.config_path)
+
+    def _load_and_merge_config(self, config_file: Path) -> None:
+        """Load YAML config and merge into current config."""
+        try:
+            with open(config_file, 'r') as f:
+                config_data = yaml.safe_load(f) or {}
+
+            # Convert current config to dict, merge, convert back
+            current_dict = asdict(self.config)
+            _deep_merge(current_dict, config_data)
+            self._update_config_from_dict(current_dict)
+        except Exception as e:
+            print(f"Warning: Could not load config from {config_file}: {e}")
+
+    def _update_config_from_dict(self, config_dict: Dict[str, Any]) -> None:
+        """Update config dataclasses from dict (with backward compatibility)."""
+        # TTS config
+        tts_data = config_dict.get('tts', {})
+        tts_data = {k: v for k, v in tts_data.items() if k in ['engine', 'voice', 'speed', 'volume']}
+        for key, value in tts_data.items():
+            if hasattr(self.config.tts, key):
+                setattr(self.config.tts, key, value)
+
+        # Audio config
+        audio_data = config_dict.get('audio', {})
+        audio_data = {k: v for k, v in audio_data.items() if k in ['format', 'bitrate', 'add_metadata']}
+        for key, value in audio_data.items():
+            if hasattr(self.config.audio, key):
+                setattr(self.config.audio, key, value)
+
+        # Processing config
+        processing_data = config_dict.get('processing', {})
+        valid_fields = ['chunk_size', 'pause_between_chapters', 'auto_detect_chapters', 'level',
+                       'character_voices', 'chapter_metadata', 'batch_processing']
+        processing_data = {k: v for k, v in processing_data.items() if k in valid_fields}
+        for key, value in processing_data.items():
+            if hasattr(self.config.processing, key):
+                setattr(self.config.processing, key, value)
+
+        # Top-level config
+        for key in ['text_dir', 'audio_dir', 'config_dir', 'output_dir', 'ffmpeg_path', 'models_dir']:
+            if key in config_dict:
+                setattr(self.config, key, config_dict[key])
+
+    def find_local_config(self, file_path: Path) -> Optional[Path]:
+        """Find project config (.reader.yaml) searching upward from file's directory.
+
+        Args:
+            file_path: Path to the file being converted
+
+        Returns:
+            Path to config file if found, None otherwise
+        """
+        search_dir = file_path.parent.resolve()
+        home_dir = Path.home()
+
+        # Search up through parent directories
+        while True:
+            # Try multiple config file names
+            for config_name in ['.reader.yaml', 'audiobook-reader.yaml']:
+                config_path = search_dir / config_name
+                if config_path.exists():
+                    return config_path
+
+            # Stop at home directory (don't go to root)
+            if search_dir == home_dir or search_dir.parent == search_dir:
+                break
+
+            search_dir = search_dir.parent
+
+        return None
+
+    def load_file_config(self, file_path: Path) -> None:
+        """Load and merge project-specific config for a file.
+
+        Searches for .reader.yaml or audiobook-reader.yaml from file's directory
+        up to home directory. Project config overrides user config.
+
+        Args:
+            file_path: Path to the file being converted
+        """
+        local_config = self.find_local_config(file_path)
+        if local_config:
+            self._load_and_merge_config(local_config)
+
     def save_config(self) -> None:
         """Save current configuration to file."""
         config_dict = asdict(self.config)
@@ -166,13 +229,10 @@ class ConfigManager:
 
         if level == "phase1":
             self.config.processing.character_voices = False
-            self.config.processing.dialogue_detection = False
         elif level == "phase2":
             self.config.processing.character_voices = False
-            self.config.processing.dialogue_detection = False
         elif level == "phase3":
             self.config.processing.character_voices = False
-            self.config.processing.dialogue_detection = True
         
         self.save_config()
     
