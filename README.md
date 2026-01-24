@@ -6,48 +6,35 @@
 
 **Transform long-form text into audiobooks with realistic, dialogue-aware AI voices.**
 
-Perfect for novels, articles, textbooks, research papers, and other long-form content that you want to be able to listen to on your own time or offline. Built with Kokoro-82M TTS for production-quality narration. Works on all platforms with optimizations for Apple Silicon (M1/M2/M3/M4 Neural Engine), NVIDIA GPUs, and AMD/Intel GPUs.
+Perfect for novels, articles, textbooks, research papers, and other long-form content that you want to be able to listen to on your own time or offline. Built with Kokoro-82M TTS models. Works on all platforms with hardware detection and performance optimizations for Apple Silicon (M1/M2/M3/M4 Neural Engine), NVIDIA GPUs, and AMD/Intel GPUs as well as CPU only processing as a fallback.
 
 If you find this useful, please consider supporting via [GitHub Sponsors](https://github.com/sponsors/danielcorsano).
 
 ## ✨ Core Features
 
 ### ⚡ **High-Performance Conversion**
-- **Up to 8x faster than real-time** on Apple Silicon (M1/M2/M3/M4) with Neural Engine
-- **GPU acceleration** for NVIDIA (CUDA), AMD/Intel (DirectML on Windows)
-- **Efficient CPU processing** on all platforms
-- Kokoro-82M engine optimized for speed + quality balance
+- **About 10x faster than real-time** when using Apple Silicon or GPU
+- **Efficient CPU processing as a fallback** on all platforms if GPU is not available
 
-### 🎭 **Character-Aware Narration**
-- **Automatic character detection** in dialogue
-- **Auto-assign different voices** with automatic gender detection where possible
-- Assigns gender-appropriate voices (e.g., Alice gets `af_sarah`, Bob gets `am_adam`)
-- Perfect for fiction, interviews, dialogues, and multi-speaker content
-
-### 💾 **Checkpoint Resumption**
-- **Resume interrupted conversions** from where you left off
-- Essential for extra-long texts (500+ page books, textbooks, research papers)
-- Reliable production workflow for lengthy content
+### 💾 **Robusz Checkpoint Resumption**
+- **Resume interrupted conversions** even if the computer crashed or was rebooted, which is essential for long texts
 
 ### 📚 **Chapter Management**
 - **Automatic chapter detection** from EPUB TOC, PDF structure, or text patterns
 - **M4B audiobook format** with chapter metadata
 - Chapter timestamps and navigation
 
-### 📊 **Professional Production Tools**
+### 📊 **Feedback and Ease of Use**
 - **4 progress visualization styles**: simple, tqdm, rich, timeseries
 - **Real-time metrics**: processing speed, ETA, completion percentage
 - **Batch processing** with queue management
 - **Multiple output formats**: MP3 (48kHz mono optimized by default), WAV, M4A, M4B
 
-### 🎙️ **Production-Quality TTS**
-- **Kokoro-82M**: 54 high-quality neural voices across 9 languages
-- **Near-human quality** narration
-- **Consistent voice** throughout long documents
-- No voice cloning overhead
+## 📚 Supported Input Formats
 
----
+EPUB, PDF, TXT, Markdown, ReStructuredText
 
+**Need to convert other formats first?** Use my universal text/doc/ebook converter [convertext](https://pypi.org/project/convertext/) 
 ## ⚖️ Copyright Notice
 
 **IMPORTANT**: This software is a tool for converting text to audio. Users are solely responsible for:
@@ -64,15 +51,7 @@ If you find this useful, please consider supporting via [GitHub Sponsors](https:
 - ✅ Educational materials you legally own
 - ✅ Open-source or Creative Commons licensed texts (per their terms)
 
-The developers of audiobook-reader do not condone or support copyright infringement. By using this software, you agree to use it only for content you have the legal right to convert.
-
----
-
-## 📚 Supported Input Formats
-
-EPUB, PDF, TXT, Markdown, ReStructuredText
-
-**Need to convert other formats first?** Use [convertext](https://pypi.org/project/convertext/) to convert DOCX, ODT, MOBI, HTML, and other document formats to supported formats like EPUB or TXT.
+I do not condone or support copyright infringement. By using this software, you agree to use it only for content you have the legal right to convert.
 
 ## 📦 Installation
 
@@ -551,7 +530,7 @@ This project uses the [Kokoro-82M](https://huggingface.co/hexgrad/Kokoro-82M) te
 
 ## 💝 Support This Project
 
-If you find this tool helpful, please consider [sponsoring the project](https://github.com/sponsors/danielcorsano). I created and maintain this software alone as a public service, and donations help me improve it and develop requested features. If I get $99 of donations, I will use it to pay for the Apple developer program so I can make iOS versions of all my open source apps.
+If you find this tool helpful, please consider [sponsoring the project](https://github.com/sponsors/danielcorsano). I created and maintain this software alone, and donations help me improve it and develop requested features. If I get $99 of donations, I will use it to pay for the Apple developer program so I can make iOS versions of all my open source apps.
 
 Your support makes a real difference in keeping this project active and growing. Thank you!
 
