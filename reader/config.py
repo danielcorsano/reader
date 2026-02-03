@@ -11,7 +11,7 @@ class TTSConfig:
     """TTS engine configuration."""
     engine: str = "kokoro"  # Default to Neural Engine for best performance
     voice: Optional[str] = None
-    speed: float = 1.0
+    speed: float = 1.1
     volume: float = 1.0
 
 

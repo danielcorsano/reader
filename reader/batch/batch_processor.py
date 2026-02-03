@@ -188,7 +188,7 @@ class BatchProcessor:
 
             # Add non-default settings
             settings = []
-            if tts_config.speed != 1.0:
+            if tts_config.speed != 1.1:
                 settings.append(f"sp{tts_config.speed}".replace(".", "p"))
             if processing_config.character_voices:
                 settings.append("chr")
