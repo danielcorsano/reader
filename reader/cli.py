@@ -1250,14 +1250,353 @@ def clear():
     """Clear all jobs from the batch queue."""
     app = ReaderApp()
     batch_processor = create_batch_processor(app.config_manager)
-    
+
     if batch_processor.is_running:
         click.echo("Cannot clear queue while batch is running.")
         return
-    
+
     job_count = len(batch_processor.jobs)
     batch_processor.clear_jobs()
     click.echo(f"✓ Cleared {job_count} jobs from batch queue.")
+
+
+def _get_first_sentence(text: str, max_length: int = 100) -> str:
+    """Extract first sentence from text, truncated to max_length."""
+    if not text:
+        return ""
+
+    # Clean up text
+    text = text.strip().replace('\n', ' ').replace('  ', ' ')
+
+    # Find first sentence ending
+    for i, char in enumerate(text):
+        if char in '.!?' and i > 10:  # At least 10 chars before ending
+            sentence = text[:i+1].strip()
+            if len(sentence) > max_length:
+                return sentence[:max_length-3] + "..."
+            return sentence
+
+    # No sentence ending found, truncate
+    if len(text) > max_length:
+        return text[:max_length-3] + "..."
+    return text
+
+
+def _display_chapters_for_strip(chapters: List[dict]) -> None:
+    """Display chapters with index, title, and first sentence."""
+    click.echo(f"\nDetected {len(chapters)} chapters:\n")
+
+    for i, chapter in enumerate(chapters):
+        title = chapter.get('title', f'Chapter {i}')
+        # Truncate long titles
+        if len(title) > 50:
+            title = title[:47] + "..."
+
+        content = chapter.get('content', '')
+        first_sentence = _get_first_sentence(content)
+
+        click.echo(f"  {i}: {title}")
+        if first_sentence:
+            click.echo(f"     \"{first_sentence}\"")
+        click.echo()
+
+
+def _parse_strip_syntax(user_input: str, total_chapters: int) -> Optional[set]:
+    """
+    Parse 's 0, 6-8' or 'k 1-5' syntax, return indices to KEEP.
+
+    Returns None on parse error.
+    """
+    user_input = user_input.strip().lower()
+
+    if not user_input:
+        return None
+
+    # Determine mode: strip or keep
+    if user_input.startswith('s '):
+        mode = 'strip'
+        spec = user_input[2:].strip()
+    elif user_input.startswith('k '):
+        mode = 'keep'
+        spec = user_input[2:].strip()
+    else:
+        return None
+
+    # Parse the indices
+    indices = set()
+    parts = spec.replace(' ', '').split(',')
+
+    for part in parts:
+        if not part:
+            continue
+
+        if '-' in part:
+            # Range: 6-8
+            try:
+                start, end = part.split('-')
+                start_idx = int(start)
+                end_idx = int(end)
+
+                if start_idx < 0 or end_idx >= total_chapters or start_idx > end_idx:
+                    click.echo(f"Error: Invalid range {part}. Valid range: 0-{total_chapters-1}")
+                    return None
+
+                for i in range(start_idx, end_idx + 1):
+                    indices.add(i)
+            except ValueError:
+                click.echo(f"Error: Invalid range format '{part}'")
+                return None
+        else:
+            # Single index
+            try:
+                idx = int(part)
+                if idx < 0 or idx >= total_chapters:
+                    click.echo(f"Error: Index {idx} out of range. Valid range: 0-{total_chapters-1}")
+                    return None
+                indices.add(idx)
+            except ValueError:
+                click.echo(f"Error: Invalid index '{part}'")
+                return None
+
+    # Convert to indices to KEEP
+    all_indices = set(range(total_chapters))
+
+    if mode == 'strip':
+        # Return all except stripped
+        return all_indices - indices
+    else:
+        # Return only kept
+        return indices
+
+
+def _write_stripped_epub(input_path: Path, chapters: List[dict], keep_indices: set, output_path: Path) -> bool:
+    """Write stripped EPUB with only kept chapters."""
+    try:
+        import ebooklib
+        from ebooklib import epub
+        from bs4 import BeautifulSoup
+        import warnings
+
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", category=FutureWarning)
+            warnings.filterwarnings("ignore", category=UserWarning)
+            book = epub.read_epub(str(input_path), options={'ignore_ncx': True})
+
+        # Get spine items
+        spine_item_ids = [item_id for item_id, linear in book.spine]
+
+        # Map chapters to spine items (approximate - based on order)
+        # Create new book with only kept items
+        new_book = epub.EpubBook()
+
+        # Copy metadata
+        for ns, values in book.metadata.items():
+            for name, value_list in values.items():
+                for value, attrs in value_list:
+                    if ns == 'http://purl.org/dc/elements/1.1/':
+                        new_book.add_metadata('DC', name, value, attrs if attrs else {})
+
+        # Set unique identifier
+        new_book.set_identifier(f"{book.get_metadata('DC', 'identifier')[0][0] if book.get_metadata('DC', 'identifier') else 'stripped'}_stripped")
+        new_book.set_title(f"{book.get_metadata('DC', 'title')[0][0] if book.get_metadata('DC', 'title') else 'Stripped'}")
+        new_book.set_language(book.get_metadata('DC', 'language')[0][0] if book.get_metadata('DC', 'language') else 'en')
+
+        # Track which items to keep
+        kept_items = []
+        new_spine = []
+
+        # Get filtered spine items (same filter as used in parsing)
+        content_idx = 0
+        for item_id, linear in book.spine:
+            item = book.get_item_with_id(item_id)
+            if item and item.get_type() == ebooklib.ITEM_DOCUMENT:
+                # Check if this item passes the content filter (same as EPUBParser)
+                item_name = item.get_name().lower()
+
+                # Skip non-content items (cover, toc, etc.)
+                skip_patterns = ['cover', 'title.html', 'toc.html', 'contents', 'index.html', 'notes.html', 'copy.html', 'dsi.html', 'copyright', '_img.html']
+                if any(x in item_name for x in skip_patterns):
+                    # Include these unconditionally (they're not counted as chapters)
+                    new_item = epub.EpubHtml(title=item.get_name(), file_name=item.get_name())
+                    new_item.set_content(item.get_content())
+                    new_book.add_item(new_item)
+                    new_spine.append(new_item)
+                    continue
+
+                # Check content length
+                try:
+                    soup = BeautifulSoup(item.get_content(), 'html.parser')
+                    text = soup.get_text(strip=True)
+                    if len(text) < 100:
+                        # Too short, include but don't count
+                        new_item = epub.EpubHtml(title=item.get_name(), file_name=item.get_name())
+                        new_item.set_content(item.get_content())
+                        new_book.add_item(new_item)
+                        new_spine.append(new_item)
+                        continue
+                except Exception:
+                    continue
+
+                # This is a real content chapter
+                if content_idx in keep_indices:
+                    new_item = epub.EpubHtml(title=item.get_name(), file_name=item.get_name())
+                    new_item.set_content(item.get_content())
+                    new_book.add_item(new_item)
+                    new_spine.append(new_item)
+                    kept_items.append(item.get_name())
+
+                content_idx += 1
+
+        # Copy CSS and images
+        for item in book.get_items():
+            if item.get_type() in [ebooklib.ITEM_STYLE, ebooklib.ITEM_IMAGE]:
+                new_book.add_item(item)
+
+        # Set spine
+        new_book.spine = new_spine
+
+        # Add NCX and Nav
+        new_book.add_item(epub.EpubNcx())
+        new_book.add_item(epub.EpubNav())
+
+        # Write the new EPUB
+        epub.write_epub(str(output_path), new_book, {})
+
+        return True
+
+    except Exception as e:
+        click.echo(f"Error writing EPUB: {e}", err=True)
+        return False
+
+
+def _write_stripped_text(chapters: List[dict], keep_indices: set, output_path: Path) -> bool:
+    """Write stripped text file with only kept chapters."""
+    try:
+        kept_content = []
+
+        for i in sorted(keep_indices):
+            if i < len(chapters):
+                chapter = chapters[i]
+                title = chapter.get('title', f'Chapter {i}')
+                content = chapter.get('content', '')
+
+                kept_content.append(f"# {title}\n\n{content}")
+
+        with open(output_path, 'w', encoding='utf-8') as f:
+            f.write('\n\n---\n\n'.join(kept_content))
+
+        return True
+
+    except Exception as e:
+        click.echo(f"Error writing text file: {e}", err=True)
+        return False
+
+
+@cli.command()
+@click.argument('file_path', type=click.Path(exists=True))
+def strip(file_path):
+    """Interactively strip chapters from a document.
+
+    Detects chapters in the file and lets you choose which to keep or remove.
+    Saves the result as a new file with '_stripped' suffix.
+
+    Example:
+        reader strip book.epub
+    """
+    app = ReaderApp(init_tts=False)
+    input_file = Path(file_path)
+
+    # Get parser
+    parser = app.get_parser_for_file(input_file)
+    if not parser:
+        click.echo(f"Error: No parser available for {input_file.suffix}")
+        sys.exit(1)
+
+    # Parse file
+    click.echo(f"Parsing {input_file.name}...")
+    try:
+        parsed_content = parser.parse(input_file)
+    except Exception as e:
+        click.echo(f"Error parsing file: {e}", err=True)
+        sys.exit(1)
+
+    # Get chapters - use ChapterManager for better detection if parser chapters are minimal
+    chapters = parsed_content.chapters
+
+    # If only one chapter detected, try ChapterManager for better detection
+    if len(chapters) <= 1 and app.chapter_manager:
+        suffix = input_file.suffix.lower()
+        if suffix == '.epub':
+            cm_chapters = app.chapter_manager.extract_chapters_from_epub(input_file)
+        elif suffix == '.pdf':
+            cm_chapters = app.chapter_manager.extract_chapters_from_pdf(input_file)
+        else:
+            cm_chapters = app.chapter_manager.extract_chapters_from_text(parsed_content.content)
+
+        # Convert ChapterInfo objects to dict format
+        if cm_chapters and len(cm_chapters) > len(chapters):
+            chapters = [
+                {'title': ch.title, 'content': ch.text_content, 'start_pos': 0}
+                for ch in cm_chapters
+            ]
+
+    if not chapters:
+        click.echo("No chapters detected in the file.")
+        sys.exit(1)
+
+    # Display chapters
+    _display_chapters_for_strip(chapters)
+
+    # Ask user if they want to strip
+    response = click.prompt("Strip chapters? [y/n]", type=str, default='n')
+
+    if response.lower() not in ('y', 'yes'):
+        click.echo("Cancelled.")
+        return
+
+    # Show syntax help
+    click.echo("\nSyntax:")
+    click.echo("  s 0, 6-8  → Strip chapters 0, 6, 7, 8 (keep the rest)")
+    click.echo("  k 1-5     → Keep chapters 1-5 only (strip the rest)")
+    click.echo()
+
+    # Get user selection
+    while True:
+        selection = click.prompt("Enter selection")
+        keep_indices = _parse_strip_syntax(selection, len(chapters))
+
+        if keep_indices is not None:
+            break
+        click.echo("Invalid syntax. Try again.")
+
+    if not keep_indices:
+        click.echo("Error: No chapters would remain. Aborting.")
+        return
+
+    # Determine output path
+    suffix = input_file.suffix
+    output_name = input_file.stem + "_stripped" + suffix
+    output_path = input_file.parent / output_name
+
+    # Handle different formats
+    click.echo(f"\nKeeping {len(keep_indices)} of {len(chapters)} chapters...")
+
+    if suffix.lower() == '.epub':
+        success = _write_stripped_epub(input_file, chapters, keep_indices, output_path)
+    elif suffix.lower() == '.pdf':
+        # PDF: extract to text
+        output_path = input_file.parent / (input_file.stem + "_stripped.txt")
+        click.echo("Note: PDF will be saved as text file (PDF modification not supported).")
+        success = _write_stripped_text(chapters, keep_indices, output_path)
+    else:
+        # TXT, MD, RST
+        success = _write_stripped_text(chapters, keep_indices, output_path)
+
+    if success:
+        click.echo(f"Saved: {output_path}")
+    else:
+        click.echo("Failed to save stripped file.", err=True)
+        sys.exit(1)
 
 
 if __name__ == "__main__":
