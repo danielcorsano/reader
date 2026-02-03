@@ -438,7 +438,7 @@ class ReaderApp:
         settings = []
 
         # Speed (default: 1.0)
-        if tts_config.speed != 1.0:
+        if tts_config.speed != 1.1:
             settings.append(f"sp{tts_config.speed}".replace(".", "p"))
 
         # Character voices (default: False)
