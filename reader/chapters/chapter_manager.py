@@ -37,19 +37,35 @@ class ChapterManager:
         r'^(CHAPTER\s+\d+.*?)$',
         r'^(\d+\.\s+.*?)$',
         r'^(Ch\.\s*\d+.*?)$',
-        
-        # Roman numerals
+
+        # Roman numerals - uppercase with "Chapter"
         r'^(Chapter\s+[IVXLCDM]+.*?)$',
+        # Roman numerals - lowercase with "Chapter"
+        r'^(Chapter\s+[ivxlcdm]+.*?)$',
+        # Roman numerals - uppercase with period (IV. Title)
         r'^([IVXLCDM]+\.\s+.*?)$',
-        
+        # Roman numerals - lowercase with period (iv. Title)
+        r'^([ivxlcdm]+\.\s+.*?)$',
+        # Roman numerals - uppercase with colon (IV: Title)
+        r'^([IVXLCDM]+:\s+.*?)$',
+        # Roman numerals - lowercase with colon (iv: Title)
+        r'^([ivxlcdm]+:\s+.*?)$',
+        # Roman numerals - standalone uppercase at line start (IV or IV Title)
+        r'^([IVXLCDM]+)(?:\s+[A-Z].*)?$',
+        # Roman numerals - standalone lowercase at line start (iv or iv Title)
+        r'^([ivxlcdm]+)(?:\s+[A-Za-z].*)?$',
+
         # Written numbers
         r'^(Chapter\s+(?:One|Two|Three|Four|Five|Six|Seven|Eight|Nine|Ten|Eleven|Twelve).*?)$',
-        
+
         # Part/Section markers
         r'^(Part\s+\d+.*?)$',
+        r'^(Part\s+[IVXLCDM]+.*?)$',
+        r'^(Part\s+[ivxlcdm]+.*?)$',
         r'^(Section\s+\d+.*?)$',
         r'^(Book\s+\d+.*?)$',
-        
+        r'^(Book\s+[IVXLCDM]+.*?)$',
+
         # Special formats
         r'^(\*\s*\*\s*\*.*?)$',  # *** Chapter markers
         r'^(═+.*?)$',  # Decorative lines
