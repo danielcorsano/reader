@@ -246,6 +246,53 @@ echo "Listen to finished/sample_*.mp3 to compare voices and speeds"
 reader config --voice am_michael --speed 1.0
 ```
 
+## Example 11: Strip Unwanted Chapters Before Converting
+
+```bash
+# Strip a textbook to remove front/back matter
+reader strip textbook.epub
+
+# Example output:
+#   0: Cover Page
+#      "Published by Academic Press..."
+#   1: Table of Contents
+#      "Chapter 1...page 1, Chapter 2...page 45..."
+#   2: Foreword
+#      "It is my great pleasure to introduce..."
+#   3: Chapter 1 - Introduction
+#      "This textbook explores the fundamentals of..."
+#   4: Chapter 2 - Core Concepts
+#      "Building on the introduction..."
+#   ...
+#   15: Bibliography
+#      "Anderson, J. (2019). Research Methods..."
+#   16: Index
+#      "A: Abstract algebra, 12; Algorithms, 45..."
+
+# Strip chapters? [y/n]: y
+# Enter selection: s 0-2, 15-16
+# Keeping 12 of 17 chapters...
+# Saved: textbook_stripped.epub
+# Convert to audiobook? [y/n]: y
+
+# Alternative: keep only specific chapters
+reader strip novel.epub
+# Enter selection: k 3-14
+# Same result - keeps only the main content
+```
+
+## Example 12: Strip PDF to Text and Convert
+
+```bash
+# PDFs are extracted to text when stripping
+reader strip "Wittgenstein - Philosophical Investigations.pdf"
+
+# Saves as: Wittgenstein - Philosophical Investigations_stripped.txt
+# Then converts the text file to audiobook
+
+# Useful for academic PDFs with lots of footnotes/references
+```
+
 ## Tips for Best Results
 
 1. **Voice Selection**: Try 3-4 different voices with the same text to find your preference
@@ -264,6 +311,7 @@ reader config --voice am_michael --speed 1.0
 - 4 progress visualization styles (simple, tqdm, rich, timeseries)
 - Checkpoint recovery for interrupted conversions
 - Apple Neural Engine optimization
+- **Text stripping (new feature!):** use the reader strip command to detect and parse sections and get rid of unnecessary text (table of contents, foreword, secondary literature, bibliography etc.)
 
 📚 **For More Details:**
 - See [PHASE3_FEATURES.md](PHASE3_FEATURES.md) for full feature documentation

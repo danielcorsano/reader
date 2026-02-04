@@ -237,6 +237,84 @@ M4B files include:
 
 ---
 
+## ✂️ Text Stripping (Interactive Chapter Removal)
+
+### Overview
+
+**Text stripping (new feature!):** use the reader strip command to detect and parse sections and get rid of unnecessary text (table of contents, foreword, secondary literature, bibliography etc.)
+
+### Usage
+
+```bash
+# Strip chapters from any supported format
+reader strip book.epub
+reader strip document.pdf
+reader strip textbook.txt
+```
+
+### How It Works
+
+1. **Chapter Detection**: Detects chapters using pattern matching (Chapter 1, I, i, Part I, etc.) and file structure (EPUB TOC, PDF bookmarks)
+2. **Display**: Shows numbered list (0-indexed) with title and first sentence preview
+3. **Selection**: Choose chapters to strip or keep using simple syntax
+4. **Save**: Creates a new file with `_stripped` suffix next to the original
+5. **Convert**: Offers to convert the stripped file to audiobook immediately
+
+### Selection Syntax
+
+```bash
+s 0, 6-8    # Strip: remove chapters 0, 6, 7, 8 (keep the rest)
+k 1-5       # Keep: keep only chapters 1 through 5 (remove the rest)
+```
+
+### Output Formats
+
+| Input | Output | Notes |
+|-------|--------|-------|
+| EPUB | `_stripped.epub` | Preserves structure, CSS, images |
+| TXT/MD/RST | `_stripped.txt` | Markdown-formatted chapters |
+| PDF | `_stripped.txt` | Extracted to text (PDF modification not supported) |
+
+### Example: Academic Textbook
+
+```bash
+$ reader strip "Ethics and Related Writings.epub"
+
+Detected 18 chapters:
+
+  0: Title Page
+     "THE ESSENTIAL SPINOZA..."
+
+  1: Editor's Introduction
+     "This volume brings together the most important..."
+
+  2: Part I - Concerning God
+     "DEFINITIONS: I. By that which is self-caused..."
+
+  ...
+
+  16: Bibliography
+     "Allison, H. E. (1987). Benedict de Spinoza..."
+
+  17: Index
+     "A: attributes, 12, 45-67; adequacy, 89..."
+
+Strip chapters? [y/n]: y
+
+Syntax:
+  s 0, 6-8  → Strip chapters 0, 6, 7, 8 (keep the rest)
+  k 1-5     → Keep chapters 1-5 only (strip the rest)
+
+Enter selection: s 0-1, 16-17
+
+Keeping 14 of 18 chapters...
+Saved: Ethics and Related Writings_stripped.epub
+
+Convert to audiobook? [y/n]: y
+```
+
+---
+
 ## 🧹 Text Cleanup & Preprocessing
 
 ### Automatic Content Filtering
@@ -752,6 +830,7 @@ reader --help
 
 # Get help for specific command
 reader convert --help
+reader strip --help
 reader batch --help
 reader chapters --help
 ```
@@ -763,10 +842,11 @@ reader chapters --help
 The system transforms a simple TTS tool into a professional audiobook production system:
 
 - ✅ **Intelligent Processing**: multiple processing options for any workflow
-- ✅ **Chapter Management**: Automatic detection and professional metadata  
+- ✅ **Chapter Management**: Automatic detection and professional metadata
 - ✅ **Voice System**: Preview, compare, and assign voices intelligently
 - ✅ **Batch Processing**: Efficient bulk conversion with progress tracking
 - ✅ **Professional Output**: M4B format with chapters and metadata
 - ✅ **Advanced Analysis**: Dialogue detection and context awareness
+- ✅ **Text Stripping**: Interactive chapter removal to strip unwanted content before conversion
 
 Perfect for individual authors, publishing houses, or anyone serious about audiobook production!
