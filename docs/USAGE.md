@@ -87,6 +87,31 @@ reader convert --file book.epub --no-clean-text
 
 **When to disable:** Use `--no-clean-text` if you need verbatim conversion including all metadata.
 
+### Strip Chapters from Documents
+
+Interactively remove unwanted sections before converting:
+
+```bash
+# Strip chapters from any supported format
+reader strip book.epub
+reader strip document.pdf
+reader strip textbook.txt
+
+# Flow:
+# 1. Detects and displays all chapters with titles and first sentence
+# 2. Asks "Strip chapters? [y/n]"
+# 3. Shows syntax help:
+#    s 0, 6-8  → Strip chapters 0, 6, 7, 8 (keep the rest)
+#    k 1-5     → Keep chapters 1-5 only (strip the rest)
+# 4. Saves stripped file as book_stripped.epub
+# 5. Asks "Convert to audiobook? [y/n]"
+```
+
+**Output formats:**
+- EPUB → `_stripped.epub` (preserves structure, CSS, images)
+- TXT/MD/RST → `_stripped.txt`
+- PDF → `_stripped.txt` (extracts to text)
+
 ### Voice Management
 
 ```bash
@@ -176,6 +201,26 @@ reader convert --file story.txt --output-dir /audiobooks
 # - /audiobooks/book1_kokoro_am_michael.mp3
 # - /audiobooks/book2_kokoro_am_michael.mp3
 # - /audiobooks/story_kokoro_am_michael.mp3
+```
+
+### Strip and Convert Example
+
+```bash
+# Strip a philosophy textbook to just the main chapters
+reader strip "Spinoza - Ethics.epub"
+# Output:
+#   0: Title Page
+#      "THE ESSENTIAL SPINOZA..."
+#   1: Editor's Introduction
+#      "This volume brings together..."
+#   2: Part I - On God
+#      "By substance I understand..."
+#   ...
+# Strip chapters? [y/n]: y
+# Enter selection: k 2-8
+# Keeping 7 of 12 chapters...
+# Saved: Spinoza - Ethics_stripped.epub
+# Convert to audiobook? [y/n]: y
 ```
 
 ### EPUB Example

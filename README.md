@@ -34,6 +34,11 @@ If you find this useful, please consider supporting via [GitHub Sponsors](https:
 
 EPUB, PDF, TXT, Markdown, ReStructuredText
 
+### ✂️ **Text Stripping (New Feature!)**
+- **Text stripping (new feature!):** use the reader strip command to detect and parse sections and get rid of unnecessary text (table of contents, foreword, secondary literature, bibliography etc.)
+
+---
+
 **Need to convert other formats first?** Use my universal text/doc/ebook converter [convertext](https://pypi.org/project/convertext/) 
 ## ⚖️ Copyright Notice
 
@@ -240,6 +245,18 @@ reader convert --progress-style rich --file "book.epub"
 reader convert --progress-style timeseries --file "book.epub"
 ```
 
+### Text Stripping
+```bash
+# Interactively strip unwanted chapters from a book
+reader strip book.epub
+
+# Flow: detect chapters → display list → choose strip/keep → save → optionally convert
+# Syntax examples:
+#   s 0, 6-8   → Strip chapters 0, 6, 7, 8 (keep the rest)
+#   k 1-5      → Keep chapters 1-5 only (strip the rest)
+# Output: book_stripped.epub (saved next to original)
+```
+
 ### Configuration Management
 ```bash
 # Save permanent settings to config file
@@ -339,6 +356,19 @@ reader convert --voice am_adam --file text/sample.txt
 reader convert --voice bf_emma --file text/sample.txt
 
 # Compare finished/sample_*.mp3 outputs
+```
+
+### Strip and Convert
+```bash
+# Strip unnecessary chapters before converting
+reader strip "Philosophy Textbook.epub"
+# → Shows chapters, you pick which to keep
+# → Saves Philosophy Textbook_stripped.epub
+# → Asks "Convert to audiobook?" — say yes to convert immediately
+
+# Or strip first, convert separately
+reader strip book.pdf
+reader convert --file book_stripped.txt
 ```
 
 ### Batch Processing
