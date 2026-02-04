@@ -1,4 +1,5 @@
 """Neural Engine optimized processor with streaming and checkpoint support."""
+import gc
 import json
 import time
 import hashlib
@@ -330,6 +331,7 @@ class NeuralProcessor:
                 current_size = output_file.tell()  # Actual file size (WAV or temp WAV)
                 self._save_checkpoint(file_path, i + 1, total_chunks, current_size, settings_hash)
                 self.last_checkpoint_time = current_time
+                gc.collect()  # Release accumulated TTS memory
 
         # Report skipped chunks summary
         if skipped_chunks:
@@ -504,45 +506,80 @@ class NeuralProcessor:
     
 
     def _convert_wav_to_mp3(self):
-        """Convert streamed temp WAV file to final MP3."""
+        """Convert streamed raw PCM temp file to final MP3 using FFmpeg directly.
+
+        Reads raw PCM from disk without loading into memory - FFmpeg handles
+        the streaming conversion to prevent out-of-memory on large books.
+        """
         if not self.temp_wav_path or not self.temp_wav_path.exists():
             return
 
-        print(f"🎵 Converting streamed WAV to final MP3", flush=True)
+        file_size_mb = self.temp_wav_path.stat().st_size / (1024 * 1024)
+        print(f"🎵 Converting {file_size_mb:.0f}MB raw audio to MP3 (streaming via FFmpeg)", flush=True)
 
         try:
-            from ..processors.ffmpeg_processor import FFmpegAudioProcessor
+            import subprocess
+            from ..utils.setup import get_ffmpeg_path
+            from ..config import ConfigManager
 
-            # Read the temp WAV file and create proper WAV header
-            with open(self.temp_wav_path, 'rb') as f:
-                raw_audio_data = f.read()
+            bitrate = ConfigManager().config.audio.bitrate
 
-            # Create properly formatted WAV file
-            wav_buffer = io.BytesIO()
-            with wave.open(wav_buffer, 'wb') as wav_file:
-                wav_file.setnchannels(1)  # Mono
-                wav_file.setsampwidth(2)  # 16-bit
-                wav_file.setframerate(DEFAULT_SAMPLE_RATE)  # 22050 Hz
-                wav_file.writeframes(raw_audio_data)
+            # Feed raw PCM directly to FFmpeg - no need to reconstruct WAV in memory
+            cmd = [
+                get_ffmpeg_path(),
+                '-f', 's16le',                    # Raw signed 16-bit little-endian PCM
+                '-ar', str(DEFAULT_SAMPLE_RATE),   # Sample rate (22050)
+                '-ac', '1',                        # Mono
+                '-i', str(self.temp_wav_path),     # Read raw PCM from disk
+                '-c:a', 'libmp3lame',
+                '-b:a', bitrate,
+                '-q:a', '6',
+                '-ac', '1',
+                '-y', str(self.output_path)
+            ]
 
-            # Write to temp WAV with proper header
-            with open(self.temp_wav_path, 'wb') as f:
-                f.write(wav_buffer.getvalue())
+            result = subprocess.run(cmd, capture_output=True, check=True)
 
-            # Convert to MP3
-            processor = FFmpegAudioProcessor()
-            processor.convert_format(self.temp_wav_path, self.output_path, 'mp3')
-
-            # Clean up temp WAV
+            # Clean up temp raw PCM file
             self.temp_wav_path.unlink(missing_ok=True)
 
             print(f"✅ MP3 conversion complete", flush=True)
 
+        except subprocess.CalledProcessError as e:
+            stderr = e.stderr.decode() if e.stderr else str(e)
+            print(f"⚠️ MP3 conversion failed: {stderr}", flush=True)
+            # Fallback: add WAV header and keep as WAV
+            self._fallback_save_as_wav()
         except Exception as e:
             print(f"⚠️ MP3 conversion failed: {e}, keeping as WAV", flush=True)
-            # Fallback: rename temp WAV to output
-            if self.temp_wav_path.exists():
-                self.temp_wav_path.rename(self.output_path.with_suffix('.wav'))
+            self._fallback_save_as_wav()
+
+    def _fallback_save_as_wav(self):
+        """Save raw PCM temp file as proper WAV when MP3 conversion fails.
+
+        Streams in chunks to avoid loading entire file into memory.
+        """
+        if not self.temp_wav_path or not self.temp_wav_path.exists():
+            return
+        wav_output = self.output_path.with_suffix('.wav')
+        raw_size = self.temp_wav_path.stat().st_size
+        try:
+            with wave.open(str(wav_output), 'wb') as wav_file:
+                wav_file.setnchannels(1)
+                wav_file.setsampwidth(2)
+                wav_file.setframerate(DEFAULT_SAMPLE_RATE)
+                # Stream raw PCM data in 8MB chunks
+                with open(self.temp_wav_path, 'rb') as raw_f:
+                    while True:
+                        chunk = raw_f.read(8 * 1024 * 1024)
+                        if not chunk:
+                            break
+                        wav_file.writeframes(chunk)
+            self.temp_wav_path.unlink(missing_ok=True)
+            # Update output_path so _move_to_finished finds the right file
+            self.output_path = wav_output
+        except Exception as fallback_err:
+            print(f"⚠️ WAV fallback also failed: {fallback_err}", flush=True)
     
     def _get_settings_hash(self, config: Dict[str, Any]) -> str:
         """Generate hash of processing settings to detect changes."""
