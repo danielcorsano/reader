@@ -965,6 +965,7 @@ def info():
     click.echo("  reader config                             # View/set preferences")
 
     click.echo("\n🎭 Advanced Commands:")
+    click.echo("  reader strip FILE           # Strip unwanted chapters interactively")
     click.echo("  reader characters add NAME VOICE # Map character to voice")
     click.echo("  reader characters list     # Show character mappings")
     click.echo("  reader blend create NAME SPEC # Create voice blend")
@@ -1597,6 +1598,18 @@ def strip(file_path):
     else:
         click.echo("Failed to save stripped file.", err=True)
         sys.exit(1)
+
+    # Offer to convert
+    convert_response = click.prompt("\nConvert to audiobook? [y/n]", type=str, default='n')
+
+    if convert_response.lower() in ('y', 'yes'):
+        try:
+            app_convert = ReaderApp()
+            result = app_convert.convert_file(output_path)
+            click.echo(f"Conversion complete: {result}")
+        except Exception as e:
+            click.echo(f"Error converting: {e}", err=True)
+            sys.exit(1)
 
 
 if __name__ == "__main__":
