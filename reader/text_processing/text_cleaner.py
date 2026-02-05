@@ -2,11 +2,13 @@
 import re
 from typing import Set
 
+from .content_classifier import ContentClassifier
+
 
 class TextCleaner:
     """Clean text to fix pronunciation issues and remove non-narrative content."""
 
-    # Chapters to skip (exact title match, case-insensitive)
+    # Chapters to skip (exact title match, case-insensitive) - legacy fallback
     SKIP_CHAPTERS: Set[str] = {
         'bibliography', 'references', 'index',
         'also by', 'about the author', 'acknowledgments',
@@ -22,6 +24,7 @@ class TextCleaner:
         self.isbn_line = re.compile(r'^.*ISBN[-:\s]*\d{10,13}.*$', re.MULTILINE | re.IGNORECASE)
         # Detect book catalogs: 5+ capitalized titles without proper punctuation
         self.catalog_pattern = re.compile(r'([A-Z][A-Za-z\s]{10,60}\s*){5,}', re.MULTILINE)
+        self._classifier = ContentClassifier()
 
     def clean(self, text: str, fix_words: bool = True, remove_metadata: bool = True) -> str:
         """
@@ -64,52 +67,28 @@ class TextCleaner:
 
         return text
 
-    def should_skip_chapter(self, title: str) -> bool:
+    def should_skip_chapter(self, title: str, content: str = "",
+                            epub_type: str = "", guide_type: str = "") -> bool:
+        """Determine if chapter should be skipped.
+
+        Uses multi-signal classifier when content is provided,
+        falls back to title-only matching otherwise.
         """
-        Determine if chapter should be skipped based on title.
-
-        Args:
-            title: Chapter title
-
-        Returns:
-            True if chapter should be skipped
-        """
-        title_lower = title.lower().strip()
-
-        # Exact match or contains skip keyword
-        for skip_term in self.SKIP_CHAPTERS:
-            if skip_term == title_lower or title_lower.startswith(skip_term):
-                return True
-
-        return False
+        result = self._classifier.classify(
+            title=title, content=content,
+            epub_type=epub_type, guide_type=guide_type,
+        )
+        return result.is_junk
 
     def extract_narrative_content(self, chapters: list) -> str:
-        """
-        Extract only narrative content by finding start/end boundaries.
+        """Extract only narrative content by finding start/end boundaries.
 
-        Args:
-            chapters: List of chapter dicts with 'title' and 'content'
-
-        Returns:
-            Combined narrative content only
+        Uses multi-signal classifier to detect content boundaries.
         """
         if not chapters:
             return ""
 
-        # Find first narrative chapter (skip front matter)
-        start_idx = 0
-        for i, ch in enumerate(chapters):
-            if not self.should_skip_chapter(ch.get('title', '')):
-                start_idx = i
-                break
+        start_idx, end_idx = self._classifier.find_content_boundaries(chapters)
 
-        # Find last narrative chapter (skip back matter)
-        end_idx = len(chapters)
-        for i in range(len(chapters) - 1, -1, -1):
-            if not self.should_skip_chapter(chapters[i].get('title', '')):
-                end_idx = i + 1
-                break
-
-        # Extract only narrative chapters
         narrative_chapters = chapters[start_idx:end_idx]
         return ' '.join(ch.get('content', '') for ch in narrative_chapters)

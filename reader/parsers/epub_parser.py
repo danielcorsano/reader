@@ -3,9 +3,10 @@ import ebooklib
 from ebooklib import epub
 from bs4 import BeautifulSoup
 from pathlib import Path
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 import warnings
 import sys
+import re
 
 from ..interfaces.text_parser import TextParser, ParsedContent
 
@@ -53,11 +54,14 @@ class EPUBParser(TextParser):
                 'format': 'EPUB'
             }
             
+            # Build guide type mapping for EPUB metadata
+            guide_map = self._build_guide_map(book)
+
             # Extract text content using spine order with content filtering
             chapters = []
             full_text = []
             processed_items = 0
-            
+
             # Get spine items (proper reading order) and filter content
             spine_items = self._get_filtered_spine_items(book)
             total_items = len(spine_items)
@@ -87,10 +91,13 @@ class EPUBParser(TextParser):
                 text = self._extract_text_optimized(soup)
                 
                 if text.strip():
+                    item_href = item.get_name()
                     chapter_info = {
-                        'title': self._extract_title_from_html(soup) or item.get_name(),
+                        'title': self._extract_title_from_html(soup) or item_href,
                         'content': text,
-                        'start_pos': len(' '.join(full_text))
+                        'start_pos': len(' '.join(full_text)),
+                        'epub_type': self._extract_epub_type(soup),
+                        'guide_type': guide_map.get(item_href, ''),
                     }
                     chapters.append(chapter_info)
                     full_text.append(text)
@@ -214,7 +221,7 @@ class EPUBParser(TextParser):
         """Extract chapter title from HTML soup."""
         # Look for common title tags
         title_tags = ['h1', 'h2', 'h3', 'title']
-        
+
         for tag in title_tags:
             element = soup.find(tag)
             if element and element.get_text(strip=True):
@@ -222,5 +229,85 @@ class EPUBParser(TextParser):
                 # Clean up title and check reasonable length
                 if len(title) < 200:  # Reasonable title length
                     return title
-        
+
         return None
+
+    def _extract_epub_type(self, soup) -> str:
+        """Extract epub:type attribute from HTML content."""
+        # Look for epub:type on body, section, or article elements
+        for tag_name in ['body', 'section', 'article', 'div']:
+            for el in soup.find_all(tag_name):
+                epub_type = el.get('epub:type', '') or el.get('epubtype', '')
+                if epub_type:
+                    return epub_type
+        return ""
+
+    def _build_guide_map(self, book) -> Dict[str, str]:
+        """Build a mapping from item href to OPF guide type."""
+        guide_map = {}
+        # ebooklib exposes guide as list of dicts with 'type', 'title', 'href'
+        try:
+            for ref in book.guide:
+                href = ref.get('href', '').split('#')[0]  # strip fragment
+                gtype = ref.get('type', '')
+                if href and gtype:
+                    guide_map[href] = gtype
+        except (AttributeError, TypeError):
+            pass
+        return guide_map
+
+    def parse_all_chapters(self, file_path: Path) -> ParsedContent:
+        """Parse EPUB returning ALL spine items as chapters (no filtering).
+
+        Used by the strip command to let the classifier decide what's junk.
+        """
+        try:
+            with warnings.catch_warnings():
+                warnings.filterwarnings("ignore", category=FutureWarning)
+                warnings.filterwarnings("ignore", category=UserWarning)
+                book = epub.read_epub(str(file_path), options={'ignore_ncx': True})
+
+            title = book.get_metadata('DC', 'title')[0][0] if book.get_metadata('DC', 'title') else file_path.stem
+            author = book.get_metadata('DC', 'creator')[0][0] if book.get_metadata('DC', 'creator') else "Unknown"
+            metadata = {
+                'title': title, 'author': author,
+                'language': book.get_metadata('DC', 'language')[0][0] if book.get_metadata('DC', 'language') else 'en',
+                'format': 'EPUB'
+            }
+
+            guide_map = self._build_guide_map(book)
+
+            chapters = []
+            full_text = []
+
+            for item_id, linear in book.spine:
+                item = book.get_item_with_id(item_id)
+                if not item or item.get_type() != ebooklib.ITEM_DOCUMENT:
+                    continue
+
+                raw_content = item.get_content()
+                parser_name = 'xml' if self._has_lxml() else 'html.parser'
+                soup = BeautifulSoup(raw_content, parser_name)
+                text = self._extract_text_optimized(soup)
+
+                if not text.strip():
+                    continue
+
+                item_href = item.get_name()
+                chapter_info = {
+                    'title': self._extract_title_from_html(soup) or item_href,
+                    'content': text,
+                    'start_pos': len(' '.join(full_text)),
+                    'epub_type': self._extract_epub_type(soup),
+                    'guide_type': guide_map.get(item_href, ''),
+                }
+                chapters.append(chapter_info)
+                full_text.append(text)
+
+            return ParsedContent(
+                title=title, content=' '.join(full_text),
+                chapters=chapters, metadata=metadata
+            )
+
+        except Exception as e:
+            raise ValueError(f"Failed to parse EPUB file {file_path}: {str(e)}")
