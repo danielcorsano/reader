@@ -20,7 +20,7 @@ If you find this useful, please consider supporting via [GitHub Sponsors](https:
 - **Resume interrupted conversions** even if the computer crashed or was rebooted, which is essential for long texts
 
 ### 📚 **Chapter Management**
-- **Automatic chapter detection** from EPUB TOC, PDF structure, or text patterns
+- **Tiered chapter detection**: marked chapters → heading detection → formatting-based fallback
 - **M4B audiobook format** with chapter metadata
 - Chapter timestamps and navigation
 
@@ -34,8 +34,10 @@ If you find this useful, please consider supporting via [GitHub Sponsors](https:
 
 EPUB, PDF, TXT, Markdown, ReStructuredText
 
-### ✂️ **Text Stripping (New Feature!)**
-- **Text stripping (new feature!):** use the reader strip command to detect and parse sections and get rid of unnecessary text (table of contents, foreword, secondary literature, bibliography etc.)
+### ✂️ **Text Stripping**
+- Interactive chapter removal with auto-detection of non-content (copyright, TOC, bibliography, index)
+- Tiered chapter detection works across all formats (EPUB, PDF, TXT)
+- Conservative back-stripping with spoiler-protected end preview
 
 ---
 
@@ -250,7 +252,12 @@ reader convert --progress-style timeseries --file "book.epub"
 # Interactively strip unwanted chapters from a book
 reader strip book.epub
 
-# Flow: detect chapters → display list → choose strip/keep → save → optionally convert
+# Flow:
+# 1. Tiered chapter detection (marked → headings → formatting)
+# 2. Auto-strip with classifier (conservative back-stripping, front-matter bias)
+# 3. Manual refinement with strip/keep syntax
+# 4. Spoiler-protected end preview
+#
 # Syntax examples:
 #   s 0, 6-8   → Strip chapters 0, 6, 7, 8 (keep the rest)
 #   k 1-5      → Keep chapters 1-5 only (strip the rest)
@@ -297,9 +304,9 @@ reader convert --voice af_sarah
 ### Input Formats
 | Format | Extension | Chapter Detection |
 |--------|-----------|------------------|
-| EPUB | `.epub` | ✅ Automatic from TOC |
-| PDF | `.pdf` | ✅ Page-based |
-| Text | `.txt` | ✅ Simple patterns |
+| EPUB | `.epub` | ✅ Structural markup (h1-h6 tags) |
+| PDF | `.pdf` | ✅ Heading detection → formatting fallback |
+| Text | `.txt` | ✅ Heading detection → formatting fallback |
 | Markdown | `.md` | ✅ Header-based |
 | ReStructuredText | `.rst` | ✅ Header-based |
 
