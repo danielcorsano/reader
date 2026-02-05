@@ -472,16 +472,37 @@ class ContentClassifier:
         return results
 
     def find_content_boundaries(self, chapters: List[Dict],
-                                 sensitivity: float = 0.5) -> Tuple[int, int]:
+                                 sensitivity: float = 0.5,
+                                 back_penalty: float = 0.2,
+                                 front_bias: bool = True) -> Tuple[int, int]:
         """Find first and last content chapter indices.
 
         Returns (start_idx, end_idx) where end_idx is exclusive.
         Strips junk from front and back only.
-        """
-        results = self.classify_chapters(chapters, sensitivity)
 
-        if not results:
+        back_penalty: raises effective threshold for back-matter, making
+            back-stripping more conservative (harder to strip from end).
+        front_bias: if True, copyright patterns in the first 20% of the
+            book get a score boost for more aggressive front-stripping.
+        """
+        n = len(chapters)
+        if n == 0:
             return 0, 0
+
+        # Classify with front bias: boost copyright signals in first 20%
+        front_cutoff = max(1, n // 5)
+        results = []
+        for i, ch in enumerate(chapters):
+            boosted_sensitivity = sensitivity
+            if front_bias and i < front_cutoff:
+                boosted_sensitivity = min(1.0, sensitivity + 0.15)
+            results.append(self.classify(
+                title=ch.get('title', ''),
+                content=ch.get('content', ''),
+                epub_type=ch.get('epub_type', ''),
+                guide_type=ch.get('guide_type', ''),
+                sensitivity=boosted_sensitivity,
+            ))
 
         # Find first content chapter
         start_idx = 0
@@ -491,12 +512,23 @@ class ContentClassifier:
                 break
         else:
             # All junk? Return everything
-            return 0, len(chapters)
+            return 0, n
 
-        # Find last content chapter
-        end_idx = len(chapters)
-        for i in range(len(results) - 1, -1, -1):
-            if not results[i].is_junk:
+        # Find last content chapter (conservative: use reduced sensitivity)
+        back_sensitivity = max(0.0, sensitivity - back_penalty)
+        back_results = []
+        for ch in chapters:
+            back_results.append(self.classify(
+                title=ch.get('title', ''),
+                content=ch.get('content', ''),
+                epub_type=ch.get('epub_type', ''),
+                guide_type=ch.get('guide_type', ''),
+                sensitivity=back_sensitivity,
+            ))
+
+        end_idx = n
+        for i in range(n - 1, -1, -1):
+            if not back_results[i].is_junk:
                 end_idx = i + 1
                 break
 
