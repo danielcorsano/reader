@@ -240,10 +240,12 @@ class ReaderApp:
                 original_count = len(parsed_content.chapters)
                 # Rebuild content from narrative chapters only
                 parsed_content.content = cleaner.extract_narrative_content(parsed_content.chapters)
-                # Filter chapter list
+                # Filter chapter list using multi-signal classifier
                 parsed_content.chapters = [
                     ch for ch in parsed_content.chapters
-                    if not cleaner.should_skip_chapter(ch.get('title', ''))
+                    if not cleaner.should_skip_chapter(
+                        ch.get('title', ''), ch.get('content', ''),
+                        ch.get('epub_type', ''), ch.get('guide_type', ''))
                 ]
                 skipped = original_count - len(parsed_content.chapters)
                 if skipped > 0:
@@ -1493,12 +1495,77 @@ def _write_stripped_text(chapters: List[dict], keep_indices: set, output_path: P
         return False
 
 
+def _auto_strip_flow(chapters: List[dict]) -> Optional[set]:
+    """Run auto-strip classifier with iterative boundary tuning.
+
+    Returns set of indices to keep, or None if user cancels.
+    """
+    from .text_processing.content_classifier import ContentClassifier
+
+    classifier = ContentClassifier()
+    sensitivity = 0.5
+
+    while True:
+        start_idx, end_idx = classifier.find_content_boundaries(chapters, sensitivity)
+        keep_indices = set(range(start_idx, end_idx))
+        stripped_front = start_idx
+        stripped_back = len(chapters) - end_idx
+
+        click.echo(f"\nSensitivity: {sensitivity:.1f} | "
+                    f"Stripped {stripped_front} from front, {stripped_back} from back")
+        click.echo(f"Keeping chapters {start_idx}-{end_idx - 1} ({len(keep_indices)} of {len(chapters)})")
+
+        # Show classification details for stripped chapters
+        results = classifier.classify_chapters(chapters, sensitivity)
+        if stripped_front > 0:
+            click.echo("\nStripped from front:")
+            for i in range(stripped_front):
+                r = results[i]
+                title = chapters[i].get('title', f'Chapter {i}')[:50]
+                click.echo(f"  {i}: {title}  [{r.category}, score={r.junk_score:.2f}]")
+        if stripped_back > 0:
+            click.echo("\nStripped from back:")
+            for i in range(end_idx, len(chapters)):
+                r = results[i]
+                title = chapters[i].get('title', f'Chapter {i}')[:50]
+                click.echo(f"  {i}: {title}  [{r.category}, score={r.junk_score:.2f}]")
+
+        # Show new beginning preview
+        if start_idx < len(chapters):
+            click.echo(f"\nNew beginning:")
+            click.echo(f"  {classifier.get_preview(chapters[start_idx])}")
+
+        # Show new ending preview
+        if end_idx > 0 and end_idx - 1 < len(chapters):
+            click.echo(f"\nNew ending:")
+            click.echo(f"  {classifier.get_preview(chapters[end_idx - 1])}")
+
+        click.echo(f"\n[1] Too early  (still junk at start → strip more)")
+        click.echo(f"[2] Too late   (content was cut → strip less)")
+        click.echo(f"[3] Accept")
+        click.echo(f"[4] Skip auto-strip (go to manual)")
+
+        choice = click.prompt("Choice", type=str, default='3')
+
+        if choice == '1':
+            sensitivity = min(1.0, sensitivity + classifier.SENSITIVITY_STEP)
+        elif choice == '2':
+            sensitivity = max(0.0, sensitivity - classifier.SENSITIVITY_STEP)
+        elif choice == '3':
+            return keep_indices
+        elif choice == '4':
+            return None
+        else:
+            click.echo("Invalid choice.")
+
+
 @cli.command()
 @click.argument('file_path', type=click.Path(exists=True))
 def strip(file_path):
     """Interactively strip chapters from a document.
 
     Detects chapters in the file and lets you choose which to keep or remove.
+    Supports auto-detection of non-content chapters (copyright, TOC, index, etc.)
     Saves the result as a new file with '_stripped' suffix.
 
     Example:
@@ -1513,10 +1580,13 @@ def strip(file_path):
         click.echo(f"Error: No parser available for {input_file.suffix}")
         sys.exit(1)
 
-    # Parse file
+    # Parse file - use parse_all_chapters for EPUB to get all chapters + metadata
     click.echo(f"Parsing {input_file.name}...")
     try:
-        parsed_content = parser.parse(input_file)
+        if input_file.suffix.lower() == '.epub' and hasattr(parser, 'parse_all_chapters'):
+            parsed_content = parser.parse_all_chapters(input_file)
+        else:
+            parsed_content = parser.parse(input_file)
     except Exception as e:
         click.echo(f"Error parsing file: {e}", err=True)
         sys.exit(1)
@@ -1548,27 +1618,59 @@ def strip(file_path):
     # Display chapters
     _display_chapters_for_strip(chapters)
 
-    # Ask user if they want to strip
-    response = click.prompt("Strip chapters? [y/n]", type=str, default='n')
+    # Auto-strip flow
+    keep_indices = None
+    auto_response = click.prompt("Auto-strip non-content? [y/n]", type=str, default='y')
 
-    if response.lower() not in ('y', 'yes'):
-        click.echo("Cancelled.")
-        return
+    if auto_response.lower() in ('y', 'yes'):
+        keep_indices = _auto_strip_flow(chapters)
 
-    # Show syntax help
-    click.echo("\nSyntax:")
-    click.echo("  s 0, 6-8  → Strip chapters 0, 6, 7, 8 (keep the rest)")
-    click.echo("  k 1-5     → Keep chapters 1-5 only (strip the rest)")
-    click.echo()
+    # If auto-strip was skipped or returned None, proceed to manual strip
+    if keep_indices is None:
+        response = click.prompt("Strip chapters manually? [y/n]", type=str, default='y')
 
-    # Get user selection
-    while True:
-        selection = click.prompt("Enter selection")
-        keep_indices = _parse_strip_syntax(selection, len(chapters))
+        if response.lower() not in ('y', 'yes'):
+            click.echo("Cancelled.")
+            return
 
-        if keep_indices is not None:
-            break
-        click.echo("Invalid syntax. Try again.")
+        # Show syntax help
+        click.echo("\nSyntax:")
+        click.echo("  s 0, 6-8  → Strip chapters 0, 6, 7, 8 (keep the rest)")
+        click.echo("  k 1-5     → Keep chapters 1-5 only (strip the rest)")
+        click.echo()
+
+        # Get user selection
+        while True:
+            selection = click.prompt("Enter selection")
+            keep_indices = _parse_strip_syntax(selection, len(chapters))
+
+            if keep_indices is not None:
+                break
+            click.echo("Invalid syntax. Try again.")
+    else:
+        # After auto-strip, offer manual refinement
+        refine = click.prompt("\nRefine manually? [y/n]", type=str, default='n')
+        if refine.lower() in ('y', 'yes'):
+            # Show remaining chapters
+            click.echo("\nCurrent selection:")
+            for i in sorted(keep_indices):
+                title = chapters[i].get('title', f'Chapter {i}')
+                if len(title) > 50:
+                    title = title[:47] + "..."
+                click.echo(f"  {i}: {title}")
+
+            click.echo("\nSyntax:")
+            click.echo("  s 0, 6-8  → Strip chapters 0, 6, 7, 8 (keep the rest)")
+            click.echo("  k 1-5     → Keep chapters 1-5 only (strip the rest)")
+            click.echo()
+
+            while True:
+                selection = click.prompt("Enter selection (applied to full chapter list)")
+                refined = _parse_strip_syntax(selection, len(chapters))
+                if refined is not None:
+                    keep_indices = refined
+                    break
+                click.echo("Invalid syntax. Try again.")
 
     if not keep_indices:
         click.echo("Error: No chapters would remain. Aborting.")
