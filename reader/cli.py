@@ -1506,7 +1506,8 @@ def _auto_strip_flow(chapters: List[dict]) -> Optional[set]:
     sensitivity = 0.5
 
     while True:
-        start_idx, end_idx = classifier.find_content_boundaries(chapters, sensitivity)
+        start_idx, end_idx = classifier.find_content_boundaries(
+            chapters, sensitivity, back_penalty=0.2, front_bias=True)
         keep_indices = set(range(start_idx, end_idx))
         stripped_front = start_idx
         stripped_back = len(chapters) - end_idx
@@ -1535,10 +1536,14 @@ def _auto_strip_flow(chapters: List[dict]) -> Optional[set]:
             click.echo(f"\nNew beginning:")
             click.echo(f"  {classifier.get_preview(chapters[start_idx])}")
 
-        # Show new ending preview
+        # Spoiler protection: ask before showing ending
         if end_idx > 0 and end_idx - 1 < len(chapters):
-            click.echo(f"\nNew ending:")
-            click.echo(f"  {classifier.get_preview(chapters[end_idx - 1])}")
+            show_end = click.prompt(
+                "Show ending? (may contain spoilers) [y/n]",
+                type=str, default='n')
+            if show_end.lower() in ('y', 'yes'):
+                click.echo(f"\nNew ending:")
+                click.echo(f"  {classifier.get_preview(chapters[end_idx - 1])}")
 
         click.echo(f"\n[1] Too early  (still junk at start → strip more)")
         click.echo(f"[2] Too late   (content was cut → strip less)")
@@ -1614,6 +1619,15 @@ def strip(file_path):
     if not chapters:
         click.echo("No chapters detected in the file.")
         sys.exit(1)
+
+    # Tiered chapter detection: marked chapters → headings → formatting
+    from .text_processing.heading_detector import HeadingDetector
+    detector = HeadingDetector()
+    detected = detector.detect(parsed_content.content, chapters)
+    if detected:
+        if detected is not chapters:
+            click.echo(f"Detected {len(detected)} sections from text analysis")
+        chapters = detected
 
     # Display chapters
     _display_chapters_for_strip(chapters)
