@@ -1496,48 +1496,78 @@ def _write_stripped_text(chapters: List[dict], keep_indices: set, output_path: P
 
 
 def _auto_strip_flow(chapters: List[dict]) -> Optional[set]:
-    """Run auto-strip classifier with iterative boundary tuning.
+    """Two-phase auto-strip: front first, then back.
 
     Returns set of indices to keep, or None if user cancels.
     """
     from .text_processing.content_classifier import ContentClassifier
 
     classifier = ContentClassifier()
-    sensitivity = 0.5
+    n = len(chapters)
+
+    # --- Phase 1: Front stripping ---
+    front_sensitivity = 0.5
+    start_idx = 0
 
     while True:
-        start_idx, end_idx = classifier.find_content_boundaries(
-            chapters, sensitivity, back_penalty=0.2, front_bias=True)
-        keep_indices = set(range(start_idx, end_idx))
-        stripped_front = start_idx
-        stripped_back = len(chapters) - end_idx
+        start_idx = classifier.find_front_boundary(
+            chapters, front_sensitivity, front_bias=True)
 
-        click.echo(f"\nSensitivity: {sensitivity:.1f} | "
-                    f"Stripped {stripped_front} from front, {stripped_back} from back")
-        click.echo(f"Keeping chapters {start_idx}-{end_idx - 1} ({len(keep_indices)} of {len(chapters)})")
-
-        # Show classification details for stripped chapters
-        results = classifier.classify_chapters(chapters, sensitivity)
-        if stripped_front > 0:
-            click.echo("\nStripped from front:")
-            for i in range(stripped_front):
+        if start_idx > 0:
+            click.echo(f"\nStripping {start_idx} from front (sensitivity {front_sensitivity:.1f}):")
+            results = classifier.classify_chapters(chapters[:start_idx], front_sensitivity)
+            for i in range(start_idx):
                 r = results[i]
                 title = chapters[i].get('title', f'Chapter {i}')[:50]
                 click.echo(f"  {i}: {title}  [{r.category}, score={r.junk_score:.2f}]")
-        if stripped_back > 0:
-            click.echo("\nStripped from back:")
-            for i in range(end_idx, len(chapters)):
-                r = results[i]
-                title = chapters[i].get('title', f'Chapter {i}')[:50]
-                click.echo(f"  {i}: {title}  [{r.category}, score={r.junk_score:.2f}]")
+        else:
+            click.echo("\nNo front matter detected.")
 
-        # Show new beginning preview
-        if start_idx < len(chapters):
+        # Show new beginning
+        if start_idx < n:
             click.echo(f"\nNew beginning:")
             click.echo(f"  {classifier.get_preview(chapters[start_idx])}")
 
-        # Spoiler protection: ask before showing ending
-        if end_idx > 0 and end_idx - 1 < len(chapters):
+        click.echo(f"\n[1] Still junk at start (strip more)")
+        click.echo(f"[2] Content was cut (strip less)")
+        click.echo(f"[3] OK")
+        click.echo(f"[4] Skip auto-strip (go to manual)")
+
+        choice = click.prompt("How is the beginning?", type=str, default='3')
+
+        if choice == '1':
+            front_sensitivity = min(1.0, front_sensitivity + classifier.SENSITIVITY_STEP)
+        elif choice == '2':
+            front_sensitivity = max(0.0, front_sensitivity - classifier.SENSITIVITY_STEP)
+        elif choice == '3':
+            break
+        elif choice == '4':
+            return None
+        else:
+            click.echo("Invalid choice.")
+
+    # --- Phase 2: Back stripping ---
+    back_sensitivity = 0.5
+
+    while True:
+        end_idx = classifier.find_back_boundary(
+            chapters, back_sensitivity, back_penalty=0.2)
+        stripped_back = n - end_idx
+
+        if stripped_back > 0:
+            click.echo(f"\nStripping {stripped_back} from back (sensitivity {back_sensitivity:.1f}):")
+            for i in range(end_idx, n):
+                r = classifier.classify(
+                    title=chapters[i].get('title', ''), content=chapters[i].get('content', ''),
+                    epub_type=chapters[i].get('epub_type', ''), guide_type=chapters[i].get('guide_type', ''),
+                    sensitivity=max(0.0, back_sensitivity - 0.2))
+                title = chapters[i].get('title', f'Chapter {i}')[:50]
+                click.echo(f"  {i}: {title}  [{r.category}, score={r.junk_score:.2f}]")
+        else:
+            click.echo("\nNo back matter detected.")
+
+        # Spoiler-protected end preview
+        if end_idx > 0 and end_idx - 1 < n:
             show_end = click.prompt(
                 "Show ending? (may contain spoilers) [y/n]",
                 type=str, default='n')
@@ -1545,23 +1575,28 @@ def _auto_strip_flow(chapters: List[dict]) -> Optional[set]:
                 click.echo(f"\nNew ending:")
                 click.echo(f"  {classifier.get_preview(chapters[end_idx - 1])}")
 
-        click.echo(f"\n[1] Too early  (still junk at start → strip more)")
-        click.echo(f"[2] Too late   (content was cut → strip less)")
-        click.echo(f"[3] Accept")
+        click.echo(f"\n[1] Still junk at end (strip more)")
+        click.echo(f"[2] Content was cut (strip less)")
+        click.echo(f"[3] OK")
         click.echo(f"[4] Skip auto-strip (go to manual)")
 
-        choice = click.prompt("Choice", type=str, default='3')
+        choice = click.prompt("How is the ending?", type=str, default='3')
 
         if choice == '1':
-            sensitivity = min(1.0, sensitivity + classifier.SENSITIVITY_STEP)
+            back_sensitivity = min(1.0, back_sensitivity + classifier.SENSITIVITY_STEP)
         elif choice == '2':
-            sensitivity = max(0.0, sensitivity - classifier.SENSITIVITY_STEP)
+            back_sensitivity = max(0.0, back_sensitivity - classifier.SENSITIVITY_STEP)
         elif choice == '3':
-            return keep_indices
+            break
         elif choice == '4':
             return None
         else:
             click.echo("Invalid choice.")
+
+    # Summary
+    keep_indices = set(range(start_idx, end_idx))
+    click.echo(f"\nKeeping chapters {start_idx}-{end_idx - 1} ({len(keep_indices)} of {n})")
+    return keep_indices
 
 
 @cli.command()
