@@ -13,7 +13,7 @@ If you find this useful, please consider supporting via [GitHub Sponsors](https:
 ## ✨ Core Features
 
 ### ⚡ **High-Performance Conversion**
-- **Up to 8x faster than real-time** on Apple Silicon (M1/M2/M3/M4) with Neural Engine
+- **Up to 10x faster than real-time** on Apple Silicon (M1/M2/M3/M4) with Neural Engine
 - **GPU acceleration** for NVIDIA (CUDA), AMD/Intel (DirectML on Windows)
 - **Efficient CPU processing** on all platforms
 - Kokoro-82M engine optimized for speed + quality balance
