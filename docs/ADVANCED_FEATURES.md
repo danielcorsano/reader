@@ -10,11 +10,11 @@ Professional audiobook production system with advanced features for processing, 
 
 ### Automatic Chapter Detection
 
-The system intelligently detects chapters using multiple methods:
+The system uses tiered chapter detection with three fallback levels:
 
-1. **Pattern Recognition**: "Chapter 1", "Chapter One", "Part I", etc.
-2. **Structure Analysis**: Paragraph breaks and formatting
-3. **File Metadata**: EPUB/PDF built-in chapter markers
+1. **Marked chapters**: Structural markup from the format itself (EPUB h1-h6 tags, existing parser structure). Used when the parser already provides real chapter titles.
+2. **Heading detection**: Scans extracted text for known section names (Preface, Chapter 1, Part II, Introduction, Index, etc.) and short isolated title-like lines surrounded by blank lines.
+3. **Formatting fallback**: ALL CAPS lines with blank-line context, indentation/spacing patterns. Used as last resort when no headings are found.
 
 ### Examples
 
@@ -241,7 +241,7 @@ M4B files include:
 
 ### Overview
 
-**Text stripping (new feature!):** use the reader strip command to detect and parse sections and get rid of unnecessary text (table of contents, foreword, secondary literature, bibliography etc.)
+Strip unwanted sections (TOC, foreword, bibliography, index, etc.) before converting to audiobook.
 
 ### Usage
 
@@ -254,9 +254,15 @@ reader strip textbook.txt
 
 ### How It Works
 
-1. **Chapter Detection**: Detects chapters using pattern matching (Chapter 1, I, i, Part I, etc.) and file structure (EPUB TOC, PDF bookmarks)
-2. **Display**: Shows numbered list (0-indexed) with title and first sentence preview
-3. **Selection**: Choose chapters to strip or keep using simple syntax
+1. **Tiered chapter detection**:
+   - Marked chapters: uses parser's structural markup if available
+   - Heading detection: scans text for known section names and isolated title lines
+   - Formatting fallback: ALL CAPS lines, spacing patterns
+2. **Auto-strip**: Content classifier identifies front/back matter
+   - Front-matter bias: copyright and title pages in the first 20% are flagged more aggressively
+   - Conservative back-stripping: higher threshold prevents accidentally cutting the ending
+   - Spoiler protection: end preview hidden by default, shown only on request
+3. **Manual refinement**: Strip or keep chapters using simple syntax
 4. **Save**: Creates a new file with `_stripped` suffix next to the original
 5. **Convert**: Offers to convert the stripped file to audiobook immediately
 
@@ -275,42 +281,55 @@ k 1-5       # Keep: keep only chapters 1 through 5 (remove the rest)
 | TXT/MD/RST | `_stripped.txt` | Markdown-formatted chapters |
 | PDF | `_stripped.txt` | Extracted to text (PDF modification not supported) |
 
-### Example: Academic Textbook
+### Example: Academic Textbook (EPUB)
 
 ```bash
 $ reader strip "Ethics and Related Writings.epub"
 
+# EPUB has structural markup — uses marked chapters directly
 Detected 18 chapters:
 
   0: Title Page
      "THE ESSENTIAL SPINOZA..."
-
   1: Editor's Introduction
      "This volume brings together the most important..."
-
   2: Part I - Concerning God
      "DEFINITIONS: I. By that which is self-caused..."
-
   ...
-
   16: Bibliography
      "Allison, H. E. (1987). Benedict de Spinoza..."
-
   17: Index
      "A: attributes, 12, 45-67; adequacy, 89..."
 
-Strip chapters? [y/n]: y
+Auto-strip non-content? [y/n]: y
+Sensitivity: 0.5 | Stripped 1 from front, 2 from back
+Show ending? (may contain spoilers) [y/n]: n
+[3] Accept
 
-Syntax:
-  s 0, 6-8  → Strip chapters 0, 6, 7, 8 (keep the rest)
-  k 1-5     → Keep chapters 1-5 only (strip the rest)
-
-Enter selection: s 0-1, 16-17
-
-Keeping 14 of 18 chapters...
+Keeping 15 of 18 chapters...
 Saved: Ethics and Related Writings_stripped.epub
+```
 
-Convert to audiobook? [y/n]: y
+### Example: Academic PDF (Heading Detection)
+
+```bash
+$ reader strip "Wittgenstein - Philosophical Investigations.pdf"
+
+# PDF has no marked chapters — heading detection kicks in
+Detected 6 sections from text analysis
+
+  0: Translator's Note
+     "The second part of the present work..."
+  1: Preface
+     "The thoughts which I publish..."
+  2: Part I
+     "1. When they (my elders) named some object..."
+  3: Part II
+     "One can imagine an animal angry..."
+  4: Index
+
+Auto-strip non-content? [y/n]: y
+Sensitivity: 0.5 | Stripped 1 from front, 1 from back
 ```
 
 ---
@@ -820,7 +839,7 @@ Batch Queue Status: Total jobs: 0
 - **Solution**: Batch jobs don't persist between sessions (by design)
 
 **Chapter Detection Poor**
-- **Solution**: Try different file formats (EPUB > PDF > TXT for chapter detection)
+- **Solution**: EPUB has the best detection (structural markup). For PDF/TXT, the system tries heading detection then formatting fallback. If chapters are still missed, use manual strip syntax.
 
 ### Getting Help
 
@@ -847,6 +866,6 @@ The system transforms a simple TTS tool into a professional audiobook production
 - ✅ **Batch Processing**: Efficient bulk conversion with progress tracking
 - ✅ **Professional Output**: M4B format with chapters and metadata
 - ✅ **Advanced Analysis**: Dialogue detection and context awareness
-- ✅ **Text Stripping**: Interactive chapter removal to strip unwanted content before conversion
+- ✅ **Text Stripping**: Tiered chapter detection with auto-strip classifier and spoiler-protected preview
 
 Perfect for individual authors, publishing houses, or anyone serious about audiobook production!
