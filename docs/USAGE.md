@@ -78,7 +78,7 @@ reader convert --file book.epub --no-clean-text
    - About the Author / Publisher
    - Acknowledgments
    - "Books by [Author]" / "Other Works"
-4. **Narrative boundaries extracted**: All front/back matter excluded
+4. **Narrative boundaries extracted**: 5-signal classifier removes all front/back matter (including short stubs like title pages)
 
 **Benefits:**
 - ✅ No pronunciation errors from broken words
@@ -102,7 +102,8 @@ reader strip textbook.txt
 #    - Marked chapters (EPUB h1-h6, existing structure)
 #    - Heading detection (known sections, isolated title lines)
 #    - Formatting fallback (ALL CAPS lines, spacing patterns)
-# 2. Auto-strip with content classifier
+# 2. Auto-strip with 5-signal content classifier
+#    (title keywords, EPUB metadata, content patterns, prose density, relative length)
 #    - Front-matter bias (copyright/title pages detected more aggressively)
 #    - Conservative back-stripping (harder to accidentally cut ending)
 #    - Spoiler-protected end preview
@@ -552,5 +553,5 @@ See full list with: `reader voices`
 
 For more examples and workflows, see:
 - **[EXAMPLES.md](EXAMPLES.md)** - Real-world use cases
-- **[PHASE3_FEATURES.md](PHASE3_FEATURES.md)** - Advanced features
+- **[ADVANCED_FEATURES.md](ADVANCED_FEATURES.md)** - Advanced features
 - **[KOKORO_SETUP.md](KOKORO_SETUP.md)** - Model setup guide
