@@ -1503,6 +1503,7 @@ def _auto_strip_flow(chapters: List[dict]) -> Optional[set]:
     from .text_processing.content_classifier import ContentClassifier
 
     classifier = ContentClassifier()
+    classifier.set_context(chapters)
     n = len(chapters)
 
     # --- Phase 1: Front stripping ---
