@@ -47,7 +47,7 @@ If you find this useful, please consider supporting via [GitHub Sponsors](https:
 - No voice cloning overhead
 
 ### ✂️ **Text Stripping**
-- Interactive chapter removal with auto-detection of non-content (copyright, TOC, bibliography, index)
+- Interactive chapter removal with 5-signal auto-detection of non-content (copyright, TOC, bibliography, index, short stubs)
 - Tiered chapter detection works across all formats (EPUB, PDF, TXT)
 - Conservative back-stripping with spoiler-protected end preview
 
@@ -273,7 +273,7 @@ reader strip book.epub
 
 # Flow:
 # 1. Tiered chapter detection (marked → headings → formatting)
-# 2. Auto-strip with classifier (conservative back-stripping, front-matter bias)
+# 2. Auto-strip with 5-signal classifier (title, EPUB, patterns, density, relative length)
 # 3. Manual refinement with strip/keep syntax
 # 4. Spoiler-protected end preview
 #

@@ -314,9 +314,9 @@ reader strip "Wittgenstein - Philosophical Investigations.pdf"
 - 4 progress visualization styles (simple, tqdm, rich, timeseries)
 - Checkpoint recovery for interrupted conversions
 - Apple Neural Engine optimization
-- **Text stripping** with tiered chapter detection, auto-strip classifier, and spoiler-protected preview
+- **Text stripping** with tiered chapter detection, 5-signal auto-strip classifier (title, EPUB, patterns, density, relative length), and spoiler-protected preview
 
 📚 **For More Details:**
-- See [PHASE3_FEATURES.md](PHASE3_FEATURES.md) for full feature documentation
+- See [ADVANCED_FEATURES.md](ADVANCED_FEATURES.md) for full feature documentation
 - See [KOKORO_SETUP.md](KOKORO_SETUP.md) for model setup
 - See [USAGE.md](USAGE.md) for complete command reference

@@ -11,7 +11,7 @@ This directory contains comprehensive documentation for the Reader audiobook gen
 - **[KOKORO_SETUP.md](KOKORO_SETUP.md)** - Neural TTS setup for Phase 2/3 features
 
 ## Advanced Features
-- **[PHASE3_FEATURES.md](PHASE3_FEATURES.md)** - Professional audiobook production features
+- **[ADVANCED_FEATURES.md](ADVANCED_FEATURES.md)** - Professional audiobook production features
 
 ## Getting Started
 

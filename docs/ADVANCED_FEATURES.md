@@ -258,7 +258,12 @@ reader strip textbook.txt
    - Marked chapters: uses parser's structural markup if available
    - Heading detection: scans text for known section names and isolated title lines
    - Formatting fallback: ALL CAPS lines, spacing patterns
-2. **Auto-strip**: Content classifier identifies front/back matter
+2. **Auto-strip**: 5-signal content classifier identifies front/back matter
+   - **Title keywords**: exact/prefix match against junk and content-protected title lists
+   - **EPUB metadata**: semantic type and OPF guide type classification
+   - **Content patterns**: copyright, TOC, index, bibliography, praise, catalog regex detection
+   - **Prose density**: structural analysis (numeric density, line length, sentence density); short content (<500 chars) scored directly
+   - **Relative length**: sections abnormally short vs median chapter length flagged as non-content
    - Front-matter bias: copyright and title pages in the first 20% are flagged more aggressively
    - Conservative back-stripping: higher threshold prevents accidentally cutting the ending
    - Spoiler protection: end preview hidden by default, shown only on request
@@ -866,6 +871,6 @@ The system transforms a simple TTS tool into a professional audiobook production
 - ✅ **Batch Processing**: Efficient bulk conversion with progress tracking
 - ✅ **Professional Output**: M4B format with chapters and metadata
 - ✅ **Advanced Analysis**: Dialogue detection and context awareness
-- ✅ **Text Stripping**: Tiered chapter detection with auto-strip classifier and spoiler-protected preview
+- ✅ **Text Stripping**: Tiered chapter detection with 5-signal auto-strip classifier and spoiler-protected preview
 
 Perfect for individual authors, publishing houses, or anyone serious about audiobook production!
