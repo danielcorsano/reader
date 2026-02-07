@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.3] - 2026-02-07
+
+### Added
+- 5th classifier signal: relative length scoring (`_score_relative_length`) — flags sections abnormally short compared to median chapter length (title pages, copyright stubs)
+- `set_context(chapters)` method on `ContentClassifier` to compute median chapter length
+- Short-content density scoring: `_score_density()` now returns 0.6 for <200 chars, 0.4 for <500 chars, 0.3 for below MIN_LINES (previously returned 0.0 for all short content)
+
+### Changed
+- Content classifier now uses 5 weighted signals (was 4): title, EPUB metadata, patterns, density, relative length
+- `_auto_strip_flow()` and `extract_narrative_content()` now call `set_context()` before classification
+
 ## [0.1.8] - 2025-10-20
 
 ### Added
