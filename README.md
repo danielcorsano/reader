@@ -16,7 +16,7 @@ If you find this useful, please consider supporting via [GitHub Sponsors](https:
 - **About 10x faster than real-time** when using Apple Silicon or GPU
 - **Efficient CPU processing as a fallback** on all platforms if GPU is not available
 
-### 💾 **Robusz Checkpoint Resumption**
+### 💾 **Robust Checkpoint Resumption**
 - **Resume interrupted conversions** even if the computer crashed or was rebooted, which is essential for long texts
 
 ### 📚 **Chapter Management**
