@@ -15,13 +15,14 @@ class ClassificationResult:
 
 
 class ContentClassifier:
-    """Classify chapters as content or non-content using 4 weighted signals."""
+    """Classify chapters as content or non-content using 5 weighted signals."""
 
     # --- Signal weights ---
     WEIGHT_TITLE = 0.35
     WEIGHT_EPUB = 0.40
     WEIGHT_PATTERNS = 0.30
     WEIGHT_DENSITY = 0.20
+    WEIGHT_LENGTH = 0.25
 
     # --- Classification thresholds ---
     BASE_JUNK_THRESHOLD = 0.7
@@ -120,7 +121,30 @@ class ContentClassifier:
     }
 
     def __init__(self):
+        self._median_length = 0
         self._compile_patterns()
+
+    def set_context(self, chapters: list):
+        """Compute and store median content length from chapter list."""
+        lengths = sorted(len(ch.get('content', '')) for ch in chapters)
+        if lengths:
+            mid = len(lengths) // 2
+            self._median_length = lengths[mid] if len(lengths) % 2 else (lengths[mid - 1] + lengths[mid]) // 2
+        else:
+            self._median_length = 0
+
+    def _score_relative_length(self, content_length: int) -> float:
+        """Score based on how short content is relative to median chapter length."""
+        if self._median_length <= 0:
+            return 0.0
+        ratio = content_length / self._median_length
+        if ratio < 0.10:
+            return 0.9
+        if ratio < 0.20:
+            return 0.7
+        if ratio < 0.35:
+            return 0.4
+        return 0.0
 
     def _compile_patterns(self):
         """Pre-compile all regex patterns."""
@@ -310,14 +334,22 @@ class ContentClassifier:
 
     def _score_density(self, text: str) -> float:
         """Score based on structural analysis of text density."""
-        if not text or len(text) < 100:
+        if not text:
             return 0.0
+
+        text_len = len(text)
+
+        # Short content: title pages, stubs, sparse structural pages
+        if text_len < 200:
+            return 0.6
+        if text_len < 500:
+            return 0.4
 
         lines = text.strip().split('\n')
         lines = [l for l in lines if l.strip()]
 
         if len(lines) < self.MIN_LINES_FOR_STRUCTURE:
-            return 0.0
+            return 0.3
 
         total_chars = sum(len(l) for l in lines)
         if total_chars == 0:
@@ -404,12 +436,17 @@ class ContentClassifier:
         density_score = self._score_density(content)
         signals['density'] = density_score
 
+        # Signal 5: Relative length
+        length_score = self._score_relative_length(len(content) if content else 0)
+        signals['length'] = length_score
+
         # Weighted combination
         weights = {
             'title': self.WEIGHT_TITLE,
             'epub': self.WEIGHT_EPUB,
             'patterns': self.WEIGHT_PATTERNS,
             'density': self.WEIGHT_DENSITY,
+            'length': self.WEIGHT_LENGTH,
         }
 
         # Only include signals that contributed

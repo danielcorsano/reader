@@ -88,6 +88,7 @@ class TextCleaner:
         if not chapters:
             return ""
 
+        self._classifier.set_context(chapters)
         start_idx, end_idx = self._classifier.find_content_boundaries(chapters)
 
         narrative_chapters = chapters[start_idx:end_idx]
