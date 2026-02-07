@@ -252,7 +252,7 @@ reader config --voice am_michael --speed 1.0
 # Strip a textbook to remove front/back matter
 reader strip textbook.epub
 
-# Example output:
+# Example output (EPUB uses structural markup from h1-h6 tags):
 #   0: Cover Page
 #      "Published by Academic Press..."
 #   1: Table of Contents
@@ -261,36 +261,39 @@ reader strip textbook.epub
 #      "It is my great pleasure to introduce..."
 #   3: Chapter 1 - Introduction
 #      "This textbook explores the fundamentals of..."
-#   4: Chapter 2 - Core Concepts
-#      "Building on the introduction..."
 #   ...
 #   15: Bibliography
 #      "Anderson, J. (2019). Research Methods..."
 #   16: Index
 #      "A: Abstract algebra, 12; Algorithms, 45..."
 
-# Strip chapters? [y/n]: y
-# Enter selection: s 0-2, 15-16
-# Keeping 12 of 17 chapters...
+# Auto-strip non-content? [y/n]: y
+# Sensitivity: 0.5 | Stripped 2 from front, 2 from back
+# Keeping chapters 2-14 (13 of 17)
+# Show ending? (may contain spoilers) [y/n]: n
+# [3] Accept
 # Saved: textbook_stripped.epub
 # Convert to audiobook? [y/n]: y
-
-# Alternative: keep only specific chapters
-reader strip novel.epub
-# Enter selection: k 3-14
-# Same result - keeps only the main content
 ```
 
-## Example 12: Strip PDF to Text and Convert
+## Example 12: Strip PDF with Heading Detection
 
 ```bash
-# PDFs are extracted to text when stripping
+# PDFs get tiered chapter detection:
+# 1. No marked chapters found (pages only)
+# 2. Heading detection finds: Translator's Note, Preface, Part I, Part II, Index
+# 3. Auto-strip flags front/back matter
 reader strip "Wittgenstein - Philosophical Investigations.pdf"
 
-# Saves as: Wittgenstein - Philosophical Investigations_stripped.txt
-# Then converts the text file to audiobook
+# Detected 6 sections from text analysis
+#   0: Translator's Note
+#   1: Preface
+#   2: Part I
+#   3: Part II
+#   4: Index
+# Auto-strip suggests removing Translator's Note (front) — conservative on back
 
-# Useful for academic PDFs with lots of footnotes/references
+# Saves as: Wittgenstein - Philosophical Investigations_stripped.txt
 ```
 
 ## Tips for Best Results
@@ -311,7 +314,7 @@ reader strip "Wittgenstein - Philosophical Investigations.pdf"
 - 4 progress visualization styles (simple, tqdm, rich, timeseries)
 - Checkpoint recovery for interrupted conversions
 - Apple Neural Engine optimization
-- **Text stripping (new feature!):** use the reader strip command to detect and parse sections and get rid of unnecessary text (table of contents, foreword, secondary literature, bibliography etc.)
+- **Text stripping** with tiered chapter detection, auto-strip classifier, and spoiler-protected preview
 
 📚 **For More Details:**
 - See [PHASE3_FEATURES.md](PHASE3_FEATURES.md) for full feature documentation

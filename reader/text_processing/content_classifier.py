@@ -471,6 +471,50 @@ class ContentClassifier:
             results.append(result)
         return results
 
+    def find_front_boundary(self, chapters: List[Dict],
+                            sensitivity: float = 0.5,
+                            front_bias: bool = True) -> int:
+        """Find first content chapter index.
+
+        front_bias: boost copyright detection in the first 20% of chapters.
+        """
+        n = len(chapters)
+        if n == 0:
+            return 0
+
+        front_cutoff = max(1, n // 5)
+        for i, ch in enumerate(chapters):
+            s = min(1.0, sensitivity + 0.15) if (front_bias and i < front_cutoff) else sensitivity
+            r = self.classify(
+                title=ch.get('title', ''), content=ch.get('content', ''),
+                epub_type=ch.get('epub_type', ''), guide_type=ch.get('guide_type', ''),
+                sensitivity=s)
+            if not r.is_junk:
+                return i
+        return 0  # all junk → keep everything
+
+    def find_back_boundary(self, chapters: List[Dict],
+                           sensitivity: float = 0.5,
+                           back_penalty: float = 0.2) -> int:
+        """Find last content chapter index (exclusive).
+
+        back_penalty: reduces sensitivity for back-matter, making
+        back-stripping more conservative.
+        """
+        n = len(chapters)
+        if n == 0:
+            return 0
+
+        back_sensitivity = max(0.0, sensitivity - back_penalty)
+        for i in range(n - 1, -1, -1):
+            r = self.classify(
+                title=chapters[i].get('title', ''), content=chapters[i].get('content', ''),
+                epub_type=chapters[i].get('epub_type', ''), guide_type=chapters[i].get('guide_type', ''),
+                sensitivity=back_sensitivity)
+            if not r.is_junk:
+                return i + 1
+        return n  # all junk → keep everything
+
     def find_content_boundaries(self, chapters: List[Dict],
                                  sensitivity: float = 0.5,
                                  back_penalty: float = 0.2,
@@ -478,61 +522,10 @@ class ContentClassifier:
         """Find first and last content chapter indices.
 
         Returns (start_idx, end_idx) where end_idx is exclusive.
-        Strips junk from front and back only.
-
-        back_penalty: raises effective threshold for back-matter, making
-            back-stripping more conservative (harder to strip from end).
-        front_bias: if True, copyright patterns in the first 20% of the
-            book get a score boost for more aggressive front-stripping.
         """
-        n = len(chapters)
-        if n == 0:
-            return 0, 0
-
-        # Classify with front bias: boost copyright signals in first 20%
-        front_cutoff = max(1, n // 5)
-        results = []
-        for i, ch in enumerate(chapters):
-            boosted_sensitivity = sensitivity
-            if front_bias and i < front_cutoff:
-                boosted_sensitivity = min(1.0, sensitivity + 0.15)
-            results.append(self.classify(
-                title=ch.get('title', ''),
-                content=ch.get('content', ''),
-                epub_type=ch.get('epub_type', ''),
-                guide_type=ch.get('guide_type', ''),
-                sensitivity=boosted_sensitivity,
-            ))
-
-        # Find first content chapter
-        start_idx = 0
-        for i, r in enumerate(results):
-            if not r.is_junk:
-                start_idx = i
-                break
-        else:
-            # All junk? Return everything
-            return 0, n
-
-        # Find last content chapter (conservative: use reduced sensitivity)
-        back_sensitivity = max(0.0, sensitivity - back_penalty)
-        back_results = []
-        for ch in chapters:
-            back_results.append(self.classify(
-                title=ch.get('title', ''),
-                content=ch.get('content', ''),
-                epub_type=ch.get('epub_type', ''),
-                guide_type=ch.get('guide_type', ''),
-                sensitivity=back_sensitivity,
-            ))
-
-        end_idx = n
-        for i in range(n - 1, -1, -1):
-            if not back_results[i].is_junk:
-                end_idx = i + 1
-                break
-
-        return start_idx, end_idx
+        start = self.find_front_boundary(chapters, sensitivity, front_bias)
+        end = self.find_back_boundary(chapters, sensitivity, back_penalty)
+        return start, end
 
     def get_preview(self, chapter: Dict, max_sentences: int = 3) -> str:
         """Get heading + first N sentences of a chapter for preview."""
