@@ -388,11 +388,13 @@ reader convert --voice bf_emma --file text/sample.txt
 ```bash
 # Strip unnecessary chapters before converting
 reader strip "Philosophy Textbook.epub"
-# → Shows chapters, you pick which to keep
+# → Detects sections (headings for PDF/TXT, structural markup for EPUB)
+# → Auto-strip suggests front/back matter removal
+# → Manual refinement if needed
 # → Saves Philosophy Textbook_stripped.epub
-# → Asks "Convert to audiobook?" — say yes to convert immediately
+# → Asks "Convert to audiobook?"
 
-# Or strip first, convert separately
+# Works with PDFs too — detects headings like "Preface", "Part I", "Index"
 reader strip book.pdf
 reader convert --file book_stripped.txt
 ```

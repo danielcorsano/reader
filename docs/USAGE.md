@@ -98,13 +98,18 @@ reader strip document.pdf
 reader strip textbook.txt
 
 # Flow:
-# 1. Detects and displays all chapters with titles and first sentence
-# 2. Asks "Strip chapters? [y/n]"
-# 3. Shows syntax help:
+# 1. Tiered chapter detection:
+#    - Marked chapters (EPUB h1-h6, existing structure)
+#    - Heading detection (known sections, isolated title lines)
+#    - Formatting fallback (ALL CAPS lines, spacing patterns)
+# 2. Auto-strip with content classifier
+#    - Front-matter bias (copyright/title pages detected more aggressively)
+#    - Conservative back-stripping (harder to accidentally cut ending)
+#    - Spoiler-protected end preview
+# 3. Manual refinement:
 #    s 0, 6-8  → Strip chapters 0, 6, 7, 8 (keep the rest)
 #    k 1-5     → Keep chapters 1-5 only (strip the rest)
-# 4. Saves stripped file as book_stripped.epub
-# 5. Asks "Convert to audiobook? [y/n]"
+# 4. Saves stripped file, offers conversion
 ```
 
 **Output formats:**
@@ -148,9 +153,9 @@ reader info
 ## Supported File Formats
 
 ### Input Formats
-- **`.epub`** - EPUB ebooks (with automatic chapter detection)
-- **`.pdf`** - PDF documents (converted page by page)
-- **`.txt`** - Plain text files
+- **`.epub`** - EPUB ebooks (structural markup chapter detection)
+- **`.pdf`** - PDF documents (heading detection → formatting fallback)
+- **`.txt`** - Plain text files (heading detection → formatting fallback)
 - **`.md`** - Markdown files (header-based chapters)
 - **`.rst`** - ReStructuredText files
 
