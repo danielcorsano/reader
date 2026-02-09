@@ -31,7 +31,7 @@ def test_default_tts_config(config_manager):
     """Test default TTS configuration values."""
     tts = config_manager.get_tts_config()
     assert tts.engine == "kokoro"
-    assert tts.speed == 1.0
+    assert tts.speed == 1.1
     assert tts.volume == 1.0
 
 
