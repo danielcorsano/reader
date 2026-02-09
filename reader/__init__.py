@@ -7,7 +7,7 @@ Features character voice mapping, dialogue detection, and professional audio out
 For system TTS fallback support, see reader-small package.
 """
 
-__version__ = "0.2.3"
+__version__ = "0.3.0"
 __author__ = "danielcorsano"
 
 # Public API
