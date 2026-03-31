@@ -1027,8 +1027,9 @@ def download_models(target, local, force):
     cache = (target_dir or get_cache_dir()) / "kokoro"
 
     if not force:
-        model = cache / "kokoro-v1.0.onnx"
-        voices = cache / "voices-v1.0.bin"
+        from .engines.kokoro_engine import KOKORO_MODEL_FILE, KOKORO_VOICES_FILE
+        model = cache / KOKORO_MODEL_FILE
+        voices = cache / KOKORO_VOICES_FILE
         if model.exists() and voices.exists():
             click.echo(f"✅ Models already installed at: {cache}")
             click.echo(f"   Use --force to re-download")

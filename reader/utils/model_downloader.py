@@ -35,14 +35,19 @@ def get_cache_dir() -> Path:
 def download_models(
     verbose: bool = True,
     target_dir: Path = None,
-    base_url: str = "https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0"
+    base_url: str = None
 ) -> bool:
     """Download Kokoro models (~310MB)."""
+    from ..engines.kokoro_engine import KOKORO_MODEL_FILE, KOKORO_VOICES_FILE, KOKORO_MODEL_URL
+
+    if base_url is None:
+        base_url = KOKORO_MODEL_URL
+
     cache = (target_dir or get_cache_dir()) / "kokoro"
     cache.mkdir(parents=True, exist_ok=True)
 
-    model = cache / "kokoro-v1.0.onnx"
-    voices = cache / "voices-v1.0.bin"
+    model = cache / KOKORO_MODEL_FILE
+    voices = cache / KOKORO_VOICES_FILE
 
     if model.exists() and voices.exists():
         return True
@@ -51,7 +56,7 @@ def download_models(
         if verbose:
             print(f"📥 Downloading Kokoro models to {cache}")
 
-        for name, path in [("kokoro-v1.0.onnx", model), ("voices-v1.0.bin", voices)]:
+        for name, path in [(KOKORO_MODEL_FILE, model), (KOKORO_VOICES_FILE, voices)]:
             if not path.exists():
                 if verbose:
                     print(f"   {name}...", end=" ", flush=True)
