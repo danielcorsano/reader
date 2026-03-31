@@ -29,7 +29,7 @@ class TimeseriesProgressDisplay(ProgressDisplay):
             
         self.start_time = time.time()
         self.last_update_time = self.start_time
-        print(f"🎯 Neural Engine stream processing {file_name} ({total_chunks} chunks, 48k mono MP3)")
+        print(f"🎯 Neural Engine stream processing {file_name} ({total_chunks} chunks, 24k mono MP3)")
         print("📊 Real-time processing speed visualization:")
         
         # Initialize with zero speed

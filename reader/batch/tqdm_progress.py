@@ -21,7 +21,7 @@ class TQDMProgressDisplay(ProgressDisplay):
             raise ImportError("TQDM is not available")
             
         self.start_time = time.time()
-        print(f"🎯 Neural Engine stream processing {file_name} ({total_chunks} chunks, 48k mono MP3)")
+        print(f"🎯 Neural Engine stream processing {file_name} ({total_chunks} chunks, 24k mono MP3)")
         
         # Create TQDM progress bar with custom format
         self.pbar = tqdm(

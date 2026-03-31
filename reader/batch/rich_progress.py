@@ -28,7 +28,7 @@ class RichProgressDisplay(ProgressDisplay):
         
         # Print header with Rich styling
         self.console.print(f"🎯 [bold cyan]Neural Engine stream processing[/bold cyan] {file_name}")
-        self.console.print(f"   [dim]({total_chunks} chunks, 48k mono MP3)[/dim]")
+        self.console.print(f"   [dim]({total_chunks} chunks, 24k mono MP3)[/dim]")
         
         # Create Rich progress bar with custom columns
         self.progress = Progress(

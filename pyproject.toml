@@ -60,7 +60,7 @@ beautifulsoup4 = "^4.12.2"
 ebooklib = "^0.18"
 PyPDF2 = "^3.0.1"
 # Phase 2 dependencies (Kokoro TTS - required for main features)
-kokoro-onnx = "^0.4.9"
+kokoro-onnx = "^0.5.0"
 onnxruntime = "^1.20.0"
 vaderSentiment = "^3.3.2"
 regex = "^2023.12.25"

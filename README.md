@@ -12,6 +12,10 @@ If you find this useful, please consider supporting via [GitHub Sponsors](https:
 
 ## ✨ Core Features
 
+### 🎙️ **54 AI Voices in 9 Languages**
+- **American English** (20 voices), **British English** (8), **Japanese** (5), **Mandarin Chinese** (8), **Spanish** (3), **French** (1), **Hindi** (4), **Italian** (2), **Brazilian Portuguese** (3)
+- Voice blending, character voice mapping, and dialogue detection
+
 ### ⚡ **High-Performance Conversion**
 - **Up to 10x faster than real-time** on Apple Silicon (M1/M2/M3/M4) with Neural Engine
 - **GPU acceleration** for NVIDIA (CUDA), AMD/Intel (DirectML on Windows)
@@ -38,7 +42,7 @@ If you find this useful, please consider supporting via [GitHub Sponsors](https:
 - **4 progress visualization styles**: simple, tqdm, rich, timeseries
 - **Real-time metrics**: processing speed, ETA, completion percentage
 - **Batch processing** with queue management
-- **Multiple output formats**: MP3 (48kHz mono optimized by default), WAV, M4A, M4B
+- **Multiple output formats**: MP3 (24kHz mono optimized by default), WAV, M4A, M4B
 
 ### 🎙️ **Production-Quality TTS**
 - **Kokoro-82M**: 54 high-quality neural voices across 9 languages
@@ -332,7 +336,7 @@ reader convert --voice af_sarah
 **Need other formats?** Use [convertext](https://pypi.org/project/convertext/) to convert DOCX, ODT, MOBI, HTML, and more to supported formats.
 
 ### Output Formats
-- **MP3** (default) - 48kHz mono, configurable bitrate (32k-64k, default 48k)
+- **MP3** (default) - 24kHz mono, configurable bitrate (32k-64k, default 48k)
 - **WAV** - Uncompressed, high quality
 - **M4A** - Apple-friendly format
 - **M4B** - Audiobook format with chapter support
@@ -449,7 +453,7 @@ See **[docs/EXAMPLES.md](https://github.com/danielcorsano/reader/blob/main/docs/
 - **Model Cache**: Follows XDG standard (`~/.cache/audiobook-reader/models/`)
 - **Python**: 3.10-3.13 compatibility
 - **Platforms**: macOS, Linux, Windows (all fully supported)
-- **Audio Quality**: 48kHz mono MP3, configurable bitrate (32k-64k, default 48k)
+- **Audio Quality**: 24kHz mono MP3, configurable bitrate (32k-64k, default 48k)
 - **Hardware Acceleration**:
   - ✅ Apple Silicon (M1/M2/M3/M4): CoreML (Neural Engine) - automatic
   - ✅ NVIDIA GPUs: CUDA via onnxruntime-gpu

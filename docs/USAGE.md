@@ -163,10 +163,10 @@ reader info
 **Need to convert other formats?** Use [convertext](https://pypi.org/project/convertext/) to convert DOCX, ODT, MOBI, HTML, and other document formats to supported formats.
 
 ### Output Formats
-- **`.mp3`** - 48kHz mono, 48kbps VBR (optimized for speech, default)
-- **`.wav`** - 48kHz mono PCM, uncompressed (highest quality)
-- **`.m4a`** - 48kHz AAC 128kbps (Apple ecosystem)
-- **`.m4b`** - 48kHz AAC 128kbps with chapter markers (professional audiobook format)
+- **`.mp3`** - 24kHz mono, 48kbps CBR (optimized for speech, default)
+- **`.wav`** - 24kHz mono PCM, uncompressed (highest quality)
+- **`.m4a`** - AAC 128kbps (Apple ecosystem)
+- **`.m4b`** - AAC 128kbps with chapter markers (professional audiobook format)
 
 ## Examples
 
@@ -257,29 +257,6 @@ reader convert
 reader convert --voice "Daniel"  # Uses Daniel, but keeps speed 1.1
 ```
 
-## Tips & Tricks
-
-### Voice Selection
-- **Male voices**: Daniel, Thomas, Alex, Fred
-- **Female voices**: Samantha, Alice, Allison, Susan
-- **Clear pronunciation**: Samantha, Daniel, Alex
-- **Faster speech**: Use `--speed 1.2` to `1.5`
-- **Dramatic reading**: Try different voices for characters
-
-### File Organization
-```
-text/
-├── fiction/
-│   ├── novel1.epub
-│   └── novel2.epub
-├── non-fiction/
-│   ├── biography.pdf
-│   └── manual.txt
-└── quick-reads/
-    ├── article1.md
-    └── article2.txt
-```
-
 ### Processing Large Files
 - Large books are automatically split into chunks
 - Each chunk becomes a separate audio file
@@ -301,7 +278,7 @@ reader voices
 
 **Audio quality:**
 - Kokoro TTS provides professional neural voices
-- Output: 48kHz mono MP3, optimized for audiobooks
+- Output: 24kHz mono MP3, optimized for audiobooks
 - Adjust `--speed` to find comfortable pace
 
 ## Multi-Layer Configuration System
