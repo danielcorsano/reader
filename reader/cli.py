@@ -1560,10 +1560,10 @@ def _write_stripped_text(chapters: List[dict], keep_indices: set, output_path: P
                 title = chapter.get('title', f'Chapter {i}')
                 content = chapter.get('content', '')
 
-                kept_content.append(f"# {title}\n\n{content}")
+                kept_content.append(f"{title}\n\n{content}")
 
         with open(output_path, 'w', encoding='utf-8') as f:
-            f.write('\n\n---\n\n'.join(kept_content))
+            f.write('\n\n\n'.join(kept_content))
 
         return True
 
