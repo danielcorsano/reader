@@ -37,11 +37,11 @@ reader config --output-dir /path/to/audiobooks
 ### Convert Text to Audiobook
 
 ```bash
-# Convert all files in text/ folder
-reader convert
+# Convert a file
+reader convert --file book.epub
 
 # Convert with custom voice
-reader convert --voice "Samantha"
+reader convert --voice af_sarah
 
 # Convert with custom speed (1.0 = normal, 1.5 = faster, 0.8 = slower)
 reader convert --speed 1.2
@@ -53,7 +53,7 @@ reader convert --file path/to/book.epub
 reader convert --file book.epub --no-clean-text
 
 # Combine options
-reader convert --voice "Daniel" --speed 1.1 --format wav
+reader convert --voice bm_george --speed 1.1 --format wav
 ```
 
 ### Text Cleanup (Automatic)
@@ -135,13 +135,13 @@ reader voices
 reader config
 
 # Set default voice
-reader config --voice "Alex"
+reader config --voice am_adam
 
 # Set default speed
 reader config --speed 1.3
 
 # Set multiple defaults
-reader config --voice "Samantha" --speed 1.1
+reader config --voice af_sarah --speed 1.1
 ```
 
 ### System Information
@@ -186,13 +186,13 @@ reader convert --file hello.txt
 
 ```bash
 # Professional male voice
-reader convert --voice "Daniel"
+reader convert --voice bm_george
 
 # Clear female voice
-reader convert --voice "Samantha"
+reader convert --voice af_sarah
 
 # Faster narration
-reader convert --voice "Alex" --speed 1.3
+reader convert --voice am_adam --speed 1.3
 ```
 
 ### Batch Processing
@@ -236,9 +236,9 @@ reader strip "Spinoza - Ethics.epub"
 curl -o text/alice.epub "https://www.gutenberg.org/ebooks/11.epub.noimages"
 
 # Convert with custom settings
-reader convert --voice "Alice" --speed 1.0
+reader convert --voice bf_alice --speed 1.0
 
-# Result: finished/alice_kokoro_am_michael.mp3
+# Result: ~/Downloads/alice_bf_alice_sp1p1.mp3
 ```
 
 ### Configuration Workflow
@@ -248,38 +248,14 @@ reader convert --voice "Alice" --speed 1.0
 reader voices | grep -i female
 
 # Set it as default
-reader config --voice "Samantha" --speed 1.1
+reader config --voice af_sarah --speed 1.1
 
 # Now all conversions use these settings
 reader convert
 
 # Override for specific books
-reader convert --voice "Daniel"  # Uses Daniel, but keeps speed 1.1
+reader convert --voice bm_george  # Uses Daniel, but keeps speed 1.1
 ```
-
-### Processing Large Files
-- Large books are automatically split into chunks
-- Each chunk becomes a separate audio file
-- Main file contains the first chunk
-- Example: `book_part_001.wav`, `book_part_002.wav`, etc.
-
-### Troubleshooting
-
-**No voices available:**
-```bash
-# Check system voices
-reader voices
-```
-
-**File not converting:**
-- Check file format is supported
-- Ensure file is in `text/` directory
-- Try converting specific file: `--file text/yourfile.txt`
-
-**Audio quality:**
-- Kokoro TTS provides professional neural voices
-- Output: 24kHz mono MP3, optimized for audiobooks
-- Adjust `--speed` to find comfortable pace
 
 ## Multi-Layer Configuration System
 
@@ -487,9 +463,6 @@ reader convert --progress-style tqdm
 
 # Rich formatted display
 reader convert --progress-style rich
-
-# ASCII timeseries chart (real-time speed graph)
-reader convert --progress-style timeseries
 ```
 
 ### Debug Mode

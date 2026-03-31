@@ -385,7 +385,7 @@ reader convert --voice af_sarah --file text/sample.txt
 reader convert --voice am_adam --file text/sample.txt
 reader convert --voice bf_emma --file text/sample.txt
 
-# Compare finished/sample_*.mp3 outputs
+# Compare ~/Downloads/sample_*.mp3 outputs
 ```
 
 ### Strip and Convert
