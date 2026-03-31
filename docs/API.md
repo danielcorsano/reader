@@ -184,7 +184,7 @@ output = r.convert(
     "plato_republic.epub",
     character_voices=True,
     character_config="characters.yaml",
-    speed=1.1,
+    speed=1.0,
     progress_style="rich",
     output_dir="/audiobooks"  # Custom output location
 )

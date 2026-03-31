@@ -7,12 +7,18 @@
    pip install audiobook-reader
    ```
 
-2. **Convert any text file directly:**
+2. **Strip and convert (recommended):**
+   ```bash
+   reader strip my-book.epub
+   # Removes non-content, then guides you through language/voice/speed selection
+   ```
+
+3. **Or convert directly (interactive dialog selects language, voice, speed):**
    ```bash
    reader convert --file my-book.epub
    ```
 
-3. **Find your audiobook in `~/Downloads/`!**
+4. **Find your audiobook in `~/Downloads/`!**
 
 ## Output Directory Options
 
@@ -53,7 +59,7 @@ reader convert --file path/to/book.epub
 reader convert --file book.epub --no-clean-text
 
 # Combine options
-reader convert --voice bm_george --speed 1.1 --format wav
+reader convert --voice bm_george --speed 1.0 --format wav
 ```
 
 ### Text Cleanup (Automatic)
@@ -111,6 +117,7 @@ reader strip textbook.txt
 #    s 0, 6-8  → Strip chapters 0, 6, 7, 8 (keep the rest)
 #    k 1-5     → Keep chapters 1-5 only (strip the rest)
 # 4. Saves stripped file, offers conversion
+# 5. Interactive dialog: choose language → voice → speed
 ```
 
 **Output formats:**
@@ -141,7 +148,7 @@ reader config --voice am_adam
 reader config --speed 1.3
 
 # Set multiple defaults
-reader config --voice af_sarah --speed 1.1
+reader config --voice af_sarah --speed 1.0
 ```
 
 ### System Information
@@ -227,6 +234,7 @@ reader strip "Spinoza - Ethics.epub"
 # Keeping 7 of 12 chapters...
 # Saved: Spinoza - Ethics_stripped.epub
 # Convert to audiobook? [y/n]: y
+# → Select language, voice, and speed interactively
 ```
 
 ### EPUB Example
@@ -248,13 +256,13 @@ reader convert --voice bf_alice --speed 1.0
 reader voices | grep -i female
 
 # Set it as default
-reader config --voice af_sarah --speed 1.1
+reader config --voice af_sarah --speed 1.0
 
 # Now all conversions use these settings
 reader convert
 
 # Override for specific books
-reader convert --voice bm_george  # Uses Daniel, but keeps speed 1.1
+reader convert --voice bm_george  # Uses Daniel, but keeps speed 1.0
 ```
 
 ## Multi-Layer Configuration System

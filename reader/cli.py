@@ -53,7 +53,7 @@ LANG_DISPLAY = {
 }
 
 
-def conversion_dialog(default_speed=1.1):
+def conversion_dialog(default_speed=1.0):
     """Interactive dialog to select language, voice, and speed for conversion.
 
     Returns (voice_id, speed) tuple.
@@ -507,7 +507,7 @@ class ReaderApp:
         settings = []
 
         # Speed (default: 1.0)
-        if tts_config.speed != 1.1:
+        if tts_config.speed != 1.0:
             settings.append(f"sp{tts_config.speed}".replace(".", "p"))
 
         # Character voices (default: False)
@@ -1653,12 +1653,16 @@ def _auto_strip_flow(chapters: List[dict]) -> Optional[set]:
                 click.echo(f"\nNew ending:")
                 click.echo(f"  {classifier.get_preview(chapters[end_idx - 1])}")
 
-        click.echo(f"\n[1] Still junk at end (strip more)")
-        click.echo(f"[2] Content was cut (strip less)")
-        click.echo(f"[3] OK")
-        click.echo(f"[4] Skip auto-strip (go to manual)")
+                click.echo(f"\n[1] Still junk at end (strip more)")
+                click.echo(f"[2] Content was cut (strip less)")
+                click.echo(f"[3] OK")
+                click.echo(f"[4] Skip auto-strip (go to manual)")
 
-        choice = click.prompt("How is the ending?", type=str, default='3')
+                choice = click.prompt("How is the ending?", type=str, default='3')
+            else:
+                choice = '3'
+        else:
+            choice = '3'
 
         if choice == '1':
             back_sensitivity = min(1.0, back_sensitivity + classifier.SENSITIVITY_STEP)

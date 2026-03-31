@@ -83,7 +83,7 @@ reader convert --file story.txt --output-dir /audiobooks
 
 ```bash
 # Save preferred settings
-reader config --voice am_michael --speed 1.1 --format mp3
+reader config --voice am_michael --speed 1.0 --format mp3
 
 # Override per-conversion
 reader convert --voice af_sarah --file book.epub
