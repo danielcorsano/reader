@@ -164,16 +164,33 @@ pip install audiobook-reader
 # 2. Models auto-download on first use (~310MB to ~/.cache/)
 #    Or manually: reader download models
 
-# 3. Convert any text file directly
+# 3. Recommended: Strip non-content first, then convert
+reader strip mybook.epub
+# → Auto-detects and removes front/back matter (copyright, TOC, index, etc.)
+# → Review and refine chapter selection
+# → Choose language, voice, and speed in interactive dialog
+# → Converts to audiobook
+
+# 4. Or convert directly (interactive dialog guides you through voice selection)
 reader convert --file mybook.epub
 
-# 4. Find your audiobook in ~/Downloads/mybook_kokoro_am_michael.mp3
+# 5. Find your audiobook in ~/Downloads/
 
 # Choose output location:
 reader convert --file mybook.epub --output-dir downloads  # ~/Downloads/ (default)
 reader convert --file mybook.epub --output-dir same       # Next to source
 reader convert --file mybook.epub --output-dir /custom    # Custom path
 ```
+
+### Interactive Conversion Dialog
+
+When you run `reader convert` or accept conversion after `reader strip`, an interactive dialog guides you through:
+
+1. **Language selection** — choose from 9 available languages
+2. **Voice selection** — pick from voices in your chosen language (with gender labels)
+3. **Speed confirmation** — accept default 1.0x or set custom speed
+
+Skip the dialog by specifying options directly: `reader convert --file book.epub --voice if_sara --speed 1.0`
 
 ### 🎭 Character Voices (Optional)
 
@@ -388,15 +405,15 @@ reader convert --voice bf_emma --file text/sample.txt
 # Compare ~/Downloads/sample_*.mp3 outputs
 ```
 
-### Strip and Convert
+### Strip and Convert (Recommended Workflow)
 ```bash
-# Strip unnecessary chapters before converting
+# Strip unnecessary chapters, then convert — all in one flow
 reader strip "Philosophy Textbook.epub"
 # → Detects sections (headings for PDF/TXT, structural markup for EPUB)
 # → Auto-strip suggests front/back matter removal
 # → Manual refinement if needed
 # → Saves Philosophy Textbook_stripped.epub
-# → Asks "Convert to audiobook?"
+# → "Convert to audiobook?" → interactive language/voice/speed dialog
 
 # Works with PDFs too — detects headings like "Preface", "Part I", "Index"
 reader strip book.pdf

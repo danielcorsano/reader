@@ -2,6 +2,15 @@
 
 All notable user-facing changes to this project will be documented in this file.
 
+## [0.3.1] - 2026-04-01
+
+### Added
+- Interactive conversion dialog — select language, voice, and speed when converting (after strip or with `reader convert`)
+- Strip-to-convert workflow: strip non-content, then convert in one flow
+
+### Changed
+- Default speed changed from 1.1x to 1.0x
+
 ## [0.3.0] - 2026-02-09
 
 ### Added
@@ -55,6 +64,7 @@ All notable user-facing changes to this project will be documented in this file.
 - **Checkpoint Recovery**: Resume interrupted conversions
 - **24kHz mono MP3** encoding with FFmpeg batch conversion
 
+[0.3.1]: https://github.com/danielcorsano/reader/releases/tag/v0.3.1
 [0.3.0]: https://github.com/danielcorsano/reader/releases/tag/v0.3.0
 [0.1.8]: https://github.com/danielcorsano/reader/releases/tag/v0.1.8
 [0.1.7]: https://github.com/danielcorsano/reader/releases/tag/v0.1.7
