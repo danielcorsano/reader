@@ -67,6 +67,24 @@ reader convert --voice bf_emma --file text/sample.txt
 reader voices
 ```
 
+## Strip and Convert Workflow
+
+The recommended workflow is to strip non-content chapters first, then convert:
+
+```bash
+reader strip mybook.epub
+# → Auto-detects and removes front/back matter (copyright, TOC, index, etc.)
+# → Review and refine chapter selection
+# → Saves mybook_stripped.epub
+# → "Convert to audiobook?" → interactive language/voice/speed dialog
+```
+
+Or convert directly with a specific voice:
+
+```bash
+reader convert --file mybook.epub --voice af_sarah --speed 1.0
+```
+
 ## Troubleshooting
 
 **Models not downloading:**

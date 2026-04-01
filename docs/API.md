@@ -300,6 +300,41 @@ reader.convert("book.epub")  # Uses configured voice/format/speed
 - `~/Downloads/` (default) - Configurable with `output_dir` parameter
 - Options: `"downloads"`, `"same"` (next to source), or custom path
 
+## Strip and Convert Workflow
+
+The recommended workflow is to strip non-content chapters first, then convert:
+
+```bash
+# Strip from CLI, then convert programmatically
+reader strip mybook.epub
+# → Auto-detects and removes front/back matter
+# → Review and refine chapter selection
+# → Saves mybook_stripped.epub
+
+# Then convert the stripped file
+import reader
+output = reader.convert("mybook_stripped.epub", voice="am_michael")
+```
+
+Or do everything from the CLI:
+
+```bash
+reader strip mybook.epub
+# → After stripping, offers conversion with interactive language/voice/speed dialog
+```
+
+## Available Voices (54 across 9 languages)
+
+- **American English** (20): af_heart, af_alloy, af_aoede, af_bella, af_jessica, af_kore, af_nicole, af_nova, af_river, af_sarah, af_sky, am_adam, am_echo, am_eric, am_fenrir, am_liam, am_michael, am_onyx, am_puck, am_santa
+- **British English** (8): bf_alice, bf_emma, bf_isabella, bf_lily, bm_daniel, bm_fable, bm_george, bm_lewis
+- **Japanese** (5): jf_alpha, jf_gongitsune, jf_nezumi, jf_tebukuro, jm_kumo
+- **Mandarin Chinese** (8): zf_xiaobei, zf_xiaoni, zf_xiaoxiao, zf_xiaoyi, zm_yunjian, zm_yunxi, zm_yunxia, zm_yunyang
+- **Spanish** (3): ef_dora, em_alex, em_santa
+- **French** (1): ff_siwis
+- **Hindi** (4): hf_alpha, hf_beta, hm_omega, hm_psi
+- **Italian** (2): if_sara, im_nicola
+- **Brazilian Portuguese** (3): pf_dora, pm_alex, pm_santa
+
 ## Notes
 
 - All conversions use checkpoint/resume for reliability

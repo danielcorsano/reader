@@ -45,11 +45,6 @@ EPUB, PDF, TXT, Markdown, ReStructuredText
 - Tiered chapter detection works across all formats (EPUB, PDF, TXT)
 - Conservative back-stripping with spoiler-protected end preview
 
-### ✂️ **Text Stripping**
-- Interactive chapter removal with 5-signal auto-detection of non-content (copyright, TOC, bibliography, index, short stubs)
-- Tiered chapter detection works across all formats (EPUB, PDF, TXT)
-- Conservative back-stripping with spoiler-protected end preview
-
 ---
 
 **Need to convert other formats first?** Use my universal text/doc/ebook converter [convertext](https://pypi.org/project/convertext/) 
@@ -402,21 +397,6 @@ reader strip "Philosophy Textbook.epub"
 # → Manual refinement if needed
 # → Saves Philosophy Textbook_stripped.epub
 # → "Convert to audiobook?" → interactive language/voice/speed dialog
-
-# Works with PDFs too — detects headings like "Preface", "Part I", "Index"
-reader strip book.pdf
-reader convert --file book_stripped.txt
-```
-
-### Strip and Convert
-```bash
-# Strip unnecessary chapters before converting
-reader strip "Philosophy Textbook.epub"
-# → Detects sections (headings for PDF/TXT, structural markup for EPUB)
-# → Auto-strip suggests front/back matter removal
-# → Manual refinement if needed
-# → Saves Philosophy Textbook_stripped.epub
-# → Asks "Convert to audiobook?"
 
 # Works with PDFs too — detects headings like "Preface", "Part I", "Index"
 reader strip book.pdf
