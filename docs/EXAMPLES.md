@@ -1,322 +1,100 @@
 # Reader Examples
 
-## Example 1: Convert a Simple Text File
+## Convert a Single File
 
 ```bash
-# Create a simple story
-cat > text/short-story.txt << 'EOF'
-Chapter 1: The Beginning
-
-Once upon a time, in a small village, there lived a young programmer who discovered the magic of text-to-speech technology.
-
-Chapter 2: The Discovery
-
-The programmer realized they could turn any written story into an audiobook with just a few commands.
-
-Chapter 3: The Adventure Begins
-
-And so began their journey into the world of automated audiobook creation.
-EOF
-
-# Convert to audiobook
-reader convert --voice "Samantha" --speed 1.0
-
-# Result: finished/short-story_kokoro_am_michael.mp3
+reader convert --file mybook.epub
+# Output: ~/Downloads/mybook_am_michael_sp1p1.mp3
 ```
 
-## Example 2: Process Multiple Books
+## Choose a Voice
 
 ```bash
-# Add several books
-echo "# Science Fiction Story
-This is a futuristic tale..." > text/sci-fi.md
+# List all 54 voices across 9 languages
+reader voices
 
-echo "# Mystery Novel  
-The detective arrived at midnight..." > text/mystery.md
+# Filter by language or gender
+reader voices --language it
+reader voices --gender female
 
-echo "# Romance Story
-Under the moonlight..." > text/romance.md
-
-# Convert all with different voices
-reader config --voice "Daniel"
-reader convert
-
-# Results:
-# - finished/sci-fi_kokoro_am_michael.mp3
-# - finished/mystery_kokoro_am_michael.mp3
-# - finished/romance_kokoro_am_michael.mp3
+# Convert with a specific voice
+reader convert --file book.epub --voice af_sarah
+reader convert --file book.epub --voice bf_emma
+reader convert --file book.epub --voice im_nicola  # Italian
 ```
 
-## Example 3: Configuration Workflow
+## Available Voices (54 across 9 languages)
+
+- **American English** (20): af_heart, af_alloy, af_aoede, af_bella, af_jessica, af_kore, af_nicole, af_nova, af_river, af_sarah, af_sky, am_adam, am_echo, am_eric, am_fenrir, am_liam, am_michael, am_onyx, am_puck, am_santa
+- **British English** (8): bf_alice, bf_emma, bf_isabella, bf_lily, bm_daniel, bm_fable, bm_george, bm_lewis
+- **Japanese** (5): jf_alpha, jf_gongitsune, jf_nezumi, jf_tebukuro, jm_kumo
+- **Mandarin Chinese** (8): zf_xiaobei, zf_xiaoni, zf_xiaoxiao, zf_xiaoyi, zm_yunjian, zm_yunxi, zm_yunxia, zm_yunyang
+- **Spanish** (3): ef_dora, em_alex, em_santa
+- **French** (1): ff_siwis
+- **Hindi** (4): hf_alpha, hf_beta, hm_omega, hm_psi
+- **Italian** (2): if_sara, im_nicola *(early-stage quality)*
+- **Brazilian Portuguese** (3): pf_dora, pm_alex, pm_santa
+
+## Strip and Convert
 
 ```bash
-# Find your preferred voice
-reader voices | head -20
+# Strip unwanted chapters (TOC, bibliography, index, etc.)
+reader strip "Ethics.epub"
+# → Auto-detects non-content, lets you refine, saves _stripped.epub
+# → Offers to convert immediately
 
-# Test different Kokoro voices with a sample
-echo "Hello, this is a test of the emergency broadcast system." > text/voice-test.txt
-
-reader convert --voice af_sarah --file text/voice-test.txt
-reader convert --voice am_michael --file text/voice-test.txt
-reader convert --voice bf_emma --file text/voice-test.txt
-
-# Set your favorite as default
-reader config --voice am_michael --speed 1.0
-
-# Confirm settings
-reader config
+# Works with PDFs too
+reader strip textbook.pdf
 ```
 
-## Example 4: PDF Document Processing
+## Character Voice Mapping
 
 ```bash
-# Simulate a PDF (create a text version)
-cat > text/technical-manual.txt << 'EOF'
-Technical Manual: Widget Assembly
+# Auto-detect characters and assign voices
+reader characters detect novel.txt --auto-assign
 
-Page 1: Introduction
-This manual covers the assembly of Widget Model XR-1000.
+# Or manually map characters
+reader characters add "Alice" af_sarah
+reader characters add "Bob" am_michael
 
-Page 2: Components
-The following components are included in your kit:
-- Widget base (1x)
-- Widget screws (4x)
-- Widget manual (1x)
-
-Page 3: Assembly
-Step 1: Place the widget base on a flat surface.
-Step 2: Insert screws into designated holes.
-Step 3: Tighten until secure.
-
-Page 4: Conclusion
-Your widget is now assembled and ready for use.
-EOF
-
-# Convert with slower, clear speech for technical content
-reader convert --voice am_michael --speed 0.9
-
-# Result: finished/technical-manual_kokoro_am_michael_speed0p9.mp3
+# Convert with character voices
+reader convert --characters --file novel.txt
 ```
 
-## Example 5: Markdown with Chapters
+## Voice Blending
 
 ```bash
-# Create a structured markdown document
-cat > text/tutorial.md << 'EOF'
-# Python Tutorial
+# Create a custom blended voice
+reader blend create narrator "af_sarah:60,af_nicole:40"
 
-## Chapter 1: Getting Started
-
-Python is a powerful programming language that's easy to learn.
-
-## Chapter 2: Variables
-
-In Python, you can create variables like this:
-```python
-name = "Alice"
-age = 25
+# Use it
+reader convert --voice "af_sarah:60,af_nicole:40" --file book.epub
 ```
 
-## Chapter 3: Functions
-
-Functions help organize your code:
-```python
-def greet(name):
-    return f"Hello, {name}!"
-```
-
-## Chapter 4: Conclusion
-
-You've learned the basics of Python programming!
-EOF
-
-# Convert with clear, educational voice
-reader convert --voice am_michael --speed 1.0
-
-# Result: finished/tutorial_kokoro_am_michael.mp3 (with automatic chapter detection)
-```
-
-## Example 6: Batch Processing Workflow
+## Batch Processing
 
 ```bash
-# Organize books by genre
-mkdir -p text/fiction text/non-fiction text/tutorials
-
-# Add books to categories
-echo "Fantasy epic adventure..." > text/fiction/fantasy.txt
-echo "Space exploration thriller..." > text/fiction/sci-fi.txt
-echo "How to learn programming..." > text/tutorials/coding.txt
-echo "History of ancient Rome..." > text/non-fiction/history.txt
-
-# Process all fiction with one voice
-reader config --voice af_sarah
-reader convert --file text/fiction/fantasy.txt
-reader convert --file text/fiction/sci-fi.txt
-
-# Process tutorials with clear, slower voice
-reader config --voice am_michael --speed 0.9
-reader convert --file text/tutorials/coding.txt
-
-# Process non-fiction with British narrator
-reader config --voice bm_george --speed 1.0
-reader convert --file text/non-fiction/history.txt
-
-# Check results
-ls -la finished/
+reader convert --file book1.epub --output-dir /audiobooks
+reader convert --file book2.pdf --output-dir /audiobooks
+reader convert --file story.txt --output-dir /audiobooks
 ```
 
-## Example 7: Speed Optimization for Different Content
+## Configuration
 
 ```bash
-# Create different types of content
-echo "Breaking news: Scientists discover new planet..." > text/news.txt
-echo "Meditation guide: Close your eyes and breathe deeply..." > text/meditation.txt
-echo "Quick recipe: Boil water, add pasta, cook 8 minutes..." > text/recipe.txt
+# Save preferred settings
+reader config --voice am_michael --speed 1.0 --format mp3
 
-# News - faster pace
-reader convert --voice am_michael --speed 1.3 --file text/news.txt
+# Override per-conversion
+reader convert --voice af_sarah --file book.epub
 
-# Meditation - slow, calming pace
-reader convert --voice af_sarah --speed 0.7 --file text/meditation.txt
-
-# Recipe - normal, clear pace
-reader convert --voice bf_emma --speed 1.0 --file text/recipe.txt
+# Per-project config: create .reader.yaml in any directory
+# All conversions in that directory tree inherit those settings
 ```
 
-## Example 8: Testing Voice Characteristics
+## Debug Mode
 
 ```bash
-# Create a test script to try different voices
-cat > test-voices.sh << 'EOF'
-#!/bin/bash
-
-# Test text
-echo "This is a test of different voices. How does this voice sound for audiobook narration?" > text/voice-sample.txt
-
-# Test different Kokoro voices
-voices=("af_sarah" "am_michael" "bf_emma" "bm_george" "af_nicole")
-
-for voice in "${voices[@]}"; do
-    echo "Testing voice: $voice"
-    reader convert --voice "$voice" --file text/voice-sample.txt
-    # Files automatically saved with voice name in filename
-done
-
-echo "Voice tests complete! Listen to finished/voice-sample_*.mp3 files"
-EOF
-
-chmod +x test-voices.sh
-./test-voices.sh
+# See Neural Engine status and processing details
+reader convert --debug --file book.epub
 ```
-
-## Example 9: System Information and Debugging
-
-```bash
-# Check system status
-reader info
-
-# List all available voices with details
-reader voices > available-voices.txt
-echo "Saved voice list to available-voices.txt"
-
-# Check current configuration
-reader config > current-config.txt
-echo "Saved configuration to current-config.txt"
-
-# Test file detection
-echo "Test file" > text/test.txt
-echo "Test epub" > text/test.epub  
-echo "Test pdf content" > text/test.pdf
-
-reader info  # Should show 3 supported files
-```
-
-## Example 10: Advanced Configuration
-
-```bash
-# Test different configurations
-reader convert --voice af_sarah --speed 1.2 --file text/sample.txt
-reader convert --voice am_michael --speed 1.0 --file text/sample.txt
-reader convert --voice bf_emma --speed 0.8 --file text/sample.txt
-
-# Compare results - files are named with voice and speed
-echo "Listen to finished/sample_*.mp3 to compare voices and speeds"
-
-# Set preferred config
-reader config --voice am_michael --speed 1.0
-```
-
-## Example 11: Strip Unwanted Chapters Before Converting
-
-```bash
-# Strip a textbook to remove front/back matter
-reader strip textbook.epub
-
-# Example output (EPUB uses structural markup from h1-h6 tags):
-#   0: Cover Page
-#      "Published by Academic Press..."
-#   1: Table of Contents
-#      "Chapter 1...page 1, Chapter 2...page 45..."
-#   2: Foreword
-#      "It is my great pleasure to introduce..."
-#   3: Chapter 1 - Introduction
-#      "This textbook explores the fundamentals of..."
-#   ...
-#   15: Bibliography
-#      "Anderson, J. (2019). Research Methods..."
-#   16: Index
-#      "A: Abstract algebra, 12; Algorithms, 45..."
-
-# Auto-strip non-content? [y/n]: y
-# Sensitivity: 0.5 | Stripped 2 from front, 2 from back
-# Keeping chapters 2-14 (13 of 17)
-# Show ending? (may contain spoilers) [y/n]: n
-# [3] Accept
-# Saved: textbook_stripped.epub
-# Convert to audiobook? [y/n]: y
-```
-
-## Example 12: Strip PDF with Heading Detection
-
-```bash
-# PDFs get tiered chapter detection:
-# 1. No marked chapters found (pages only)
-# 2. Heading detection finds: Translator's Note, Preface, Part I, Part II, Index
-# 3. Auto-strip flags front/back matter
-reader strip "Wittgenstein - Philosophical Investigations.pdf"
-
-# Detected 6 sections from text analysis
-#   0: Translator's Note
-#   1: Preface
-#   2: Part I
-#   3: Part II
-#   4: Index
-# Auto-strip suggests removing Translator's Note (front) — conservative on back
-
-# Saves as: Wittgenstein - Philosophical Investigations_stripped.txt
-```
-
-## Tips for Best Results
-
-1. **Voice Selection**: Try 3-4 different voices with the same text to find your preference
-2. **Speed Tuning**: Start with 1.0, then adjust ±0.1 until comfortable
-3. **Content-Specific Settings**: Use slower speeds for technical content, faster for news
-4. **File Organization**: Keep source files organized by genre/type for batch processing
-5. **Testing**: Always test with a short sample before processing long books
-
-## Advanced Features
-
-✅ **Currently Available:**
-- 54 neural Kokoro voices across 9 languages
-- Emotion detection and prosody adjustment
-- Character voice mapping for dialogue
-- MP3/M4A/M4B output with metadata
-- 4 progress visualization styles (simple, tqdm, rich, timeseries)
-- Checkpoint recovery for interrupted conversions
-- Apple Neural Engine optimization
-- **Text stripping** with tiered chapter detection, 5-signal auto-strip classifier (title, EPUB, patterns, density, relative length), and spoiler-protected preview
-
-📚 **For More Details:**
-- See [ADVANCED_FEATURES.md](ADVANCED_FEATURES.md) for full feature documentation
-- See [KOKORO_SETUP.md](KOKORO_SETUP.md) for model setup
-- See [USAGE.md](USAGE.md) for complete command reference

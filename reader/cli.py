@@ -40,6 +40,73 @@ from .voices.voice_previewer import get_voice_previewer
 from .utils.setup import validate_environment, check_ffmpeg
 
 
+LANG_DISPLAY = {
+    "en-us": "American English",
+    "en-gb": "British English",
+    "ja": "Japanese",
+    "zh": "Mandarin Chinese",
+    "es": "Spanish",
+    "fr": "French",
+    "hi": "Hindi",
+    "it": "Italian",
+    "pt-br": "Brazilian Portuguese",
+}
+
+
+def conversion_dialog(default_speed=1.0):
+    """Interactive dialog to select language, voice, and speed for conversion.
+
+    Returns (voice_id, speed) tuple.
+    """
+    from .engines.kokoro_engine import KokoroEngine
+    voices = KokoroEngine.VOICES
+
+    # Build language -> voices mapping
+    langs = {}
+    for vid, info in voices.items():
+        langs.setdefault(info["lang"], []).append((vid, info))
+
+    # Sort languages by display name
+    lang_list = sorted(langs.keys(), key=lambda l: LANG_DISPLAY.get(l, l))
+
+    # 1. Language selection
+    click.echo("\nAvailable languages:")
+    for i, lang in enumerate(lang_list, 1):
+        display = LANG_DISPLAY.get(lang, lang)
+        count = len(langs[lang])
+        click.echo(f"  {i}. {display} ({count} voices)")
+
+    while True:
+        choice = click.prompt("Select language", type=int)
+        if 1 <= choice <= len(lang_list):
+            selected_lang = lang_list[choice - 1]
+            break
+        click.echo(f"Enter a number between 1 and {len(lang_list)}")
+
+    # 2. Voice selection within language
+    voice_list = sorted(langs[selected_lang], key=lambda v: v[1]["name"])
+    click.echo(f"\nVoices for {LANG_DISPLAY.get(selected_lang, selected_lang)}:")
+    for i, (vid, info) in enumerate(voice_list, 1):
+        click.echo(f"  {i}. {info['name']} ({info['gender']}) [{vid}]")
+
+    while True:
+        choice = click.prompt("Select voice", type=int)
+        if 1 <= choice <= len(voice_list):
+            selected_voice = voice_list[choice - 1][0]
+            break
+        click.echo(f"Enter a number between 1 and {len(voice_list)}")
+
+    # 3. Speed selection
+    speed_ok = click.prompt(f"\nSpeed {default_speed}x? [y/n]", type=str, default='y')
+    if speed_ok.lower() in ('y', 'yes'):
+        selected_speed = default_speed
+    else:
+        selected_speed = click.prompt("Enter speed (e.g. 0.8, 1.0, 1.2, 1.5)", type=float)
+
+    click.echo(f"\nSelected: {selected_voice} at {selected_speed}x speed")
+    return selected_voice, selected_speed
+
+
 class ReaderApp:
     """Main application class."""
 
@@ -509,10 +576,19 @@ def convert(voice, speed, format, file, characters, character_config, chapters, 
     if file:
         # Convert specific file
         file_path = Path(file)
+
+        # Interactive dialog if voice/speed not specified via CLI
+        if voice is None or speed is None:
+            dialog_voice, dialog_speed = conversion_dialog()
+            if voice is None:
+                voice = dialog_voice
+            if speed is None:
+                speed = dialog_speed
+
         # Apply turbo mode settings
         if turbo_mode:
             click.echo("🚀 Turbo mode enabled: Maximum performance settings active")
-        
+
         try:
             if debug:
                 click.echo(f"🔍 DEBUG: CLI parameters passed to convert_file:")
@@ -1027,8 +1103,9 @@ def download_models(target, local, force):
     cache = (target_dir or get_cache_dir()) / "kokoro"
 
     if not force:
-        model = cache / "kokoro-v1.0.onnx"
-        voices = cache / "voices-v1.0.bin"
+        from .engines.kokoro_engine import KOKORO_MODEL_FILE, KOKORO_VOICES_FILE
+        model = cache / KOKORO_MODEL_FILE
+        voices = cache / KOKORO_VOICES_FILE
         if model.exists() and voices.exists():
             click.echo(f"✅ Models already installed at: {cache}")
             click.echo(f"   Use --force to re-download")
@@ -1483,10 +1560,10 @@ def _write_stripped_text(chapters: List[dict], keep_indices: set, output_path: P
                 title = chapter.get('title', f'Chapter {i}')
                 content = chapter.get('content', '')
 
-                kept_content.append(f"# {title}\n\n{content}")
+                kept_content.append(f"{title}\n\n{content}")
 
         with open(output_path, 'w', encoding='utf-8') as f:
-            f.write('\n\n---\n\n'.join(kept_content))
+            f.write('\n\n\n'.join(kept_content))
 
         return True
 
@@ -1576,12 +1653,16 @@ def _auto_strip_flow(chapters: List[dict]) -> Optional[set]:
                 click.echo(f"\nNew ending:")
                 click.echo(f"  {classifier.get_preview(chapters[end_idx - 1])}")
 
-        click.echo(f"\n[1] Still junk at end (strip more)")
-        click.echo(f"[2] Content was cut (strip less)")
-        click.echo(f"[3] OK")
-        click.echo(f"[4] Skip auto-strip (go to manual)")
+                click.echo(f"\n[1] Still junk at end (strip more)")
+                click.echo(f"[2] Content was cut (strip less)")
+                click.echo(f"[3] OK")
+                click.echo(f"[4] Skip auto-strip (go to manual)")
 
-        choice = click.prompt("How is the ending?", type=str, default='3')
+                choice = click.prompt("How is the ending?", type=str, default='3')
+            else:
+                choice = '3'
+        else:
+            choice = '3'
 
         if choice == '1':
             back_sensitivity = min(1.0, back_sensitivity + classifier.SENSITIVITY_STEP)
@@ -1755,9 +1836,10 @@ def strip(file_path):
     convert_response = click.prompt("\nConvert to audiobook? [y/n]", type=str, default='n')
 
     if convert_response.lower() in ('y', 'yes'):
+        voice, speed = conversion_dialog()
         try:
             app_convert = ReaderApp()
-            result = app_convert.convert_file(output_path)
+            result = app_convert.convert_file(output_path, voice=voice, speed=speed)
             click.echo(f"Conversion complete: {result}")
         except Exception as e:
             click.echo(f"Error converting: {e}", err=True)

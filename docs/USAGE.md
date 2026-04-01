@@ -7,12 +7,18 @@
    pip install audiobook-reader
    ```
 
-2. **Convert any text file directly:**
+2. **Strip and convert (recommended):**
+   ```bash
+   reader strip my-book.epub
+   # Removes non-content, then guides you through language/voice/speed selection
+   ```
+
+3. **Or convert directly (interactive dialog selects language, voice, speed):**
    ```bash
    reader convert --file my-book.epub
    ```
 
-3. **Find your audiobook in `~/Downloads/`!**
+4. **Find your audiobook in `~/Downloads/`!**
 
 ## Output Directory Options
 
@@ -37,11 +43,11 @@ reader config --output-dir /path/to/audiobooks
 ### Convert Text to Audiobook
 
 ```bash
-# Convert all files in text/ folder
-reader convert
+# Convert a file
+reader convert --file book.epub
 
 # Convert with custom voice
-reader convert --voice "Samantha"
+reader convert --voice af_sarah
 
 # Convert with custom speed (1.0 = normal, 1.5 = faster, 0.8 = slower)
 reader convert --speed 1.2
@@ -53,7 +59,7 @@ reader convert --file path/to/book.epub
 reader convert --file book.epub --no-clean-text
 
 # Combine options
-reader convert --voice "Daniel" --speed 1.1 --format wav
+reader convert --voice bm_george --speed 1.0 --format wav
 ```
 
 ### Text Cleanup (Automatic)
@@ -111,6 +117,7 @@ reader strip textbook.txt
 #    s 0, 6-8  → Strip chapters 0, 6, 7, 8 (keep the rest)
 #    k 1-5     → Keep chapters 1-5 only (strip the rest)
 # 4. Saves stripped file, offers conversion
+# 5. Interactive dialog: choose language → voice → speed
 ```
 
 **Output formats:**
@@ -135,13 +142,13 @@ reader voices
 reader config
 
 # Set default voice
-reader config --voice "Alex"
+reader config --voice am_adam
 
 # Set default speed
 reader config --speed 1.3
 
 # Set multiple defaults
-reader config --voice "Samantha" --speed 1.1
+reader config --voice af_sarah --speed 1.0
 ```
 
 ### System Information
@@ -163,10 +170,10 @@ reader info
 **Need to convert other formats?** Use [convertext](https://pypi.org/project/convertext/) to convert DOCX, ODT, MOBI, HTML, and other document formats to supported formats.
 
 ### Output Formats
-- **`.mp3`** - 48kHz mono, 48kbps VBR (optimized for speech, default)
-- **`.wav`** - 48kHz mono PCM, uncompressed (highest quality)
-- **`.m4a`** - 48kHz AAC 128kbps (Apple ecosystem)
-- **`.m4b`** - 48kHz AAC 128kbps with chapter markers (professional audiobook format)
+- **`.mp3`** - 24kHz mono, 48kbps CBR (optimized for speech, default)
+- **`.wav`** - 24kHz mono PCM, uncompressed (highest quality)
+- **`.m4a`** - AAC 128kbps (Apple ecosystem)
+- **`.m4b`** - AAC 128kbps with chapter markers (professional audiobook format)
 
 ## Examples
 
@@ -186,13 +193,13 @@ reader convert --file hello.txt
 
 ```bash
 # Professional male voice
-reader convert --voice "Daniel"
+reader convert --voice bm_george
 
 # Clear female voice
-reader convert --voice "Samantha"
+reader convert --voice af_sarah
 
 # Faster narration
-reader convert --voice "Alex" --speed 1.3
+reader convert --voice am_adam --speed 1.3
 ```
 
 ### Batch Processing
@@ -227,6 +234,7 @@ reader strip "Spinoza - Ethics.epub"
 # Keeping 7 of 12 chapters...
 # Saved: Spinoza - Ethics_stripped.epub
 # Convert to audiobook? [y/n]: y
+# → Select language, voice, and speed interactively
 ```
 
 ### EPUB Example
@@ -236,9 +244,9 @@ reader strip "Spinoza - Ethics.epub"
 curl -o text/alice.epub "https://www.gutenberg.org/ebooks/11.epub.noimages"
 
 # Convert with custom settings
-reader convert --voice "Alice" --speed 1.0
+reader convert --voice bf_alice --speed 1.0
 
-# Result: finished/alice_kokoro_am_michael.mp3
+# Result: ~/Downloads/alice_bf_alice_sp1p1.mp3
 ```
 
 ### Configuration Workflow
@@ -248,61 +256,14 @@ reader convert --voice "Alice" --speed 1.0
 reader voices | grep -i female
 
 # Set it as default
-reader config --voice "Samantha" --speed 1.1
+reader config --voice af_sarah --speed 1.0
 
 # Now all conversions use these settings
 reader convert
 
 # Override for specific books
-reader convert --voice "Daniel"  # Uses Daniel, but keeps speed 1.1
+reader convert --voice bm_george  # Uses Daniel, but keeps speed 1.0
 ```
-
-## Tips & Tricks
-
-### Voice Selection
-- **Male voices**: Daniel, Thomas, Alex, Fred
-- **Female voices**: Samantha, Alice, Allison, Susan
-- **Clear pronunciation**: Samantha, Daniel, Alex
-- **Faster speech**: Use `--speed 1.2` to `1.5`
-- **Dramatic reading**: Try different voices for characters
-
-### File Organization
-```
-text/
-├── fiction/
-│   ├── novel1.epub
-│   └── novel2.epub
-├── non-fiction/
-│   ├── biography.pdf
-│   └── manual.txt
-└── quick-reads/
-    ├── article1.md
-    └── article2.txt
-```
-
-### Processing Large Files
-- Large books are automatically split into chunks
-- Each chunk becomes a separate audio file
-- Main file contains the first chunk
-- Example: `book_part_001.wav`, `book_part_002.wav`, etc.
-
-### Troubleshooting
-
-**No voices available:**
-```bash
-# Check system voices
-reader voices
-```
-
-**File not converting:**
-- Check file format is supported
-- Ensure file is in `text/` directory
-- Try converting specific file: `--file text/yourfile.txt`
-
-**Audio quality:**
-- Kokoro TTS provides professional neural voices
-- Output: 48kHz mono MP3, optimized for audiobooks
-- Adjust `--speed` to find comfortable pace
 
 ## Multi-Layer Configuration System
 
@@ -510,9 +471,6 @@ reader convert --progress-style tqdm
 
 # Rich formatted display
 reader convert --progress-style rich
-
-# ASCII timeseries chart (real-time speed graph)
-reader convert --progress-style timeseries
 ```
 
 ### Debug Mode
