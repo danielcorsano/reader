@@ -12,9 +12,15 @@ If you find this useful, please consider supporting via [GitHub Sponsors](https:
 
 ## ✨ Core Features
 
+### 🎙️ **54 AI Voices in 9 Languages**
+- **American English** (20 voices), **British English** (8), **Japanese** (5), **Mandarin Chinese** (8), **Spanish** (3), **French** (1), **Hindi** (4), **Italian** (2), **Brazilian Portuguese** (3)
+- Voice blending, character voice mapping, and dialogue detection
+
 ### ⚡ **High-Performance Conversion**
-- **About 10x faster than real-time** when using Apple Silicon or GPU
-- **Efficient CPU processing as a fallback** on all platforms if GPU is not available
+- **Up to 10x faster than real-time** on Apple Silicon (M1/M2/M3/M4) with Neural Engine
+- **GPU acceleration** for NVIDIA (CUDA), AMD/Intel (DirectML on Windows)
+- **Efficient CPU processing** on all platforms
+- Kokoro-82M engine optimized for speed + quality balance
 
 ### 💾 **Robust Checkpoint Resumption**
 - **Resume interrupted conversions** even if the computer crashed or was rebooted, which is essential for long texts
@@ -28,11 +34,16 @@ If you find this useful, please consider supporting via [GitHub Sponsors](https:
 - **4 progress visualization styles**: simple, tqdm, rich, timeseries
 - **Real-time metrics**: processing speed, ETA, completion percentage
 - **Batch processing** with queue management
-- **Multiple output formats**: MP3 (48kHz mono optimized by default), WAV, M4A, M4B
+- **Multiple output formats**: MP3 (24kHz mono optimized by default), WAV, M4A, M4B
 
 ## 📚 Supported Input Formats
 
 EPUB, PDF, TXT, Markdown, ReStructuredText
+
+### ✂️ **Text Stripping**
+- Interactive chapter removal with 5-signal auto-detection of non-content (copyright, TOC, bibliography, index, short stubs)
+- Tiered chapter detection works across all formats (EPUB, PDF, TXT)
+- Conservative back-stripping with spoiler-protected end preview
 
 ### ✂️ **Text Stripping**
 - Interactive chapter removal with 5-signal auto-detection of non-content (copyright, TOC, bibliography, index, short stubs)
@@ -141,16 +152,33 @@ pip install audiobook-reader
 # 2. Models auto-download on first use (~310MB to ~/.cache/)
 #    Or manually: reader download models
 
-# 3. Convert any text file directly
+# 3. Recommended: Strip non-content first, then convert
+reader strip mybook.epub
+# → Auto-detects and removes front/back matter (copyright, TOC, index, etc.)
+# → Review and refine chapter selection
+# → Choose language, voice, and speed in interactive dialog
+# → Converts to audiobook
+
+# 4. Or convert directly (interactive dialog guides you through voice selection)
 reader convert --file mybook.epub
 
-# 4. Find your audiobook in ~/Downloads/mybook_kokoro_am_michael.mp3
+# 5. Find your audiobook in ~/Downloads/
 
 # Choose output location:
 reader convert --file mybook.epub --output-dir downloads  # ~/Downloads/ (default)
 reader convert --file mybook.epub --output-dir same       # Next to source
 reader convert --file mybook.epub --output-dir /custom    # Custom path
 ```
+
+### Interactive Conversion Dialog
+
+When you run `reader convert` or accept conversion after `reader strip`, an interactive dialog guides you through:
+
+1. **Language selection** — choose from 9 available languages
+2. **Voice selection** — pick from voices in your chosen language (with gender labels)
+3. **Speed confirmation** — accept default 1.0x or set custom speed
+
+Skip the dialog by specifying options directly: `reader convert --file book.epub --voice if_sara --speed 1.0`
 
 ### 🎭 Character Voices (Optional)
 
@@ -313,7 +341,7 @@ reader convert --voice af_sarah
 **Need other formats?** Use [convertext](https://pypi.org/project/convertext/) to convert DOCX, ODT, MOBI, HTML, and more to supported formats.
 
 ### Output Formats
-- **MP3** (default) - 48kHz mono, configurable bitrate (32k-64k, default 48k)
+- **MP3** (default) - 24kHz mono, configurable bitrate (32k-64k, default 48k)
 - **WAV** - Uncompressed, high quality
 - **M4A** - Apple-friendly format
 - **M4B** - Audiobook format with chapter support
@@ -362,7 +390,22 @@ reader convert --voice af_sarah --file text/sample.txt
 reader convert --voice am_adam --file text/sample.txt
 reader convert --voice bf_emma --file text/sample.txt
 
-# Compare finished/sample_*.mp3 outputs
+# Compare ~/Downloads/sample_*.mp3 outputs
+```
+
+### Strip and Convert (Recommended Workflow)
+```bash
+# Strip unnecessary chapters, then convert — all in one flow
+reader strip "Philosophy Textbook.epub"
+# → Detects sections (headings for PDF/TXT, structural markup for EPUB)
+# → Auto-strip suggests front/back matter removal
+# → Manual refinement if needed
+# → Saves Philosophy Textbook_stripped.epub
+# → "Convert to audiobook?" → interactive language/voice/speed dialog
+
+# Works with PDFs too — detects headings like "Preface", "Part I", "Index"
+reader strip book.pdf
+reader convert --file book_stripped.txt
 ```
 
 ### Strip and Convert
@@ -430,7 +473,7 @@ See **[docs/EXAMPLES.md](https://github.com/danielcorsano/reader/blob/main/docs/
 - **Model Cache**: Follows XDG standard (`~/.cache/audiobook-reader/models/`)
 - **Python**: 3.10-3.13 compatibility
 - **Platforms**: macOS, Linux, Windows (all fully supported)
-- **Audio Quality**: 48kHz mono MP3, configurable bitrate (32k-64k, default 48k)
+- **Audio Quality**: 24kHz mono MP3, configurable bitrate (32k-64k, default 48k)
 - **Hardware Acceleration**:
   - ✅ Apple Silicon (M1/M2/M3/M4): CoreML (Neural Engine) - automatic
   - ✅ NVIDIA GPUs: CUDA via onnxruntime-gpu

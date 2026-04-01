@@ -15,9 +15,10 @@ from abc import ABC, abstractmethod
 from ..text_processing.number_expander import get_number_expander
 
 # Constants
-DEFAULT_SAMPLE_RATE = 22050
+DEFAULT_SAMPLE_RATE = 24000  # Kokoro v1.0 native sample rate
 SILENCE_DURATION = 0.1
 DEFAULT_CHECKPOINT_INTERVAL = 25
+CROSSFADE_SAMPLES = 480  # 20ms at 24000 Hz for smooth chunk transitions
 
 
 @dataclass
@@ -58,7 +59,7 @@ class SimpleProgressDisplay(ProgressDisplay):
     
     def start(self, total_chunks: int, file_name: str):
         self.start_time = time.time()
-        print(f"🎯 Neural Engine stream processing {file_name} ({total_chunks} chunks, 48k mono MP3)")
+        print(f"🎯 Neural Engine stream processing {file_name} ({total_chunks} chunks, 24k mono MP3)")
     
     def update(self, current_chunk: int, total_chunks: int, elapsed_time: float, eta_seconds: float):
         progress = (current_chunk / total_chunks) * 100
@@ -134,6 +135,9 @@ class NeuralProcessor:
         self.character_mapper = character_mapper
         self.dialogue_detector = dialogue_detector
 
+        # Crossfade state for smooth chunk transitions
+        self._prev_tail = None  # Last CROSSFADE_SAMPLES of previous chunk (raw PCM bytes)
+
         # For MP3 output, use intermediate WAV file for streaming
         self.is_mp3_output = output_path.suffix.lower() == '.mp3'
         self.temp_wav_path = output_path.with_suffix('.wav.tmp') if self.is_mp3_output else None
@@ -186,6 +190,11 @@ class NeuralProcessor:
                     output_file, text_chunks, tts_engine, voice_blend, speed,
                     start_chunk, total_chunks, file_path, settings_hash
                 )
+
+                # Flush any held-back crossfade tail
+                if self._prev_tail:
+                    output_file.write(self._prev_tail)
+                    self._prev_tail = None
 
                 # Convert temp WAV to MP3 if needed
                 if self.is_mp3_output:
@@ -275,8 +284,8 @@ class NeuralProcessor:
                         try:
                             audio_part = self._process_single_chunk(sentence, i, total_chunks, tts_engine, voice_blend, speed)
                             # Strip WAV header from all but first part
-                            if j > 0 and len(audio_part) > 44:
-                                audio_part = audio_part[44:]
+                            if j > 0:
+                                audio_part = self._extract_pcm_frames(audio_part)
                             audio_parts.append(audio_part)
                         except Exception as sent_error:
                             # If even a single sentence fails, split it in half
@@ -285,8 +294,7 @@ class NeuralProcessor:
                                 part1 = self._process_single_chunk(sentence[:half], i, total_chunks, tts_engine, voice_blend, speed)
                                 part2 = self._process_single_chunk(sentence[half:], i, total_chunks, tts_engine, voice_blend, speed)
                                 audio_parts.append(part1)
-                                if len(part2) > 44:
-                                    audio_parts.append(part2[44:])
+                                audio_parts.append(self._extract_pcm_frames(part2))
                             except Exception as final_error:
                                 print(f"⚠️  Cannot synthesize part of chunk {i+1}, skipping this segment", flush=True)
                                 continue
@@ -444,6 +452,13 @@ class NeuralProcessor:
 
         return self._concatenate_audio_segments(audio_parts)
 
+    @staticmethod
+    def _extract_pcm_frames(wav_data: bytes) -> bytes:
+        """Extract raw PCM frames from WAV data, properly parsing the header."""
+        buf = io.BytesIO(wav_data)
+        with wave.open(buf, 'rb') as w:
+            return w.readframes(w.getnframes())
+
     def _voice_blend_to_str(self, voice_blend: Dict[str, float]) -> str:
         """Convert voice blend dict to voice string."""
         if len(voice_blend) == 1:
@@ -496,13 +511,33 @@ class NeuralProcessor:
         return wav_buffer.read()
     
     def _convert_and_write_chunk(self, output_file, audio_data: bytes):
-        """Stream WAV chunk data directly to disk."""
-        # Extract audio data from WAV chunk (skip header) and write to file
+        """Stream WAV chunk data to disk with crossfade to prevent clicks at boundaries."""
         wav_buffer = io.BytesIO(audio_data)
         with wave.open(wav_buffer, 'rb') as wav:
-            audio_frames = wav.readframes(wav.getnframes())
-            output_file.write(audio_frames)
-            output_file.flush()
+            frames = wav.readframes(wav.getnframes())
+
+        fade_bytes = CROSSFADE_SAMPLES * 2  # 2 bytes per sample (16-bit)
+
+        if self._prev_tail is not None and len(frames) >= fade_bytes:
+            # Crossfade: blend previous chunk's tail with this chunk's head
+            prev_samples = struct.unpack(f'<{CROSSFADE_SAMPLES}h', self._prev_tail)
+            head_samples = struct.unpack(f'<{CROSSFADE_SAMPLES}h', frames[:fade_bytes])
+            blended = []
+            for j in range(CROSSFADE_SAMPLES):
+                t = j / CROSSFADE_SAMPLES
+                s = int(prev_samples[j] * (1.0 - t) + head_samples[j] * t)
+                blended.append(max(-32768, min(32767, s)))
+            output_file.write(struct.pack(f'<{CROSSFADE_SAMPLES}h', *blended))
+            frames = frames[fade_bytes:]  # Rest of current chunk (after crossfaded head)
+
+        # Hold back the tail for next crossfade
+        if len(frames) > fade_bytes:
+            output_file.write(frames[:-fade_bytes])
+            self._prev_tail = frames[-fade_bytes:]
+        else:
+            output_file.write(frames)
+            self._prev_tail = None
+        output_file.flush()
     
 
     def _convert_wav_to_mp3(self):
@@ -528,12 +563,11 @@ class NeuralProcessor:
             cmd = [
                 get_ffmpeg_path(),
                 '-f', 's16le',                    # Raw signed 16-bit little-endian PCM
-                '-ar', str(DEFAULT_SAMPLE_RATE),   # Sample rate (22050)
+                '-ar', str(DEFAULT_SAMPLE_RATE),   # Sample rate (24000 — Kokoro v1.0 native)
                 '-ac', '1',                        # Mono
                 '-i', str(self.temp_wav_path),     # Read raw PCM from disk
                 '-c:a', 'libmp3lame',
                 '-b:a', bitrate,
-                '-q:a', '6',
                 '-ac', '1',
                 '-y', str(self.output_path)
             ]

@@ -38,7 +38,7 @@ Already installed via Poetry:
 - Spanish (3 voices): ef_dora, em_alex, em_santa
 - French (1 voice): ff_siwis
 - Hindi (4 voices): hf_alpha, hf_beta, hm_omega, hm_psi
-- Italian (2 voices): if_sara, im_nicola
+- Italian (2 voices): if_sara, im_nicola *(early-stage quality — may exhibit English accent on some words)*
 - Brazilian Portuguese (3 voices): pf_dora, pm_alex, pm_santa
 
 ## Usage Example
@@ -56,7 +56,7 @@ reader convert --debug --file text/sample.txt
 
 # Should show:
 # ✅ Kokoro initialized with Neural Engine acceleration (CoreML)
-# 🚀 Optimized settings: 48k mono MP3, Neural Engine acceleration
+# 🚀 Optimized settings: 24k mono MP3, Neural Engine acceleration
 
 # Test with different voices
 reader convert --voice af_sarah --file text/sample.txt

@@ -7,6 +7,12 @@ import warnings
 
 from ..interfaces.tts_engine import TTSEngine
 
+# Centralized model version constants — update here for future model upgrades
+KOKORO_MODEL_VERSION = "v1.0"
+KOKORO_MODEL_FILE = f"kokoro-{KOKORO_MODEL_VERSION}.onnx"
+KOKORO_VOICES_FILE = f"voices-{KOKORO_MODEL_VERSION}.bin"
+KOKORO_MODEL_URL = f"https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-{KOKORO_MODEL_VERSION}"
+
 try:
     from kokoro_onnx import Kokoro
     KOKORO_AVAILABLE = True
@@ -120,8 +126,8 @@ class KokoroEngine(TTSEngine):
             from ..utils.model_downloader import get_cache_dir, download_models
 
             cache = get_cache_dir() / "kokoro"
-            model_path = cache / "kokoro-v1.0.onnx"
-            voices_path = cache / "voices-v1.0.bin"
+            model_path = cache / KOKORO_MODEL_FILE
+            voices_path = cache / KOKORO_VOICES_FILE
 
             # Auto-download if not present
             if not model_path.exists() or not voices_path.exists():
@@ -169,7 +175,7 @@ class KokoroEngine(TTSEngine):
                 if platform.system() == "Darwin" and platform.machine() == "arm64":
                     if self.debug:
                         print("✅ Kokoro initialized with Neural Engine acceleration (CoreML)", flush=True)
-                        print(f"🚀 Optimized settings: 48k mono MP3, Neural Engine acceleration", flush=True)
+                        print(f"🚀 Optimized settings: 24k mono MP3, Neural Engine acceleration", flush=True)
                     
                     # Test inference speed
                     if self.debug:
@@ -389,16 +395,13 @@ class KokoroEngine(TTSEngine):
             return self.VOICES[voice_id]["lang"]
 
         # Infer from voice ID prefix
-        if voice_id.startswith('af_') or voice_id.startswith('am_'):
-            return "en-us"
-        elif voice_id.startswith('bf_') or voice_id.startswith('bm_'):
-            return "en-uk"
-        elif voice_id.startswith('ef_') or voice_id.startswith('em_'):
-            return "es"
-        elif voice_id.startswith('ff_') or voice_id.startswith('fm_'):
-            return "fr"
-        else:
-            return "en-us"  # Default
+        prefix_lang = {
+            'a': 'en-us', 'b': 'en-gb', 'e': 'es', 'f': 'fr',
+            'h': 'hi', 'i': 'it', 'j': 'ja', 'p': 'pt-br', 'z': 'zh',
+        }
+        if voice_id and len(voice_id) >= 2:
+            return prefix_lang.get(voice_id[0], 'en-us')
+        return 'en-us'
 
     def _sanitize_text(self, text: str) -> str:
         """Sanitize text to avoid Kokoro synthesis errors."""
@@ -651,8 +654,9 @@ class KokoroEngine(TTSEngine):
         
         # Ensure samples are in the right format for WAV
         if samples.dtype != np.int16:
-            # Convert float to int16
+            # Convert float to int16 with clipping to prevent overflow pops
             if samples.dtype == np.float32 or samples.dtype == np.float64:
+                samples = np.clip(samples, -1.0, 1.0)
                 samples = (samples * 32767).astype(np.int16)
         
         # Create WAV file in memory

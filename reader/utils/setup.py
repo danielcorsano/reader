@@ -112,10 +112,8 @@ def first_run_setup(base_path: Path) -> bool:
     if success:
         print("\n✅ Setup complete! Ready to create audiobooks.")
         print("\n📚 Quick Start:")
-        print("  1. Add a text file to the text/ directory")
-        print("  2. Run: reader convert")
-        print("  3. Find your audiobook in finished/")
-        print("\n💡 Tip: Run 'reader info' for more information")
+        print("  reader convert --file mybook.epub")
+        print("  Output: ~/Downloads/")
     else:
         print("\n❌ Setup incomplete. Please fix the errors above.")
 

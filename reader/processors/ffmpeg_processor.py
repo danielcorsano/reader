@@ -90,7 +90,7 @@ class FFmpegAudioProcessor(AudioProcessor):
             bitrate = ConfigManager().config.audio.bitrate
             return {
                 'bitrate': bitrate,
-                'parameters': ['-q:a', '6', '-ac', '1']  # VBR quality 6 (higher compression), mono for speed
+                'parameters': ['-ac', '1']  # Mono for audiobooks
             }
         elif format in ['m4a', 'm4b']:
             return {
