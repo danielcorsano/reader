@@ -300,6 +300,76 @@ reader.convert("book.epub")  # Uses configured voice/format/speed
 - `~/Downloads/` (default) - Configurable with `output_dir` parameter
 - Options: `"downloads"`, `"same"` (next to source), or custom path
 
+## Strip and Convert Workflow
+
+The recommended workflow is to strip non-content chapters first, then convert:
+
+```bash
+# Strip from CLI, then convert programmatically
+reader strip mybook.epub
+# → Auto-detects and removes front/back matter
+# → Review and refine chapter selection
+# → Saves mybook_stripped.epub
+
+# Then convert the stripped file
+import reader
+output = reader.convert("mybook_stripped.epub", voice="am_michael")
+```
+
+Or do everything from the CLI:
+
+```bash
+reader strip mybook.epub
+# → After stripping, offers conversion with interactive language/voice/speed dialog
+```
+
+## Available Voices (54 across 9 languages)
+
+Grades from [Kokoro-82M VOICES.md](https://huggingface.co/hexgrad/Kokoro-82M/blob/main/VOICES.md) reflect training data quality and quantity.
+
+**Top voices by grade:** af_heart (A), af_bella (A-), af_nicole (B-), bf_emma (B-), ff_siwis (B-)
+
+**American English** (20 voices):
+
+| Voice | Gender | Grade | Notes |
+|-------|--------|-------|-------|
+| af_heart | F | A | Best overall quality |
+| af_bella | F | A- | High quality, long training data |
+| af_nicole | F | B- | Long training data |
+| af_aoede | F | C+ | |
+| af_kore | F | C+ | |
+| af_sarah | F | C+ | |
+| af_alloy | F | C | |
+| af_nova | F | C | |
+| af_jessica | F | D | |
+| af_river | F | D | |
+| af_sky | F | C- | Very short training data |
+| am_michael | M | C+ | Default voice |
+| am_fenrir | M | C+ | |
+| am_puck | M | C+ | |
+| am_echo | M | D | |
+| am_eric | M | D | |
+| am_liam | M | D | |
+| am_onyx | M | D | |
+| am_adam | M | F+ | Low quality training data |
+| am_santa | M | D- | Very short training data |
+
+**British English** (8): bf_emma (F, B-), bf_isabella (F, C), bf_alice (F, D), bf_lily (F, D), bm_fable (M, C), bm_george (M, C), bm_lewis (M, D+), bm_daniel (M, D)
+
+**Japanese** (5): jf_alpha (F, C+), jf_gongitsune (F, C), jf_tebukuro (F, C), jf_nezumi (F, C-), jm_kumo (M, C-)
+
+**Mandarin Chinese** (8): zf_xiaobei (F, D), zf_xiaoni (F, D), zf_xiaoxiao (F, D), zf_xiaoyi (F, D), zm_yunjian (M, D), zm_yunxi (M, D), zm_yunxia (M, D), zm_yunyang (M, D)
+
+**Spanish** (3): ef_dora (F), em_alex (M), em_santa (M)
+
+**French** (1): ff_siwis (F, B-)
+
+**Hindi** (4): hf_alpha (F, C), hf_beta (F, C), hm_omega (M, C), hm_psi (M, C)
+
+**Italian** (2): if_sara (F, C), im_nicola (M, C)
+
+**Brazilian Portuguese** (3): pf_dora (F), pm_alex (M), pm_santa (M)
+
 ## Notes
 
 - All conversions use checkpoint/resume for reliability
