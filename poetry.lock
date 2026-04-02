@@ -2924,21 +2924,6 @@ socks = ["pysocks (>=1.5.6,!=1.5.7,<2.0)"]
 zstd = ["zstandard (>=0.18.0)"]
 
 [[package]]
-name = "vadersentiment"
-version = "3.3.2"
-description = "VADER Sentiment Analysis. VADER (Valence Aware Dictionary and sEntiment Reasoner) is a lexicon and rule-based sentiment analysis tool that is specifically attuned to sentiments expressed in social media, and works well on texts from other domains."
-optional = false
-python-versions = "*"
-groups = ["main"]
-files = [
-    {file = "vaderSentiment-3.3.2-py2.py3-none-any.whl", hash = "sha256:3bf1d243b98b1afad575b9f22bc2cb1e212b94ff89ca74f8a23a588d024ea311"},
-    {file = "vaderSentiment-3.3.2.tar.gz", hash = "sha256:5d7c06e027fc8b99238edb0d53d970cf97066ef97654009890b83703849632f9"},
-]
-
-[package.dependencies]
-requests = "*"
-
-[[package]]
 name = "wasabi"
 version = "1.1.3"
 description = "A lightweight console printing and formatting toolkit"
@@ -3093,4 +3078,4 @@ progress-tqdm = ["tqdm"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<3.14"
-content-hash = "dde02b5eb27c6ebcfb917dbc70a773301ed1c02e118617cb0f13f6ce1d794000"
+content-hash = "28b60b47e0289819fb0416baa22c63c49152bb557097bcc92f884286fb4513e2"
