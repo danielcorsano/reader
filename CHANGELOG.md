@@ -58,7 +58,6 @@ All notable user-facing changes to this project will be documented in this file.
 - **Neural Engine Optimization**: Apple M1/M2/M3/M4 acceleration via CoreML
 - **Kokoro TTS Integration**: 54 high-quality voices across 9 languages
 - **Character Voice Mapping**: Dialogue detection and character-specific voices
-- **Emotion Analysis**: VADER sentiment for dynamic prosody
 - **Multiple Input Formats**: EPUB, PDF, TXT, reStructuredText
 - **Progress Visualization**: 4 styles (simple, tqdm, rich, timeseries)
 - **Checkpoint Recovery**: Resume interrupted conversions

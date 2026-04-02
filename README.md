@@ -114,6 +114,9 @@ pip install audiobook-reader[progress-full]
 # With system monitoring
 pip install audiobook-reader[monitoring]
 
+# With G2P pronunciation enhancement (misaki)
+pip install audiobook-reader[g2p-en]
+
 # With everything
 pip install audiobook-reader[all]
 ```
