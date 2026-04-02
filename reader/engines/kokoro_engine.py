@@ -205,20 +205,22 @@ class KokoroEngine(TTSEngine):
             raise RuntimeError(f"Failed to initialize Kokoro: {e}")
     
     def synthesize(
-        self, 
-        text: str, 
+        self,
+        text: str,
         voice: Optional[str] = None,
         speed: float = 1.0,
-        volume: float = 1.0
+        volume: float = 1.0,
+        is_phonemes: bool = False
     ) -> bytes:
         """
         Synthesize text to speech using Kokoro.
-        
+
         Args:
-            text: Text to synthesize
+            text: Text to synthesize (or IPA phonemes if is_phonemes=True)
             voice: Voice identifier or blend (e.g., "af_sarah" or "af_sarah:60,af_nicole:40")
             speed: Speech rate multiplier
             volume: Volume multiplier (not directly supported by Kokoro)
+            is_phonemes: If True, text is pre-phonemized IPA from misaki G2P
             
         Returns:
             Audio data as bytes (WAV format)
@@ -245,7 +247,7 @@ class KokoroEngine(TTSEngine):
         
         # Check text length and chunk if necessary (should rarely happen with optimized input)
         if len(text) > 450:  # Slightly higher limit since we pre-chunk at 400
-            return self._synthesize_long_text(text, voice_blend, speed)
+            return self._synthesize_long_text(text, voice_blend, speed)  # Note: is_phonemes not passed; long text re-chunks which would break phoneme sequences
         
         try:
             # Generate audio with Kokoro for short text
@@ -271,7 +273,8 @@ class KokoroEngine(TTSEngine):
                         text=text,
                         voice=voice_id,
                         speed=speed,
-                        lang=self._get_voice_lang(voice_id)
+                        lang=self._get_voice_lang(voice_id),
+                        is_phonemes=is_phonemes
                     )
                 kokoro_logger.setLevel(original_level)
             else:
@@ -279,7 +282,8 @@ class KokoroEngine(TTSEngine):
                     text=text,
                     voice=voice_id,
                     speed=speed,
-                    lang=self._get_voice_lang(voice_id)
+                    lang=self._get_voice_lang(voice_id),
+                    is_phonemes=is_phonemes
                 )
 
             # Convert to WAV bytes

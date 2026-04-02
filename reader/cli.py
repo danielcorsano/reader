@@ -282,7 +282,8 @@ class ReaderApp:
         progress_style: str = "timeseries",
         character_config: Optional[Path] = None,
         output_dir: Optional[str] = None,
-        clean_text: bool = True
+        clean_text: bool = True,
+        use_g2p: bool = True
     ) -> Path:
         """Convert a single file to audiobook."""
         # Get parser
@@ -415,6 +416,7 @@ class ReaderApp:
             debug=debug,
             final_output_dir=final_output_dir
         )
+        processor.use_g2p = use_g2p
 
         # Split content into optimized chunks aligned with Kokoro's processing
         if tts_config.engine == "kokoro" and KOKORO_AVAILABLE:
@@ -556,7 +558,8 @@ def cli():
 @click.option('--progress-style', type=click.Choice(['simple', 'tqdm', 'rich', 'timeseries']), default='timeseries', help='Progress display: simple (text), tqdm (bars), rich (fancy), timeseries (charts)')
 @click.option('--output-dir', help='Output directory: "downloads" (~/Downloads), "same" (next to source), or explicit path')
 @click.option('--no-clean-text', is_flag=True, help='Disable text cleanup (keep broken words, bibliography, etc.)')
-def convert(voice, speed, format, file, characters, character_config, chapters, processing_level, batch_mode, checkpoint_interval, turbo_mode, debug, progress_style, output_dir, no_clean_text):
+@click.option('--no-g2p', is_flag=True, help='Disable misaki G2P phonemization even if installed')
+def convert(voice, speed, format, file, characters, character_config, chapters, processing_level, batch_mode, checkpoint_interval, turbo_mode, debug, progress_style, output_dir, no_clean_text, no_g2p):
     """Convert text files to audiobooks.
 
     All options are temporary overrides and won't be saved to config.
@@ -602,7 +605,8 @@ def convert(voice, speed, format, file, characters, character_config, chapters, 
                 turbo_mode=turbo_mode, debug=debug, progress_style=progress_style,
                 character_config=Path(character_config) if character_config else None,
                 output_dir=output_dir,
-                clean_text=not no_clean_text
+                clean_text=not no_clean_text,
+                use_g2p=not no_g2p
             )
             click.echo(f"✓ Conversion complete: {output_path}")
         except Exception as e:

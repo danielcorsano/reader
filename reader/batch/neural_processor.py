@@ -13,6 +13,7 @@ from abc import ABC, abstractmethod
 
 # Text processing utilities
 from ..text_processing.number_expander import get_number_expander
+from ..text_processing.phonemizer import get_phonemizer
 
 # Constants
 DEFAULT_SAMPLE_RATE = 24000  # Kokoro v1.0 native sample rate
@@ -148,6 +149,10 @@ class NeuralProcessor:
 
         # Number expansion for TTS (singleton instance)
         self.number_expander = get_number_expander()
+
+        # G2P phonemizer (optional, uses misaki if installed)
+        self.phonemizer = get_phonemizer(debug=debug)
+        self.use_g2p = True  # Can be disabled via --no-g2p
         
     def process_chunks(self, file_path: Path, text_chunks: List[str],
                       tts_engine, voice_blend: Dict[str, float], speed: float,
@@ -397,7 +402,13 @@ class NeuralProcessor:
                 voice_parts = [f"{voice}:{int(weight*100)}" for voice, weight in voice_blend.items()]
                 voice_str = ",".join(voice_parts)
 
-            return tts_engine.synthesize(clean_text, voice_str, speed)
+            # G2P phonemization (optional, improves pronunciation if misaki is installed)
+            is_phonemes = False
+            if self.use_g2p:
+                lang_code = tts_engine._get_voice_lang(voice_str) if hasattr(tts_engine, '_get_voice_lang') else 'en-us'
+                clean_text, is_phonemes = self.phonemizer.phonemize(clean_text, lang_code)
+
+            return tts_engine.synthesize(clean_text, voice_str, speed, is_phonemes=is_phonemes)
 
         except Exception as e:
             raise RuntimeError(f"Neural Engine processing failed on chunk {chunk_idx + 1}: {str(e)}") from e

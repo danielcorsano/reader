@@ -14,6 +14,7 @@ If you find this useful, please consider supporting via [GitHub Sponsors](https:
 
 ### 🎙️ **54 AI Voices in 9 Languages**
 - **American English** (20 voices), **British English** (8), **Japanese** (5), **Mandarin Chinese** (8), **Spanish** (3), **French** (1), **Hindi** (4), **Italian** (2), **Brazilian Portuguese** (3)
+- Top voices by quality grade: af_heart (A), af_bella (A-), af_nicole (B-), bf_emma (B-), ff_siwis (B-) — see [voice grades](https://huggingface.co/hexgrad/Kokoro-82M/blob/main/VOICES.md)
 - Voice blending, character voice mapping, and dialogue detection
 
 ### ⚡ **High-Performance Conversion**

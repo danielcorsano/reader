@@ -25,15 +25,50 @@ reader convert --file book.epub --voice im_nicola  # Italian
 
 ## Available Voices (54 across 9 languages)
 
-- **American English** (20): af_heart, af_alloy, af_aoede, af_bella, af_jessica, af_kore, af_nicole, af_nova, af_river, af_sarah, af_sky, am_adam, am_echo, am_eric, am_fenrir, am_liam, am_michael, am_onyx, am_puck, am_santa
-- **British English** (8): bf_alice, bf_emma, bf_isabella, bf_lily, bm_daniel, bm_fable, bm_george, bm_lewis
-- **Japanese** (5): jf_alpha, jf_gongitsune, jf_nezumi, jf_tebukuro, jm_kumo
-- **Mandarin Chinese** (8): zf_xiaobei, zf_xiaoni, zf_xiaoxiao, zf_xiaoyi, zm_yunjian, zm_yunxi, zm_yunxia, zm_yunyang
-- **Spanish** (3): ef_dora, em_alex, em_santa
-- **French** (1): ff_siwis
-- **Hindi** (4): hf_alpha, hf_beta, hm_omega, hm_psi
-- **Italian** (2): if_sara, im_nicola *(early-stage quality)*
-- **Brazilian Portuguese** (3): pf_dora, pm_alex, pm_santa
+Grades from [Kokoro-82M VOICES.md](https://huggingface.co/hexgrad/Kokoro-82M/blob/main/VOICES.md) reflect training data quality and quantity.
+
+**Top voices by grade:** af_heart (A), af_bella (A-), af_nicole (B-), bf_emma (B-), ff_siwis (B-)
+
+**American English** (20 voices):
+
+| Voice | Gender | Grade | Notes |
+|-------|--------|-------|-------|
+| af_heart | F | A | Best overall quality |
+| af_bella | F | A- | High quality, long training data |
+| af_nicole | F | B- | Long training data |
+| af_aoede | F | C+ | |
+| af_kore | F | C+ | |
+| af_sarah | F | C+ | |
+| af_alloy | F | C | |
+| af_nova | F | C | |
+| af_jessica | F | D | |
+| af_river | F | D | |
+| af_sky | F | C- | Very short training data |
+| am_michael | M | C+ | Default voice |
+| am_fenrir | M | C+ | |
+| am_puck | M | C+ | |
+| am_echo | M | D | |
+| am_eric | M | D | |
+| am_liam | M | D | |
+| am_onyx | M | D | |
+| am_adam | M | F+ | Low quality training data |
+| am_santa | M | D- | Very short training data |
+
+**British English** (8): bf_emma (F, B-), bf_isabella (F, C), bf_alice (F, D), bf_lily (F, D), bm_fable (M, C), bm_george (M, C), bm_lewis (M, D+), bm_daniel (M, D)
+
+**Japanese** (5): jf_alpha (F, C+), jf_gongitsune (F, C), jf_tebukuro (F, C), jf_nezumi (F, C-), jm_kumo (M, C-)
+
+**Mandarin Chinese** (8): zf_xiaobei (F, D), zf_xiaoni (F, D), zf_xiaoxiao (F, D), zf_xiaoyi (F, D), zm_yunjian (M, D), zm_yunxi (M, D), zm_yunxia (M, D), zm_yunyang (M, D)
+
+**Spanish** (3): ef_dora (F), em_alex (M), em_santa (M)
+
+**French** (1): ff_siwis (F, B-)
+
+**Hindi** (4): hf_alpha (F, C), hf_beta (F, C), hm_omega (M, C), hm_psi (M, C)
+
+**Italian** (2): if_sara (F, C), im_nicola (M, C)
+
+**Brazilian Portuguese** (3): pf_dora (F), pm_alex (M), pm_santa (M)
 
 ## Strip and Convert
 
