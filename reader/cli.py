@@ -1453,106 +1453,6 @@ def _parse_strip_syntax(user_input: str, total_chapters: int) -> Optional[set]:
         return indices
 
 
-def _write_stripped_epub(input_path: Path, chapters: List[dict], keep_indices: set, output_path: Path) -> bool:
-    """Write stripped EPUB with only kept chapters."""
-    try:
-        import ebooklib
-        from ebooklib import epub
-        from bs4 import BeautifulSoup
-        import warnings
-
-        with warnings.catch_warnings():
-            warnings.filterwarnings("ignore", category=FutureWarning)
-            warnings.filterwarnings("ignore", category=UserWarning)
-            book = epub.read_epub(str(input_path), options={'ignore_ncx': True})
-
-        # Get spine items
-        spine_item_ids = [item_id for item_id, linear in book.spine]
-
-        # Map chapters to spine items (approximate - based on order)
-        # Create new book with only kept items
-        new_book = epub.EpubBook()
-
-        # Copy metadata
-        for ns, values in book.metadata.items():
-            for name, value_list in values.items():
-                for value, attrs in value_list:
-                    if ns == 'http://purl.org/dc/elements/1.1/':
-                        new_book.add_metadata('DC', name, value, attrs if attrs else {})
-
-        # Set unique identifier
-        new_book.set_identifier(f"{book.get_metadata('DC', 'identifier')[0][0] if book.get_metadata('DC', 'identifier') else 'stripped'}_stripped")
-        new_book.set_title(f"{book.get_metadata('DC', 'title')[0][0] if book.get_metadata('DC', 'title') else 'Stripped'}")
-        new_book.set_language(book.get_metadata('DC', 'language')[0][0] if book.get_metadata('DC', 'language') else 'en')
-
-        # Track which items to keep
-        kept_items = []
-        new_spine = []
-
-        # Get filtered spine items (same filter as used in parsing)
-        content_idx = 0
-        for item_id, linear in book.spine:
-            item = book.get_item_with_id(item_id)
-            if item and item.get_type() == ebooklib.ITEM_DOCUMENT:
-                # Check if this item passes the content filter (same as EPUBParser)
-                item_name = item.get_name().lower()
-
-                # Skip non-content items (cover, toc, etc.)
-                skip_patterns = ['cover', 'title.html', 'toc.html', 'contents', 'index.html', 'notes.html', 'copy.html', 'dsi.html', 'copyright', '_img.html']
-                if any(x in item_name for x in skip_patterns):
-                    # Include these unconditionally (they're not counted as chapters)
-                    new_item = epub.EpubHtml(title=item.get_name(), file_name=item.get_name(), media_type='application/xhtml+xml')
-                    new_item.set_content(item.get_content())
-                    new_book.add_item(new_item)
-                    new_spine.append(new_item)
-                    continue
-
-                # Check content length
-                try:
-                    soup = BeautifulSoup(item.get_content(), 'html.parser')
-                    text = soup.get_text(strip=True)
-                    if len(text) < 100:
-                        # Too short, include but don't count
-                        new_item = epub.EpubHtml(title=item.get_name(), file_name=item.get_name(), media_type='application/xhtml+xml')
-                        new_item.set_content(item.get_content())
-                        new_book.add_item(new_item)
-                        new_spine.append(new_item)
-                        continue
-                except Exception:
-                    continue
-
-                # This is a real content chapter
-                if content_idx in keep_indices:
-                    new_item = epub.EpubHtml(title=item.get_name(), file_name=item.get_name(), media_type='application/xhtml+xml')
-                    new_item.set_content(item.get_content())
-                    new_book.add_item(new_item)
-                    new_spine.append(new_item)
-                    kept_items.append(item.get_name())
-
-                content_idx += 1
-
-        # Copy CSS and images
-        for item in book.get_items():
-            if item.get_type() in [ebooklib.ITEM_STYLE, ebooklib.ITEM_IMAGE]:
-                new_book.add_item(item)
-
-        # Set spine
-        new_book.spine = new_spine
-
-        # Add NCX and Nav
-        new_book.add_item(epub.EpubNcx())
-        new_book.add_item(epub.EpubNav())
-
-        # Write the new EPUB
-        epub.write_epub(str(output_path), new_book, {})
-
-        return True
-
-    except Exception as e:
-        click.echo(f"Error writing EPUB: {e}", err=True)
-        return False
-
-
 def _write_stripped_text(chapters: List[dict], keep_indices: set, output_path: Path) -> bool:
     """Write stripped text file with only kept chapters."""
     try:
@@ -1811,24 +1711,11 @@ def strip(file_path):
         click.echo("Error: No chapters would remain. Aborting.")
         return
 
-    # Determine output path
-    suffix = input_file.suffix
-    output_name = input_file.stem + "_stripped" + suffix
-    output_path = input_file.parent / output_name
+    # Always output as plain text for reliability
+    output_path = input_file.parent / (input_file.stem + "_stripped.txt")
 
-    # Handle different formats
     click.echo(f"\nKeeping {len(keep_indices)} of {len(chapters)} chapters...")
-
-    if suffix.lower() == '.epub':
-        success = _write_stripped_epub(input_file, chapters, keep_indices, output_path)
-    elif suffix.lower() == '.pdf':
-        # PDF: extract to text
-        output_path = input_file.parent / (input_file.stem + "_stripped.txt")
-        click.echo("Note: PDF will be saved as text file (PDF modification not supported).")
-        success = _write_stripped_text(chapters, keep_indices, output_path)
-    else:
-        # TXT, MD, RST
-        success = _write_stripped_text(chapters, keep_indices, output_path)
+    success = _write_stripped_text(chapters, keep_indices, output_path)
 
     if success:
         click.echo(f"Saved: {output_path}")
