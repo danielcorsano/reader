@@ -1501,7 +1501,7 @@ def _write_stripped_epub(input_path: Path, chapters: List[dict], keep_indices: s
                 skip_patterns = ['cover', 'title.html', 'toc.html', 'contents', 'index.html', 'notes.html', 'copy.html', 'dsi.html', 'copyright', '_img.html']
                 if any(x in item_name for x in skip_patterns):
                     # Include these unconditionally (they're not counted as chapters)
-                    new_item = epub.EpubHtml(title=item.get_name(), file_name=item.get_name())
+                    new_item = epub.EpubHtml(title=item.get_name(), file_name=item.get_name(), media_type='application/xhtml+xml')
                     new_item.set_content(item.get_content())
                     new_book.add_item(new_item)
                     new_spine.append(new_item)
@@ -1513,7 +1513,7 @@ def _write_stripped_epub(input_path: Path, chapters: List[dict], keep_indices: s
                     text = soup.get_text(strip=True)
                     if len(text) < 100:
                         # Too short, include but don't count
-                        new_item = epub.EpubHtml(title=item.get_name(), file_name=item.get_name())
+                        new_item = epub.EpubHtml(title=item.get_name(), file_name=item.get_name(), media_type='application/xhtml+xml')
                         new_item.set_content(item.get_content())
                         new_book.add_item(new_item)
                         new_spine.append(new_item)
@@ -1523,7 +1523,7 @@ def _write_stripped_epub(input_path: Path, chapters: List[dict], keep_indices: s
 
                 # This is a real content chapter
                 if content_idx in keep_indices:
-                    new_item = epub.EpubHtml(title=item.get_name(), file_name=item.get_name())
+                    new_item = epub.EpubHtml(title=item.get_name(), file_name=item.get_name(), media_type='application/xhtml+xml')
                     new_item.set_content(item.get_content())
                     new_book.add_item(new_item)
                     new_spine.append(new_item)
