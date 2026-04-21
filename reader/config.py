@@ -3,7 +3,6 @@ import yaml
 from pathlib import Path
 from typing import Dict, Any, Optional
 from dataclasses import dataclass, asdict
-from copy import deepcopy
 
 
 @dataclass

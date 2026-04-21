@@ -94,7 +94,7 @@ class CharacterVoiceMapper:
             voice: af_sarah
             gender: female
           - name: Bob
-            voice: am_michael
+            voice: bm_fable
             gender: male
 
         Returns:
@@ -351,7 +351,7 @@ class CharacterVoiceMapper:
                 # Fallback to basic assignment using configured default
                 from ..config import ConfigManager
                 config = ConfigManager().config
-                fallback_voice = config.tts.voice or "am_michael"
+                fallback_voice = config.tts.voice or "bm_fable"
                 return {name: fallback_voice for name in character_names}
 
         available_voices = voice_engine.list_voices()
@@ -420,7 +420,7 @@ class CharacterVoiceMapper:
         # Use configured fallback voice
         from ..config import ConfigManager
         config = ConfigManager().config
-        return config.tts.voice or "am_michael"  # Use configured voice or default
+        return config.tts.voice or "bm_fable"  # Use configured voice or default
     
     def analyze_text_for_voices(self, text: str) -> Dict[str, any]:
         """

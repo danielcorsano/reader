@@ -87,7 +87,8 @@ def conversion_dialog(default_speed=1.0):
     voice_list = sorted(langs[selected_lang], key=lambda v: v[1]["name"])
     click.echo(f"\nVoices for {LANG_DISPLAY.get(selected_lang, selected_lang)}:")
     for i, (vid, info) in enumerate(voice_list, 1):
-        click.echo(f"  {i}. {info['name']} ({info['gender']}) [{vid}]")
+        grade = info.get('grade', '?')
+        click.echo(f"  {i}. {info['name']} ({info['gender']}) [{vid}] grade: {grade}")
 
     while True:
         choice = click.prompt("Select voice", type=int)
@@ -414,20 +415,30 @@ class ReaderApp:
             character_mapper=self.character_mapper if processing_config.character_voices else None,
             dialogue_detector=self.dialogue_detector if processing_config.character_voices else None,
             debug=debug,
-            final_output_dir=final_output_dir
+            final_output_dir=final_output_dir,
+            pause_between_chapters=processing_config.pause_between_chapters
         )
         processor.use_g2p = use_g2p
 
-        # Split content into optimized chunks aligned with Kokoro's processing
-        if tts_config.engine == "kokoro" and KOKORO_AVAILABLE:
-            # Use 400-char chunks to match Kokoro's optimal size (no re-chunking)
-            kokoro_engine = self.get_tts_engine()
-            text_chunks = kokoro_engine._chunk_text_intelligently(parsed_content.content, max_length=400)
-        else:
-            # Use basic chunking for non-Kokoro engines (if any added later)
-            chunk_size = min(400, processing_config.chunk_size)
-            text_chunks = [parsed_content.content[i:i+chunk_size]
-                          for i in range(0, len(parsed_content.content), chunk_size)]
+        # Split content into optimized chunks, preserving chapter breaks as pause markers
+        CHAPTER_BREAK = '---CHAPTER_BREAK---'
+        sections = parsed_content.content.split(CHAPTER_BREAK)
+
+        text_chunks = []
+        for idx, section in enumerate(sections):
+            section = section.strip()
+            if not section:
+                continue
+            if tts_config.engine == "kokoro" and KOKORO_AVAILABLE:
+                kokoro_engine = self.get_tts_engine()
+                text_chunks.extend(kokoro_engine._chunk_text_intelligently(section, max_length=400))
+            else:
+                chunk_size = min(400, processing_config.chunk_size)
+                text_chunks.extend([section[i:i+chunk_size]
+                                   for i in range(0, len(section), chunk_size)])
+            # Insert empty chunk as chapter pause marker (except after last section)
+            if idx < len(sections) - 1:
+                text_chunks.append("")
 
         # Get voice blend configuration
         voice_blend = {}
@@ -436,7 +447,7 @@ class ReaderApp:
         else:
             # Default voice
             if tts_config.engine == "kokoro":
-                voice_blend = {"am_michael": 1.0}
+                voice_blend = {"bm_fable": 1.0}
             else:
                 voice_blend = {"default": 1.0}
 
@@ -500,7 +511,7 @@ class ReaderApp:
         Settings are abbreviated and only included if non-default.
         """
         audio_dir = self.audio_dir
-        voice = tts_config.voice or "am_michael"
+        voice = tts_config.voice or "bm_fable"
 
         # Build filename: title_voice
         filename_parts = [title, voice]
@@ -543,7 +554,7 @@ def cli():
 
 
 @cli.command()
-@click.option('--voice', '-v', help='Voice to use for synthesis (e.g., am_michael, af_sarah)')
+@click.option('--voice', '-v', help='Voice to use for synthesis (e.g., bm_fable, af_heart)')
 @click.option('--speed', '-s', type=float, help='Speech speed multiplier - 1.0 is normal, 1.2 is 20% faster (e.g., 1.2)')
 @click.option('--format', '-f', type=click.Choice(['wav', 'mp3', 'm4a', 'm4b']), help='Output audio format (default: mp3)')
 @click.option('--file', '-F', type=click.Path(exists=True), help='Convert specific file (required)')
@@ -653,10 +664,9 @@ def voices(language, gender):
     # Display voices
     for voice in filtered_voices:
         voice_info = kokoro_voices[voice]
+        grade = voice_info.get('grade', '?')
         click.echo(f"  - {voice}")
-        click.echo(f"    Name: {voice_info['name']}")
-        click.echo(f"    Gender: {voice_info['gender']}")
-        click.echo(f"    Language: {voice_info['lang']}")
+        click.echo(f"    Name: {voice_info['name']}  |  Gender: {voice_info['gender']}  |  Lang: {voice_info['lang']}  |  Grade: {grade}")
 
 
 @cli.group()
@@ -1041,7 +1051,7 @@ def info():
     # Basic commands
     click.echo("\n💻 Basic Commands:")
     click.echo("  reader convert --file book.epub           # Convert file")
-    click.echo("  reader convert --file book.epub --voice am_michael  # Use specific voice")
+    click.echo("  reader convert --file book.epub --voice bm_fable  # Use specific voice")
     click.echo("  reader convert --file book.epub --characters  # Enable character voices")
     click.echo("  reader voices                             # List available voices")
     click.echo("  reader config                             # View/set preferences")

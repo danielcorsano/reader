@@ -204,7 +204,7 @@ echo "Hello world! This is my first audiobook." > hello.txt
 # 2. Convert it
 reader convert --file hello.txt
 
-# 3. Listen to ~/Downloads/hello_kokoro_am_michael.mp3
+# 3. Listen to ~/Downloads/hello_kokoro_bm_fable.mp3
 ```
 
 ### Custom Voice Examples
@@ -229,9 +229,9 @@ reader convert --file book2.pdf --output-dir /audiobooks
 reader convert --file story.txt --output-dir /audiobooks
 
 # Results:
-# - /audiobooks/book1_kokoro_am_michael.mp3
-# - /audiobooks/book2_kokoro_am_michael.mp3
-# - /audiobooks/story_kokoro_am_michael.mp3
+# - /audiobooks/book1_kokoro_bm_fable.mp3
+# - /audiobooks/book2_kokoro_bm_fable.mp3
+# - /audiobooks/story_kokoro_bm_fable.mp3
 ```
 
 ### Strip and Convert Example
@@ -328,7 +328,7 @@ Override settings for specific directories/projects. Reader searches upward from
 ```yaml
 # ~/books/fiction/.reader.yaml
 tts:
-  voice: am_michael       # Dramatic narrator voice
+  voice: bm_fable         # Dramatic narrator voice
   speed: 1.0              # Normal speed for immersion
 processing:
   character_voices: true  # Enable character-specific voices
@@ -361,13 +361,13 @@ output_dir: /audiobooks
 ```yaml
 # Project config: ~/books/fiction/.reader.yaml
 tts:
-  voice: am_michael       # Override voice only
+  voice: bm_fable         # Override voice only
 processing:
   character_voices: true  # Add new setting
 ```
 
 **Result when converting `~/books/fiction/novel.epub`:**
-- `voice`: `am_michael` (from project config)
+- `voice`: `bm_fable` (from project config)
 - `speed`: `1.2` (from user config - inherited!)
 - `format`: `m4b` (from user config - inherited!)
 - `character_voices`: `true` (from project config)
@@ -389,7 +389,7 @@ reader config --voice af_sarah --speed 1.2 --format m4b
 cd ~/books/fiction
 cat > .reader.yaml << EOF
 tts:
-  voice: am_michael
+  voice: bm_fable
 processing:
   character_voices: true
 EOF
@@ -529,7 +529,7 @@ reader characters remove "Alice"
 | af_jessica | F | D | |
 | af_river | F | D | |
 | af_sky | F | C- | Very short training data |
-| am_michael | M | C+ | Default voice |
+| am_michael | M | C+ | |
 | am_fenrir | M | C+ | |
 | am_puck | M | C+ | |
 | am_echo | M | D | |
@@ -539,7 +539,7 @@ reader characters remove "Alice"
 | am_adam | M | F+ | Low quality training data |
 | am_santa | M | D- | Very short training data |
 
-**British English** (8): bf_emma (F, B-), bf_isabella (F, C), bf_alice (F, D), bf_lily (F, D), bm_fable (M, C), bm_george (M, C), bm_lewis (M, D+), bm_daniel (M, D)
+**British English** (8): bf_emma (F, B-), bf_isabella (F, C), bf_alice (F, D), bf_lily (F, D), bm_fable (M, C, default), bm_george (M, C), bm_lewis (M, D+), bm_daniel (M, D)
 
 **Japanese** (5): jf_alpha (F, C+), jf_gongitsune (F, C), jf_tebukuro (F, C), jf_nezumi (F, C-), jm_kumo (M, C-)
 

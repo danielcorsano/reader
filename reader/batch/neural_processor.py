@@ -113,7 +113,7 @@ class NeuralProcessor:
 
     def __init__(self, output_path: Path, checkpoint_interval: int = DEFAULT_CHECKPOINT_INTERVAL,
                  progress_style: str = "timeseries", character_mapper=None, dialogue_detector=None, debug: bool = False,
-                 final_output_dir: Path = None):
+                 final_output_dir: Path = None, pause_between_chapters: float = 1.0):
         self.output_path = output_path
         self.checkpoint_interval = checkpoint_interval
         self.checkpoint_path = output_path.with_suffix('.checkpoint')
@@ -135,6 +135,9 @@ class NeuralProcessor:
         # Character voice support
         self.character_mapper = character_mapper
         self.dialogue_detector = dialogue_detector
+
+        # Chapter pause duration
+        self.pause_between_chapters = pause_between_chapters
 
         # Crossfade state for smooth chunk transitions
         self._prev_tail = None  # Last CROSSFADE_SAMPLES of previous chunk (raw PCM bytes)
@@ -354,8 +357,8 @@ class NeuralProcessor:
                              tts_engine, voice_blend: Dict[str, float], speed: float) -> bytes:
         """Process a single text chunk to audio with Neural Engine."""
         if not chunk_text.strip():
-            # Return silence for empty chunks
-            silence_samples = int(SILENCE_DURATION * DEFAULT_SAMPLE_RATE)
+            # Empty chunks are chapter break markers — insert chapter pause
+            silence_samples = int(self.pause_between_chapters * DEFAULT_SAMPLE_RATE)
             silence_data = b'\\x00\\x00' * silence_samples
 
             wav_buffer = io.BytesIO()

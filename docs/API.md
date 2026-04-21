@@ -18,7 +18,7 @@ import reader
 # Convert with defaults (outputs to ~/Downloads/)
 output = reader.convert("mybook.epub")
 print(f"Audiobook created: {output}")
-# Output: Audiobook created: /Users/name/Downloads/mybook_kokoro_am_michael.mp3
+# Output: Audiobook created: /Users/name/Downloads/mybook_kokoro_bm_fable.mp3
 ```
 
 ### Customized Conversion
@@ -59,7 +59,7 @@ r = Reader()
 # Convert file
 output = r.convert(
     "mybook.epub",
-    voice="am_michael",
+    voice="bm_fable",
     speed=1.0,
     character_voices=True,      # Enable character voice mapping
     progress_style="timeseries" # Real-time visualization
@@ -115,9 +115,9 @@ def list_voices() -> Dict[str, Any]
 - Dictionary mapping voice IDs to voice information:
   ```python
   {
-      'am_michael': {
+      'bm_fable': {
           'gender': 'Male',
-          'language': 'American English',
+          'language': 'British English',
           'sample_rate': 24000
       },
       ...
@@ -313,7 +313,7 @@ reader strip mybook.epub
 
 # Then convert the stripped file
 import reader
-output = reader.convert("mybook_stripped.epub", voice="am_michael")
+output = reader.convert("mybook_stripped.epub", voice="bm_fable")
 ```
 
 Or do everything from the CLI:
@@ -344,7 +344,7 @@ Grades from [Kokoro-82M VOICES.md](https://huggingface.co/hexgrad/Kokoro-82M/blo
 | af_jessica | F | D | |
 | af_river | F | D | |
 | af_sky | F | C- | Very short training data |
-| am_michael | M | C+ | Default voice |
+| am_michael | M | C+ | |
 | am_fenrir | M | C+ | |
 | am_puck | M | C+ | |
 | am_echo | M | D | |
@@ -354,7 +354,7 @@ Grades from [Kokoro-82M VOICES.md](https://huggingface.co/hexgrad/Kokoro-82M/blo
 | am_adam | M | F+ | Low quality training data |
 | am_santa | M | D- | Very short training data |
 
-**British English** (8): bf_emma (F, B-), bf_isabella (F, C), bf_alice (F, D), bf_lily (F, D), bm_fable (M, C), bm_george (M, C), bm_lewis (M, D+), bm_daniel (M, D)
+**British English** (8): bf_emma (F, B-), bf_isabella (F, C), bf_alice (F, D), bf_lily (F, D), bm_fable (M, C, default), bm_george (M, C), bm_lewis (M, D+), bm_daniel (M, D)
 
 **Japanese** (5): jf_alpha (F, C+), jf_gongitsune (F, C), jf_tebukuro (F, C), jf_nezumi (F, C-), jm_kumo (M, C-)
 

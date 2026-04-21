@@ -16,5 +16,5 @@
 
 ## Backlog
 
-- Evaluate changing default voice from am_michael (C+) to af_heart (A) or af_bella (A-)
+- ~~Evaluate changing default voice~~ — changed to bm_fable (British English, C grade)
 - CHANGELOG links point to GitHub release tags but no GitHub releases exist — consider removing or creating releases
