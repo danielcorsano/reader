@@ -70,7 +70,7 @@ reader batch status
 ```bash
 # Map characters to voices
 reader characters add "Alice" af_sarah
-reader characters add "Bob" am_michael
+reader characters add "Bob" bm_fable
 
 # Auto-detect characters from text
 reader characters detect novel.txt --auto-assign
@@ -99,7 +99,7 @@ Priority: defaults → user config → project config → CLI arguments.
 ```yaml
 # ~/books/fiction/.reader.yaml
 tts:
-  voice: am_michael
+  voice: bm_fable
 processing:
   character_voices: true
 ```
@@ -134,7 +134,7 @@ Grades from [Kokoro-82M VOICES.md](https://huggingface.co/hexgrad/Kokoro-82M/blo
 | af_jessica | F | D | |
 | af_river | F | D | |
 | af_sky | F | C- | Very short training data |
-| am_michael | M | C+ | Default voice |
+| am_michael | M | C+ | |
 | am_fenrir | M | C+ | |
 | am_puck | M | C+ | |
 | am_echo | M | D | |
@@ -144,7 +144,7 @@ Grades from [Kokoro-82M VOICES.md](https://huggingface.co/hexgrad/Kokoro-82M/blo
 | am_adam | M | F+ | Low quality training data |
 | am_santa | M | D- | Very short training data |
 
-**British English** (8): bf_emma (F, B-), bf_isabella (F, C), bf_alice (F, D), bf_lily (F, D), bm_fable (M, C), bm_george (M, C), bm_lewis (M, D+), bm_daniel (M, D)
+**British English** (8): bf_emma (F, B-), bf_isabella (F, C), bf_alice (F, D), bf_lily (F, D), bm_fable (M, C, default), bm_george (M, C), bm_lewis (M, D+), bm_daniel (M, D)
 
 **Japanese** (5): jf_alpha (F, C+), jf_gongitsune (F, C), jf_tebukuro (F, C), jf_nezumi (F, C-), jm_kumo (M, C-)
 

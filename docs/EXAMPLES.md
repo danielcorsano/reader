@@ -4,7 +4,7 @@
 
 ```bash
 reader convert --file mybook.epub
-# Output: ~/Downloads/mybook_am_michael_sp1p1.mp3
+# Output: ~/Downloads/mybook_bm_fable.mp3
 ```
 
 ## Choose a Voice
@@ -44,7 +44,7 @@ Grades from [Kokoro-82M VOICES.md](https://huggingface.co/hexgrad/Kokoro-82M/blo
 | af_jessica | F | D | |
 | af_river | F | D | |
 | af_sky | F | C- | Very short training data |
-| am_michael | M | C+ | Default voice |
+| am_michael | M | C+ | |
 | am_fenrir | M | C+ | |
 | am_puck | M | C+ | |
 | am_echo | M | D | |
@@ -54,7 +54,7 @@ Grades from [Kokoro-82M VOICES.md](https://huggingface.co/hexgrad/Kokoro-82M/blo
 | am_adam | M | F+ | Low quality training data |
 | am_santa | M | D- | Very short training data |
 
-**British English** (8): bf_emma (F, B-), bf_isabella (F, C), bf_alice (F, D), bf_lily (F, D), bm_fable (M, C), bm_george (M, C), bm_lewis (M, D+), bm_daniel (M, D)
+**British English** (8): bf_emma (F, B-), bf_isabella (F, C), bf_alice (F, D), bf_lily (F, D), bm_fable (M, C, default), bm_george (M, C), bm_lewis (M, D+), bm_daniel (M, D)
 
 **Japanese** (5): jf_alpha (F, C+), jf_gongitsune (F, C), jf_tebukuro (F, C), jf_nezumi (F, C-), jm_kumo (M, C-)
 
@@ -90,7 +90,7 @@ reader characters detect novel.txt --auto-assign
 
 # Or manually map characters
 reader characters add "Alice" af_sarah
-reader characters add "Bob" am_michael
+reader characters add "Bob" bm_fable
 
 # Convert with character voices
 reader convert --characters --file novel.txt
@@ -118,7 +118,7 @@ reader convert --file story.txt --output-dir /audiobooks
 
 ```bash
 # Save preferred settings
-reader config --voice am_michael --speed 1.0 --format mp3
+reader config --voice bm_fable --speed 1.0 --format mp3
 
 # Override per-conversion
 reader convert --voice af_sarah --file book.epub

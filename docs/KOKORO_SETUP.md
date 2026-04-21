@@ -48,7 +48,7 @@ Already installed via Poetry:
 | af_jessica | F | D | |
 | af_river | F | D | |
 | af_sky | F | C- | Very short training data |
-| am_michael | M | C+ | Default voice |
+| am_michael | M | C+ | |
 | am_fenrir | M | C+ | |
 | am_puck | M | C+ | |
 | am_echo | M | D | |
@@ -66,7 +66,7 @@ Already installed via Poetry:
 | bf_isabella | F | C | |
 | bf_alice | F | D | |
 | bf_lily | F | D | |
-| bm_fable | M | C | |
+| bm_fable | M | C | Default voice |
 | bm_george | M | C | |
 | bm_lewis | M | D+ | |
 | bm_daniel | M | D | |
@@ -151,7 +151,7 @@ reader convert --debug --file text/sample.txt
 
 # Test with different voices
 reader convert --voice af_sarah --file text/sample.txt
-reader convert --voice am_michael --file text/sample.txt
+reader convert --voice bm_fable --file text/sample.txt
 reader convert --voice bf_emma --file text/sample.txt
 
 # List all available voices

@@ -2,7 +2,7 @@
 import subprocess
 import tempfile
 from pathlib import Path
-from typing import List, Dict, Any, Optional, Union
+from typing import List, Dict, Any, Optional
 import json
 
 from ..interfaces.audio_processor import AudioProcessor
