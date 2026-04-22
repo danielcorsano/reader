@@ -2,6 +2,16 @@
 
 All notable user-facing changes to this project will be documented in this file.
 
+## [0.4.0] - 2026-04-22
+
+### Added
+- Voice quality grades from Kokoro-82M shown in CLI, interactive dialog, and `reader voices`
+- Configurable pause between chapters (`pause_between_chapters` in config, default 1.0s)
+- Full voice reference page (`docs/VOICES.md`) with all 54 voices and grades
+
+### Changed
+- Default voice changed from am_michael (American English) to bm_fable (British English)
+
 ## [0.3.1] - 2026-04-01
 
 ### Added
