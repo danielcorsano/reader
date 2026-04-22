@@ -13,6 +13,7 @@ from abc import ABC, abstractmethod
 
 # Text processing utilities
 from ..text_processing.number_expander import get_number_expander
+from ..text_processing.phonemizer import get_phonemizer
 
 # Constants
 DEFAULT_SAMPLE_RATE = 24000  # Kokoro v1.0 native sample rate
@@ -112,7 +113,7 @@ class NeuralProcessor:
 
     def __init__(self, output_path: Path, checkpoint_interval: int = DEFAULT_CHECKPOINT_INTERVAL,
                  progress_style: str = "timeseries", character_mapper=None, dialogue_detector=None, debug: bool = False,
-                 final_output_dir: Path = None):
+                 final_output_dir: Path = None, pause_between_chapters: float = 1.0):
         self.output_path = output_path
         self.checkpoint_interval = checkpoint_interval
         self.checkpoint_path = output_path.with_suffix('.checkpoint')
@@ -135,6 +136,9 @@ class NeuralProcessor:
         self.character_mapper = character_mapper
         self.dialogue_detector = dialogue_detector
 
+        # Chapter pause duration
+        self.pause_between_chapters = pause_between_chapters
+
         # Crossfade state for smooth chunk transitions
         self._prev_tail = None  # Last CROSSFADE_SAMPLES of previous chunk (raw PCM bytes)
 
@@ -148,6 +152,10 @@ class NeuralProcessor:
 
         # Number expansion for TTS (singleton instance)
         self.number_expander = get_number_expander()
+
+        # G2P phonemizer (optional, uses misaki if installed)
+        self.phonemizer = get_phonemizer(debug=debug)
+        self.use_g2p = True  # Can be disabled via --no-g2p
         
     def process_chunks(self, file_path: Path, text_chunks: List[str],
                       tts_engine, voice_blend: Dict[str, float], speed: float,
@@ -349,8 +357,8 @@ class NeuralProcessor:
                              tts_engine, voice_blend: Dict[str, float], speed: float) -> bytes:
         """Process a single text chunk to audio with Neural Engine."""
         if not chunk_text.strip():
-            # Return silence for empty chunks
-            silence_samples = int(SILENCE_DURATION * DEFAULT_SAMPLE_RATE)
+            # Empty chunks are chapter break markers — insert chapter pause
+            silence_samples = int(self.pause_between_chapters * DEFAULT_SAMPLE_RATE)
             silence_data = b'\\x00\\x00' * silence_samples
 
             wav_buffer = io.BytesIO()
@@ -397,7 +405,13 @@ class NeuralProcessor:
                 voice_parts = [f"{voice}:{int(weight*100)}" for voice, weight in voice_blend.items()]
                 voice_str = ",".join(voice_parts)
 
-            return tts_engine.synthesize(clean_text, voice_str, speed)
+            # G2P phonemization (optional, improves pronunciation if misaki is installed)
+            is_phonemes = False
+            if self.use_g2p:
+                lang_code = tts_engine._get_voice_lang(voice_str) if hasattr(tts_engine, '_get_voice_lang') else 'en-us'
+                clean_text, is_phonemes = self.phonemizer.phonemize(clean_text, lang_code)
+
+            return tts_engine.synthesize(clean_text, voice_str, speed, is_phonemes=is_phonemes)
 
         except Exception as e:
             raise RuntimeError(f"Neural Engine processing failed on chunk {chunk_idx + 1}: {str(e)}") from e

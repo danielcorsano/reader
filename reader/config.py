@@ -3,7 +3,6 @@ import yaml
 from pathlib import Path
 from typing import Dict, Any, Optional
 from dataclasses import dataclass, asdict
-from copy import deepcopy
 
 
 @dataclass
@@ -11,7 +10,7 @@ class TTSConfig:
     """TTS engine configuration."""
     engine: str = "kokoro"  # Default to Neural Engine for best performance
     voice: Optional[str] = None
-    speed: float = 1.1
+    speed: float = 1.0
     volume: float = 1.0
 
 

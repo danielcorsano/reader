@@ -62,6 +62,24 @@ reader convert --file book.epub --no-clean-text
 reader convert --voice bm_george --speed 1.0 --format wav
 ```
 
+### G2P Pronunciation Enhancement (Optional)
+
+Install the G2P extra for improved pronunciation of abbreviations, numbers, and unusual words:
+
+```bash
+pip install audiobook-reader[g2p-en]
+```
+
+G2P (grapheme-to-phoneme) converts text to IPA phonemes via [misaki](https://github.com/hexgrad/misaki) before synthesis. When installed, it activates automatically. Disable with `--no-g2p`.
+
+```bash
+# Convert with G2P enabled (automatic when installed)
+reader convert --file book.epub
+
+# Disable G2P for a specific conversion
+reader convert --file book.epub --no-g2p
+```
+
 ### Text Cleanup (Automatic)
 
 **Enabled by default** to improve audio quality:
@@ -186,7 +204,7 @@ echo "Hello world! This is my first audiobook." > hello.txt
 # 2. Convert it
 reader convert --file hello.txt
 
-# 3. Listen to ~/Downloads/hello_kokoro_am_michael.mp3
+# 3. Listen to ~/Downloads/hello_kokoro_bm_fable.mp3
 ```
 
 ### Custom Voice Examples
@@ -211,9 +229,9 @@ reader convert --file book2.pdf --output-dir /audiobooks
 reader convert --file story.txt --output-dir /audiobooks
 
 # Results:
-# - /audiobooks/book1_kokoro_am_michael.mp3
-# - /audiobooks/book2_kokoro_am_michael.mp3
-# - /audiobooks/story_kokoro_am_michael.mp3
+# - /audiobooks/book1_kokoro_bm_fable.mp3
+# - /audiobooks/book2_kokoro_bm_fable.mp3
+# - /audiobooks/story_kokoro_bm_fable.mp3
 ```
 
 ### Strip and Convert Example
@@ -310,7 +328,7 @@ Override settings for specific directories/projects. Reader searches upward from
 ```yaml
 # ~/books/fiction/.reader.yaml
 tts:
-  voice: am_michael       # Dramatic narrator voice
+  voice: bm_fable         # Dramatic narrator voice
   speed: 1.0              # Normal speed for immersion
 processing:
   character_voices: true  # Enable character-specific voices
@@ -343,13 +361,13 @@ output_dir: /audiobooks
 ```yaml
 # Project config: ~/books/fiction/.reader.yaml
 tts:
-  voice: am_michael       # Override voice only
+  voice: bm_fable         # Override voice only
 processing:
   character_voices: true  # Add new setting
 ```
 
 **Result when converting `~/books/fiction/novel.epub`:**
-- `voice`: `am_michael` (from project config)
+- `voice`: `bm_fable` (from project config)
 - `speed`: `1.2` (from user config - inherited!)
 - `format`: `m4b` (from user config - inherited!)
 - `character_voices`: `true` (from project config)
@@ -371,7 +389,7 @@ reader config --voice af_sarah --speed 1.2 --format m4b
 cd ~/books/fiction
 cat > .reader.yaml << EOF
 tts:
-  voice: am_michael
+  voice: bm_fable
 processing:
   character_voices: true
 EOF
@@ -494,16 +512,48 @@ reader characters remove "Alice"
 
 ### Available Kokoro Voices
 
-**54 voices across 9 languages:**
-- **American English** (20): af_heart, af_alloy, af_aoede, af_bella, af_jessica, af_kore, af_nicole, af_nova, af_river, af_sarah, af_sky, am_adam, am_echo, am_eric, am_fenrir, am_liam, am_michael, am_onyx, am_puck, am_santa
-- **British English** (8): bf_alice, bf_emma, bf_isabella, bf_lily, bm_daniel, bm_fable, bm_george, bm_lewis
-- **Japanese** (5): jf_alpha, jf_gongitsune, jf_nezumi, jf_tebukuro, jm_kumo
-- **Mandarin Chinese** (8): zf_xiaobei, zf_xiaoni, zf_xiaoxiao, zf_xiaoyi, zm_yunjian, zm_yunxi, zm_yunxia, zm_yunyang
-- **Spanish** (3): ef_dora, em_alex, em_santa
-- **French** (1): ff_siwis
-- **Hindi** (4): hf_alpha, hf_beta, hm_omega, hm_psi
-- **Italian** (2): if_sara, im_nicola
-- **Brazilian Portuguese** (3): pf_dora, pm_alex, pm_santa
+**54 voices across 9 languages.** Grades from [Kokoro-82M VOICES.md](https://huggingface.co/hexgrad/Kokoro-82M/blob/main/VOICES.md) reflect training data quality and quantity. Voices perform best on 100-200 tokens; may rush on 400+.
+
+**American English** (20 voices):
+
+| Voice | Gender | Grade | Notes |
+|-------|--------|-------|-------|
+| af_heart | F | A | Best overall quality |
+| af_bella | F | A- | High quality, long training data |
+| af_nicole | F | B- | Long training data |
+| af_aoede | F | C+ | |
+| af_kore | F | C+ | |
+| af_sarah | F | C+ | |
+| af_alloy | F | C | |
+| af_nova | F | C | |
+| af_jessica | F | D | |
+| af_river | F | D | |
+| af_sky | F | C- | Very short training data |
+| am_michael | M | C+ | |
+| am_fenrir | M | C+ | |
+| am_puck | M | C+ | |
+| am_echo | M | D | |
+| am_eric | M | D | |
+| am_liam | M | D | |
+| am_onyx | M | D | |
+| am_adam | M | F+ | Low quality training data |
+| am_santa | M | D- | Very short training data |
+
+**British English** (8): bf_emma (F, B-), bf_isabella (F, C), bf_alice (F, D), bf_lily (F, D), bm_fable (M, C, default), bm_george (M, C), bm_lewis (M, D+), bm_daniel (M, D)
+
+**Japanese** (5): jf_alpha (F, C+), jf_gongitsune (F, C), jf_tebukuro (F, C), jf_nezumi (F, C-), jm_kumo (M, C-)
+
+**Mandarin Chinese** (8): zf_xiaobei (F, D), zf_xiaoni (F, D), zf_xiaoxiao (F, D), zf_xiaoyi (F, D), zm_yunjian (M, D), zm_yunxi (M, D), zm_yunxia (M, D), zm_yunyang (M, D)
+
+**Spanish** (3): ef_dora (F), em_alex (M), em_santa (M)
+
+**French** (1): ff_siwis (F, B-)
+
+**Hindi** (4): hf_alpha (F, C), hf_beta (F, C), hm_omega (M, C), hm_psi (M, C)
+
+**Italian** (2): if_sara (F, C), im_nicola (M, C)
+
+**Brazilian Portuguese** (3): pf_dora (F), pm_alex (M), pm_santa (M)
 
 See full list with: `reader voices`
 

@@ -37,76 +37,76 @@ class KokoroEngine(TTSEngine):
     # Kokoro voice mappings - All 54 voices across 9 languages
     VOICES = {
         # American English (20 voices)
-        "af_heart": {"name": "Heart", "lang": "en-us", "gender": "female"},
-        "af_alloy": {"name": "Alloy", "lang": "en-us", "gender": "female"},
-        "af_aoede": {"name": "Aoede", "lang": "en-us", "gender": "female"},
-        "af_bella": {"name": "Bella", "lang": "en-us", "gender": "female"},
-        "af_jessica": {"name": "Jessica", "lang": "en-us", "gender": "female"},
-        "af_kore": {"name": "Kore", "lang": "en-us", "gender": "female"},
-        "af_nicole": {"name": "Nicole", "lang": "en-us", "gender": "female"},
-        "af_nova": {"name": "Nova", "lang": "en-us", "gender": "female"},
-        "af_river": {"name": "River", "lang": "en-us", "gender": "female"},
-        "af_sarah": {"name": "Sarah", "lang": "en-us", "gender": "female"},
-        "af_sky": {"name": "Sky", "lang": "en-us", "gender": "female"},
-        "am_adam": {"name": "Adam", "lang": "en-us", "gender": "male"},
-        "am_echo": {"name": "Echo", "lang": "en-us", "gender": "male"},
-        "am_eric": {"name": "Eric", "lang": "en-us", "gender": "male"},
-        "am_fenrir": {"name": "Fenrir", "lang": "en-us", "gender": "male"},
-        "am_liam": {"name": "Liam", "lang": "en-us", "gender": "male"},
-        "am_michael": {"name": "Michael", "lang": "en-us", "gender": "male"},
-        "am_onyx": {"name": "Onyx", "lang": "en-us", "gender": "male"},
-        "am_puck": {"name": "Puck", "lang": "en-us", "gender": "male"},
-        "am_santa": {"name": "Santa", "lang": "en-us", "gender": "male"},
+        "af_heart": {"name": "Heart", "lang": "en-us", "gender": "female", "grade": "A"},
+        "af_alloy": {"name": "Alloy", "lang": "en-us", "gender": "female", "grade": "C"},
+        "af_aoede": {"name": "Aoede", "lang": "en-us", "gender": "female", "grade": "C+"},
+        "af_bella": {"name": "Bella", "lang": "en-us", "gender": "female", "grade": "A-"},
+        "af_jessica": {"name": "Jessica", "lang": "en-us", "gender": "female", "grade": "D"},
+        "af_kore": {"name": "Kore", "lang": "en-us", "gender": "female", "grade": "C+"},
+        "af_nicole": {"name": "Nicole", "lang": "en-us", "gender": "female", "grade": "B-"},
+        "af_nova": {"name": "Nova", "lang": "en-us", "gender": "female", "grade": "C"},
+        "af_river": {"name": "River", "lang": "en-us", "gender": "female", "grade": "D"},
+        "af_sarah": {"name": "Sarah", "lang": "en-us", "gender": "female", "grade": "C+"},
+        "af_sky": {"name": "Sky", "lang": "en-us", "gender": "female", "grade": "C-"},
+        "am_adam": {"name": "Adam", "lang": "en-us", "gender": "male", "grade": "F+"},
+        "am_echo": {"name": "Echo", "lang": "en-us", "gender": "male", "grade": "D"},
+        "am_eric": {"name": "Eric", "lang": "en-us", "gender": "male", "grade": "D"},
+        "am_fenrir": {"name": "Fenrir", "lang": "en-us", "gender": "male", "grade": "C+"},
+        "am_liam": {"name": "Liam", "lang": "en-us", "gender": "male", "grade": "D"},
+        "am_michael": {"name": "Michael", "lang": "en-us", "gender": "male", "grade": "C+"},
+        "am_onyx": {"name": "Onyx", "lang": "en-us", "gender": "male", "grade": "D"},
+        "am_puck": {"name": "Puck", "lang": "en-us", "gender": "male", "grade": "C+"},
+        "am_santa": {"name": "Santa", "lang": "en-us", "gender": "male", "grade": "D-"},
 
         # British English (8 voices)
-        "bf_alice": {"name": "Alice", "lang": "en-gb", "gender": "female"},
-        "bf_emma": {"name": "Emma", "lang": "en-gb", "gender": "female"},
-        "bf_isabella": {"name": "Isabella", "lang": "en-gb", "gender": "female"},
-        "bf_lily": {"name": "Lily", "lang": "en-gb", "gender": "female"},
-        "bm_daniel": {"name": "Daniel", "lang": "en-gb", "gender": "male"},
-        "bm_fable": {"name": "Fable", "lang": "en-gb", "gender": "male"},
-        "bm_george": {"name": "George", "lang": "en-gb", "gender": "male"},
-        "bm_lewis": {"name": "Lewis", "lang": "en-gb", "gender": "male"},
+        "bf_alice": {"name": "Alice", "lang": "en-gb", "gender": "female", "grade": "D"},
+        "bf_emma": {"name": "Emma", "lang": "en-gb", "gender": "female", "grade": "B-"},
+        "bf_isabella": {"name": "Isabella", "lang": "en-gb", "gender": "female", "grade": "C"},
+        "bf_lily": {"name": "Lily", "lang": "en-gb", "gender": "female", "grade": "D"},
+        "bm_daniel": {"name": "Daniel", "lang": "en-gb", "gender": "male", "grade": "D"},
+        "bm_fable": {"name": "Fable", "lang": "en-gb", "gender": "male", "grade": "C"},
+        "bm_george": {"name": "George", "lang": "en-gb", "gender": "male", "grade": "C"},
+        "bm_lewis": {"name": "Lewis", "lang": "en-gb", "gender": "male", "grade": "D+"},
 
         # Japanese (5 voices)
-        "jf_alpha": {"name": "Alpha", "lang": "ja", "gender": "female"},
-        "jf_gongitsune": {"name": "Gongitsune", "lang": "ja", "gender": "female"},
-        "jf_nezumi": {"name": "Nezumi", "lang": "ja", "gender": "female"},
-        "jf_tebukuro": {"name": "Tebukuro", "lang": "ja", "gender": "female"},
-        "jm_kumo": {"name": "Kumo", "lang": "ja", "gender": "male"},
+        "jf_alpha": {"name": "Alpha", "lang": "ja", "gender": "female", "grade": "C+"},
+        "jf_gongitsune": {"name": "Gongitsune", "lang": "ja", "gender": "female", "grade": "C"},
+        "jf_nezumi": {"name": "Nezumi", "lang": "ja", "gender": "female", "grade": "C-"},
+        "jf_tebukuro": {"name": "Tebukuro", "lang": "ja", "gender": "female", "grade": "C"},
+        "jm_kumo": {"name": "Kumo", "lang": "ja", "gender": "male", "grade": "C-"},
 
         # Mandarin Chinese (8 voices)
-        "zf_xiaobei": {"name": "Xiaobei", "lang": "zh", "gender": "female"},
-        "zf_xiaoni": {"name": "Xiaoni", "lang": "zh", "gender": "female"},
-        "zf_xiaoxiao": {"name": "Xiaoxiao", "lang": "zh", "gender": "female"},
-        "zf_xiaoyi": {"name": "Xiaoyi", "lang": "zh", "gender": "female"},
-        "zm_yunjian": {"name": "Yunjian", "lang": "zh", "gender": "male"},
-        "zm_yunxi": {"name": "Yunxi", "lang": "zh", "gender": "male"},
-        "zm_yunxia": {"name": "Yunxia", "lang": "zh", "gender": "male"},
-        "zm_yunyang": {"name": "Yunyang", "lang": "zh", "gender": "male"},
+        "zf_xiaobei": {"name": "Xiaobei", "lang": "zh", "gender": "female", "grade": "D"},
+        "zf_xiaoni": {"name": "Xiaoni", "lang": "zh", "gender": "female", "grade": "D"},
+        "zf_xiaoxiao": {"name": "Xiaoxiao", "lang": "zh", "gender": "female", "grade": "D"},
+        "zf_xiaoyi": {"name": "Xiaoyi", "lang": "zh", "gender": "female", "grade": "D"},
+        "zm_yunjian": {"name": "Yunjian", "lang": "zh", "gender": "male", "grade": "D"},
+        "zm_yunxi": {"name": "Yunxi", "lang": "zh", "gender": "male", "grade": "D"},
+        "zm_yunxia": {"name": "Yunxia", "lang": "zh", "gender": "male", "grade": "D"},
+        "zm_yunyang": {"name": "Yunyang", "lang": "zh", "gender": "male", "grade": "D"},
 
         # Spanish (3 voices)
-        "ef_dora": {"name": "Dora", "lang": "es", "gender": "female"},
-        "em_alex": {"name": "Alex", "lang": "es", "gender": "male"},
-        "em_santa": {"name": "Santa", "lang": "es", "gender": "male"},
+        "ef_dora": {"name": "Dora", "lang": "es", "gender": "female", "grade": "?"},
+        "em_alex": {"name": "Alex", "lang": "es", "gender": "male", "grade": "?"},
+        "em_santa": {"name": "Santa", "lang": "es", "gender": "male", "grade": "?"},
 
         # French (1 voice)
-        "ff_siwis": {"name": "Siwis", "lang": "fr", "gender": "female"},
+        "ff_siwis": {"name": "Siwis", "lang": "fr", "gender": "female", "grade": "B-"},
 
         # Hindi (4 voices)
-        "hf_alpha": {"name": "Alpha", "lang": "hi", "gender": "female"},
-        "hf_beta": {"name": "Beta", "lang": "hi", "gender": "female"},
-        "hm_omega": {"name": "Omega", "lang": "hi", "gender": "male"},
-        "hm_psi": {"name": "Psi", "lang": "hi", "gender": "male"},
+        "hf_alpha": {"name": "Alpha", "lang": "hi", "gender": "female", "grade": "C"},
+        "hf_beta": {"name": "Beta", "lang": "hi", "gender": "female", "grade": "C"},
+        "hm_omega": {"name": "Omega", "lang": "hi", "gender": "male", "grade": "C"},
+        "hm_psi": {"name": "Psi", "lang": "hi", "gender": "male", "grade": "C"},
 
         # Italian (2 voices)
-        "if_sara": {"name": "Sara", "lang": "it", "gender": "female"},
-        "im_nicola": {"name": "Nicola", "lang": "it", "gender": "male"},
+        "if_sara": {"name": "Sara", "lang": "it", "gender": "female", "grade": "C"},
+        "im_nicola": {"name": "Nicola", "lang": "it", "gender": "male", "grade": "C"},
 
         # Brazilian Portuguese (3 voices)
-        "pf_dora": {"name": "Dora", "lang": "pt-br", "gender": "female"},
-        "pm_alex": {"name": "Alex", "lang": "pt-br", "gender": "male"},
-        "pm_santa": {"name": "Santa", "lang": "pt-br", "gender": "male"},
+        "pf_dora": {"name": "Dora", "lang": "pt-br", "gender": "female", "grade": "?"},
+        "pm_alex": {"name": "Alex", "lang": "pt-br", "gender": "male", "grade": "?"},
+        "pm_santa": {"name": "Santa", "lang": "pt-br", "gender": "male", "grade": "?"},
     }
 
     # Compiled regex patterns for text chunking (performance optimization)
@@ -181,7 +181,7 @@ class KokoroEngine(TTSEngine):
                     if self.debug:
                         print("🔍 DEBUG: Testing Neural Engine inference speed...", flush=True)
                         test_start = time.time()
-                        test_audio = self.kokoro.create("Hello world", "am_michael")
+                        test_audio = self.kokoro.create("Hello world", "bm_fable")
                         test_time = time.time() - test_start
                         print(f"🔍 DEBUG: Test inference took {test_time:.3f} seconds for 'Hello world'", flush=True)
                         print(f"🔍 DEBUG: Generated {len(test_audio)} bytes of audio", flush=True)
@@ -205,20 +205,22 @@ class KokoroEngine(TTSEngine):
             raise RuntimeError(f"Failed to initialize Kokoro: {e}")
     
     def synthesize(
-        self, 
-        text: str, 
+        self,
+        text: str,
         voice: Optional[str] = None,
         speed: float = 1.0,
-        volume: float = 1.0
+        volume: float = 1.0,
+        is_phonemes: bool = False
     ) -> bytes:
         """
         Synthesize text to speech using Kokoro.
-        
+
         Args:
-            text: Text to synthesize
+            text: Text to synthesize (or IPA phonemes if is_phonemes=True)
             voice: Voice identifier or blend (e.g., "af_sarah" or "af_sarah:60,af_nicole:40")
             speed: Speech rate multiplier
             volume: Volume multiplier (not directly supported by Kokoro)
+            is_phonemes: If True, text is pre-phonemized IPA from misaki G2P
             
         Returns:
             Audio data as bytes (WAV format)
@@ -229,7 +231,7 @@ class KokoroEngine(TTSEngine):
         
         # Default voice
         if not voice:
-            voice = "am_michael"
+            voice = "bm_fable"
 
         # Validate voice exists (check primary voice in blend)
         primary_voice = voice.split(':')[0].split(',')[0].strip()
@@ -245,7 +247,7 @@ class KokoroEngine(TTSEngine):
         
         # Check text length and chunk if necessary (should rarely happen with optimized input)
         if len(text) > 450:  # Slightly higher limit since we pre-chunk at 400
-            return self._synthesize_long_text(text, voice_blend, speed)
+            return self._synthesize_long_text(text, voice_blend, speed)  # Note: is_phonemes not passed; long text re-chunks which would break phoneme sequences
         
         try:
             # Generate audio with Kokoro for short text
@@ -271,7 +273,8 @@ class KokoroEngine(TTSEngine):
                         text=text,
                         voice=voice_id,
                         speed=speed,
-                        lang=self._get_voice_lang(voice_id)
+                        lang=self._get_voice_lang(voice_id),
+                        is_phonemes=is_phonemes
                     )
                 kokoro_logger.setLevel(original_level)
             else:
@@ -279,7 +282,8 @@ class KokoroEngine(TTSEngine):
                     text=text,
                     voice=voice_id,
                     speed=speed,
-                    lang=self._get_voice_lang(voice_id)
+                    lang=self._get_voice_lang(voice_id),
+                    is_phonemes=is_phonemes
                 )
 
             # Convert to WAV bytes

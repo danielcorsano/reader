@@ -20,7 +20,7 @@ def mock_kokoro():
 def test_kokoro_voices_defined():
     """Test Kokoro engine has voice definitions."""
     assert len(KokoroEngine.VOICES) > 0
-    assert "am_michael" in KokoroEngine.VOICES
+    assert "bm_fable" in KokoroEngine.VOICES
     assert "af_sarah" in KokoroEngine.VOICES
 
 
@@ -38,7 +38,7 @@ def test_kokoro_voice_languages():
     voice_data = KokoroEngine.VOICES
 
     # Check American English voices
-    assert voice_data["am_michael"]["lang"] == "en-us"
+    assert voice_data["bm_fable"]["lang"] == "en-gb"
     assert voice_data["af_sarah"]["lang"] == "en-us"
 
     # Check British English voices
