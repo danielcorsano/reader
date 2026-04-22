@@ -30,7 +30,7 @@ class Reader:
 
         Args:
             file_path: Path to input file (EPUB, PDF, TXT, etc.)
-            voice: Voice ID (e.g., 'am_michael', 'af_sarah'). Defaults to config.
+            voice: Voice ID (e.g., 'bm_fable', 'af_heart'). Defaults to config.
             speed: Speech speed multiplier (0.5-2.0). Defaults to config.
             output_format: Audio format ('mp3', 'wav', 'm4a', 'm4b'). Defaults to config.
             character_voices: Enable character-specific voices for dialogue

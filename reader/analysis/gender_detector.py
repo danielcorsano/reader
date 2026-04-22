@@ -1,6 +1,6 @@
 """Lightweight gender detection using pronoun frequency analysis."""
 import re
-from typing import Dict, List, Tuple, Optional
+from typing import Dict, List, Tuple
 
 
 class GenderDetector:

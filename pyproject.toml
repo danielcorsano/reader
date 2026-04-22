@@ -4,7 +4,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "audiobook-reader"
-version = "0.3.1"
+version = "0.4.0"
 description = "AI-powered audiobook generator with GPU/NPU acceleration (up to 10x faster than real-time). Built-in Kokoro-82M TTS with character-aware voices and dialogue detection. Interactive chapter stripping to remove unwanted content. Supports EPUB, PDF, TXT, MD, RST (use convertext for DOCX/MOBI/HTML)."
 authors = ["danielcorsano <danielcorsano@users.noreply.github.com>"]
 readme = "README.md"
@@ -59,12 +59,11 @@ pyyaml = "^6.0.1"
 beautifulsoup4 = "^4.12.2"
 ebooklib = "^0.18"
 PyPDF2 = "^3.0.1"
-# Phase 2 dependencies (Kokoro TTS - required for main features)
+# TTS engine
 kokoro-onnx = "^0.5.0"
 onnxruntime = "^1.20.0"
-vaderSentiment = "^3.3.2"
 regex = "^2023.12.25"
-# Phase 3 essential dependencies
+# Audio processing
 mutagen = "^1.47.0"
 ffmpeg-python = "^0.2.0"
 plotext = "^5.3.2"
@@ -72,6 +71,9 @@ plotext = "^5.3.2"
 psutil = {version = "^7.1.0", optional = true}
 tqdm = {version = "^4.67.0", optional = true}
 rich = {version = "^14.0.0", optional = true}
+misaki = {version = "^0.7.0", optional = true}
+num2words = {version = ">=0.5.13", optional = true}
+spacy = {version = ">=3.7.0", optional = true}
 
 [tool.poetry.extras]
 # System monitoring
@@ -80,8 +82,10 @@ monitoring = ["psutil"]
 progress-full = ["tqdm", "rich"]
 progress-tqdm = ["tqdm"]
 progress-rich = ["rich"]
+# G2P phonemization (improved pronunciation via misaki, without conflicting phonemizer)
+g2p-en = ["misaki", "num2words", "spacy"]
 # All optional features
-all = ["psutil", "tqdm", "rich"]
+all = ["psutil", "tqdm", "rich", "misaki", "num2words", "spacy"]
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.0"

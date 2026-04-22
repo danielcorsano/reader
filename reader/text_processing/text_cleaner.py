@@ -92,4 +92,4 @@ class TextCleaner:
         start_idx, end_idx = self._classifier.find_content_boundaries(chapters)
 
         narrative_chapters = chapters[start_idx:end_idx]
-        return ' '.join(ch.get('content', '') for ch in narrative_chapters)
+        return '\n\n---CHAPTER_BREAK---\n\n'.join(ch.get('content', '') for ch in narrative_chapters)

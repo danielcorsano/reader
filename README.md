@@ -15,6 +15,8 @@ If you find this useful, please consider supporting via [GitHub Sponsors](https:
 ### 🎙️ **54 AI Voices in 9 Languages**
 - **American English** (20 voices), **British English** (8), **Japanese** (5), **Mandarin Chinese** (8), **Spanish** (3), **French** (1), **Hindi** (4), **Italian** (2), **Brazilian Portuguese** (3)
 - Voice blending, character voice mapping, and dialogue detection
+- Quality grades from Kokoro — top voices: af_heart (A), af_bella (A-), af_nicole (B-), bf_emma (B-), ff_siwis (B-)
+- **[Full voice list with grades](https://github.com/danielcorsano/reader/blob/main/docs/VOICES.md)**
 
 ### ⚡ **High-Performance Conversion**
 - **Up to 10x faster than real-time** on Apple Silicon (M1/M2/M3/M4) with Neural Engine
@@ -95,6 +97,9 @@ pip install audiobook-reader[progress-full]
 
 # With system monitoring
 pip install audiobook-reader[monitoring]
+
+# With G2P pronunciation enhancement (misaki)
+pip install audiobook-reader[g2p-en]
 
 # With everything
 pip install audiobook-reader[all]
@@ -189,7 +194,7 @@ reader characters detect text/mybook.txt --auto-assign
 #     voice: af_sarah
 #     gender: female
 #   - name: Bob
-#     voice: am_michael
+#     voice: bm_fable
 #     gender: male
 
 # Convert with character voices
@@ -224,6 +229,7 @@ See **[Programmatic API](https://github.com/danielcorsano/reader/blob/main/docs/
 ## 📖 Documentation
 
 - **[Usage Guide](https://github.com/danielcorsano/reader/blob/main/docs/USAGE.md)** - Complete command reference and workflows
+- **[Voice Reference](https://github.com/danielcorsano/reader/blob/main/docs/VOICES.md)** - All 54 voices with quality grades
 - **[Programmatic API](https://github.com/danielcorsano/reader/blob/main/docs/API.md)** - Python API for Jupyter notebooks and scripts
 - **[Examples](https://github.com/danielcorsano/reader/blob/main/docs/EXAMPLES.md)** - Real-world examples and use cases
 - **[Advanced Features](https://github.com/danielcorsano/reader/blob/main/docs/ADVANCED_FEATURES.md)** - Professional audiobook production features
@@ -237,7 +243,7 @@ See **[Programmatic API](https://github.com/danielcorsano/reader/blob/main/docs/
 reader convert --file text/book.epub
 
 # Convert with specific voice
-reader convert --file text/book.epub --voice am_michael
+reader convert --file text/book.epub --voice bm_fable
 
 # Disable text cleanup (keep broken words, bibliography, etc.)
 reader convert --file text/book.epub --no-clean-text
@@ -290,7 +296,7 @@ reader strip book.epub
 ### Configuration Management
 ```bash
 # Save permanent settings to config file
-reader config --voice am_michael --format mp3 --output-dir downloads
+reader config --voice bm_fable --format mp3 --output-dir downloads
 
 # Set custom default output directory
 reader config --output-dir /audiobooks
@@ -314,12 +320,12 @@ reader info
 Example:
 ```bash
 # Save your preferred settings
-reader config --engine kokoro --voice am_michael --format mp3
+reader config --engine kokoro --voice bm_fable --format mp3
 
 # Use temporary override (doesn't change your saved config)
 reader convert --voice af_sarah
 
-# Your config file still has kokoro/am_michael/mp3 saved
+# Your config file still has kokoro/bm_fable/mp3 saved
 ```
 
 ## 📁 File Support
@@ -370,12 +376,12 @@ Reader uses system-standard directories for clean organization:
 # Convert any book directly
 reader convert --file "My Novel.epub"
 
-# Result: ~/Downloads/My Novel_kokoro_am_michael.mp3
+# Result: ~/Downloads/My Novel_kokoro_bm_fable.mp3
 
 # Or output next to source file
 reader convert --file "My Novel.epub" --output-dir same
 
-# Result: My Novel_kokoro_am_michael.mp3 (in same directory as source)
+# Result: My Novel_kokoro_bm_fable.mp3 (in same directory as source)
 ```
 
 ### Voice Comparison
@@ -424,7 +430,7 @@ Settings are saved to `~/.config/audiobook-reader/settings.yaml`:
 ```yaml
 tts:
   engine: kokoro           # TTS engine (Kokoro)
-  voice: am_michael        # Default voice
+  voice: bm_fable        # Default voice
   speed: 1.0               # Speech rate multiplier
   volume: 1.0              # Volume level
 audio:
@@ -434,6 +440,7 @@ audio:
 processing:
   chunk_size: 400          # Text chunk size for processing (Kokoro optimal)
   auto_detect_chapters: true  # Chapter detection
+  pause_between_chapters: 1.0  # Seconds of silence between chapters (0 to disable)
 output_dir: downloads      # Output location: "downloads", "same", or path
 ```
 

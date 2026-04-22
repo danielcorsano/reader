@@ -2,7 +2,7 @@
 import json
 import time
 from pathlib import Path
-from typing import List, Dict, Any, Optional, Union, Callable
+from typing import List, Dict, Any, Optional, Callable
 from dataclasses import dataclass, asdict
 from datetime import datetime
 import concurrent.futures
@@ -183,12 +183,12 @@ class BatchProcessor:
 
             # Build filename: stem_voice[_settings].format
             stem = input_file.stem
-            voice = tts_config.voice or "am_michael"
+            voice = tts_config.voice or "bm_fable"
             parts = [stem, voice]
 
             # Add non-default settings
             settings = []
-            if tts_config.speed != 1.1:
+            if tts_config.speed != 1.0:
                 settings.append(f"sp{tts_config.speed}".replace(".", "p"))
             if processing_config.character_voices:
                 settings.append("chr")

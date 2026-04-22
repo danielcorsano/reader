@@ -87,7 +87,8 @@ def conversion_dialog(default_speed=1.0):
     voice_list = sorted(langs[selected_lang], key=lambda v: v[1]["name"])
     click.echo(f"\nVoices for {LANG_DISPLAY.get(selected_lang, selected_lang)}:")
     for i, (vid, info) in enumerate(voice_list, 1):
-        click.echo(f"  {i}. {info['name']} ({info['gender']}) [{vid}]")
+        grade = info.get('grade', '?')
+        click.echo(f"  {i}. {info['name']} ({info['gender']}) [{vid}] grade: {grade}")
 
     while True:
         choice = click.prompt("Select voice", type=int)
@@ -282,7 +283,8 @@ class ReaderApp:
         progress_style: str = "timeseries",
         character_config: Optional[Path] = None,
         output_dir: Optional[str] = None,
-        clean_text: bool = True
+        clean_text: bool = True,
+        use_g2p: bool = True
     ) -> Path:
         """Convert a single file to audiobook."""
         # Get parser
@@ -413,19 +415,30 @@ class ReaderApp:
             character_mapper=self.character_mapper if processing_config.character_voices else None,
             dialogue_detector=self.dialogue_detector if processing_config.character_voices else None,
             debug=debug,
-            final_output_dir=final_output_dir
+            final_output_dir=final_output_dir,
+            pause_between_chapters=processing_config.pause_between_chapters
         )
+        processor.use_g2p = use_g2p
 
-        # Split content into optimized chunks aligned with Kokoro's processing
-        if tts_config.engine == "kokoro" and KOKORO_AVAILABLE:
-            # Use 400-char chunks to match Kokoro's optimal size (no re-chunking)
-            kokoro_engine = self.get_tts_engine()
-            text_chunks = kokoro_engine._chunk_text_intelligently(parsed_content.content, max_length=400)
-        else:
-            # Use basic chunking for non-Kokoro engines (if any added later)
-            chunk_size = min(400, processing_config.chunk_size)
-            text_chunks = [parsed_content.content[i:i+chunk_size]
-                          for i in range(0, len(parsed_content.content), chunk_size)]
+        # Split content into optimized chunks, preserving chapter breaks as pause markers
+        CHAPTER_BREAK = '---CHAPTER_BREAK---'
+        sections = parsed_content.content.split(CHAPTER_BREAK)
+
+        text_chunks = []
+        for idx, section in enumerate(sections):
+            section = section.strip()
+            if not section:
+                continue
+            if tts_config.engine == "kokoro" and KOKORO_AVAILABLE:
+                kokoro_engine = self.get_tts_engine()
+                text_chunks.extend(kokoro_engine._chunk_text_intelligently(section, max_length=400))
+            else:
+                chunk_size = min(400, processing_config.chunk_size)
+                text_chunks.extend([section[i:i+chunk_size]
+                                   for i in range(0, len(section), chunk_size)])
+            # Insert empty chunk as chapter pause marker (except after last section)
+            if idx < len(sections) - 1:
+                text_chunks.append("")
 
         # Get voice blend configuration
         voice_blend = {}
@@ -434,7 +447,7 @@ class ReaderApp:
         else:
             # Default voice
             if tts_config.engine == "kokoro":
-                voice_blend = {"am_michael": 1.0}
+                voice_blend = {"bm_fable": 1.0}
             else:
                 voice_blend = {"default": 1.0}
 
@@ -498,7 +511,7 @@ class ReaderApp:
         Settings are abbreviated and only included if non-default.
         """
         audio_dir = self.audio_dir
-        voice = tts_config.voice or "am_michael"
+        voice = tts_config.voice or "bm_fable"
 
         # Build filename: title_voice
         filename_parts = [title, voice]
@@ -507,7 +520,7 @@ class ReaderApp:
         settings = []
 
         # Speed (default: 1.0)
-        if tts_config.speed != 1.1:
+        if tts_config.speed != 1.0:
             settings.append(f"sp{tts_config.speed}".replace(".", "p"))
 
         # Character voices (default: False)
@@ -541,7 +554,7 @@ def cli():
 
 
 @cli.command()
-@click.option('--voice', '-v', help='Voice to use for synthesis (e.g., am_michael, af_sarah)')
+@click.option('--voice', '-v', help='Voice to use for synthesis (e.g., bm_fable, af_heart)')
 @click.option('--speed', '-s', type=float, help='Speech speed multiplier - 1.0 is normal, 1.2 is 20% faster (e.g., 1.2)')
 @click.option('--format', '-f', type=click.Choice(['wav', 'mp3', 'm4a', 'm4b']), help='Output audio format (default: mp3)')
 @click.option('--file', '-F', type=click.Path(exists=True), help='Convert specific file (required)')
@@ -556,7 +569,8 @@ def cli():
 @click.option('--progress-style', type=click.Choice(['simple', 'tqdm', 'rich', 'timeseries']), default='timeseries', help='Progress display: simple (text), tqdm (bars), rich (fancy), timeseries (charts)')
 @click.option('--output-dir', help='Output directory: "downloads" (~/Downloads), "same" (next to source), or explicit path')
 @click.option('--no-clean-text', is_flag=True, help='Disable text cleanup (keep broken words, bibliography, etc.)')
-def convert(voice, speed, format, file, characters, character_config, chapters, processing_level, batch_mode, checkpoint_interval, turbo_mode, debug, progress_style, output_dir, no_clean_text):
+@click.option('--no-g2p', is_flag=True, help='Disable misaki G2P phonemization even if installed')
+def convert(voice, speed, format, file, characters, character_config, chapters, processing_level, batch_mode, checkpoint_interval, turbo_mode, debug, progress_style, output_dir, no_clean_text, no_g2p):
     """Convert text files to audiobooks.
 
     All options are temporary overrides and won't be saved to config.
@@ -602,7 +616,8 @@ def convert(voice, speed, format, file, characters, character_config, chapters, 
                 turbo_mode=turbo_mode, debug=debug, progress_style=progress_style,
                 character_config=Path(character_config) if character_config else None,
                 output_dir=output_dir,
-                clean_text=not no_clean_text
+                clean_text=not no_clean_text,
+                use_g2p=not no_g2p
             )
             click.echo(f"✓ Conversion complete: {output_path}")
         except Exception as e:
@@ -649,10 +664,9 @@ def voices(language, gender):
     # Display voices
     for voice in filtered_voices:
         voice_info = kokoro_voices[voice]
+        grade = voice_info.get('grade', '?')
         click.echo(f"  - {voice}")
-        click.echo(f"    Name: {voice_info['name']}")
-        click.echo(f"    Gender: {voice_info['gender']}")
-        click.echo(f"    Language: {voice_info['lang']}")
+        click.echo(f"    Name: {voice_info['name']}  |  Gender: {voice_info['gender']}  |  Lang: {voice_info['lang']}  |  Grade: {grade}")
 
 
 @cli.group()
@@ -1037,7 +1051,7 @@ def info():
     # Basic commands
     click.echo("\n💻 Basic Commands:")
     click.echo("  reader convert --file book.epub           # Convert file")
-    click.echo("  reader convert --file book.epub --voice am_michael  # Use specific voice")
+    click.echo("  reader convert --file book.epub --voice bm_fable  # Use specific voice")
     click.echo("  reader convert --file book.epub --characters  # Enable character voices")
     click.echo("  reader voices                             # List available voices")
     click.echo("  reader config                             # View/set preferences")
@@ -1449,106 +1463,6 @@ def _parse_strip_syntax(user_input: str, total_chapters: int) -> Optional[set]:
         return indices
 
 
-def _write_stripped_epub(input_path: Path, chapters: List[dict], keep_indices: set, output_path: Path) -> bool:
-    """Write stripped EPUB with only kept chapters."""
-    try:
-        import ebooklib
-        from ebooklib import epub
-        from bs4 import BeautifulSoup
-        import warnings
-
-        with warnings.catch_warnings():
-            warnings.filterwarnings("ignore", category=FutureWarning)
-            warnings.filterwarnings("ignore", category=UserWarning)
-            book = epub.read_epub(str(input_path), options={'ignore_ncx': True})
-
-        # Get spine items
-        spine_item_ids = [item_id for item_id, linear in book.spine]
-
-        # Map chapters to spine items (approximate - based on order)
-        # Create new book with only kept items
-        new_book = epub.EpubBook()
-
-        # Copy metadata
-        for ns, values in book.metadata.items():
-            for name, value_list in values.items():
-                for value, attrs in value_list:
-                    if ns == 'http://purl.org/dc/elements/1.1/':
-                        new_book.add_metadata('DC', name, value, attrs if attrs else {})
-
-        # Set unique identifier
-        new_book.set_identifier(f"{book.get_metadata('DC', 'identifier')[0][0] if book.get_metadata('DC', 'identifier') else 'stripped'}_stripped")
-        new_book.set_title(f"{book.get_metadata('DC', 'title')[0][0] if book.get_metadata('DC', 'title') else 'Stripped'}")
-        new_book.set_language(book.get_metadata('DC', 'language')[0][0] if book.get_metadata('DC', 'language') else 'en')
-
-        # Track which items to keep
-        kept_items = []
-        new_spine = []
-
-        # Get filtered spine items (same filter as used in parsing)
-        content_idx = 0
-        for item_id, linear in book.spine:
-            item = book.get_item_with_id(item_id)
-            if item and item.get_type() == ebooklib.ITEM_DOCUMENT:
-                # Check if this item passes the content filter (same as EPUBParser)
-                item_name = item.get_name().lower()
-
-                # Skip non-content items (cover, toc, etc.)
-                skip_patterns = ['cover', 'title.html', 'toc.html', 'contents', 'index.html', 'notes.html', 'copy.html', 'dsi.html', 'copyright', '_img.html']
-                if any(x in item_name for x in skip_patterns):
-                    # Include these unconditionally (they're not counted as chapters)
-                    new_item = epub.EpubHtml(title=item.get_name(), file_name=item.get_name())
-                    new_item.set_content(item.get_content())
-                    new_book.add_item(new_item)
-                    new_spine.append(new_item)
-                    continue
-
-                # Check content length
-                try:
-                    soup = BeautifulSoup(item.get_content(), 'html.parser')
-                    text = soup.get_text(strip=True)
-                    if len(text) < 100:
-                        # Too short, include but don't count
-                        new_item = epub.EpubHtml(title=item.get_name(), file_name=item.get_name())
-                        new_item.set_content(item.get_content())
-                        new_book.add_item(new_item)
-                        new_spine.append(new_item)
-                        continue
-                except Exception:
-                    continue
-
-                # This is a real content chapter
-                if content_idx in keep_indices:
-                    new_item = epub.EpubHtml(title=item.get_name(), file_name=item.get_name())
-                    new_item.set_content(item.get_content())
-                    new_book.add_item(new_item)
-                    new_spine.append(new_item)
-                    kept_items.append(item.get_name())
-
-                content_idx += 1
-
-        # Copy CSS and images
-        for item in book.get_items():
-            if item.get_type() in [ebooklib.ITEM_STYLE, ebooklib.ITEM_IMAGE]:
-                new_book.add_item(item)
-
-        # Set spine
-        new_book.spine = new_spine
-
-        # Add NCX and Nav
-        new_book.add_item(epub.EpubNcx())
-        new_book.add_item(epub.EpubNav())
-
-        # Write the new EPUB
-        epub.write_epub(str(output_path), new_book, {})
-
-        return True
-
-    except Exception as e:
-        click.echo(f"Error writing EPUB: {e}", err=True)
-        return False
-
-
 def _write_stripped_text(chapters: List[dict], keep_indices: set, output_path: Path) -> bool:
     """Write stripped text file with only kept chapters."""
     try:
@@ -1807,24 +1721,11 @@ def strip(file_path):
         click.echo("Error: No chapters would remain. Aborting.")
         return
 
-    # Determine output path
-    suffix = input_file.suffix
-    output_name = input_file.stem + "_stripped" + suffix
-    output_path = input_file.parent / output_name
+    # Always output as plain text for reliability
+    output_path = input_file.parent / (input_file.stem + "_stripped.txt")
 
-    # Handle different formats
     click.echo(f"\nKeeping {len(keep_indices)} of {len(chapters)} chapters...")
-
-    if suffix.lower() == '.epub':
-        success = _write_stripped_epub(input_file, chapters, keep_indices, output_path)
-    elif suffix.lower() == '.pdf':
-        # PDF: extract to text
-        output_path = input_file.parent / (input_file.stem + "_stripped.txt")
-        click.echo("Note: PDF will be saved as text file (PDF modification not supported).")
-        success = _write_stripped_text(chapters, keep_indices, output_path)
-    else:
-        # TXT, MD, RST
-        success = _write_stripped_text(chapters, keep_indices, output_path)
+    success = _write_stripped_text(chapters, keep_indices, output_path)
 
     if success:
         click.echo(f"Saved: {output_path}")
