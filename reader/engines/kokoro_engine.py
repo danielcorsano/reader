@@ -486,21 +486,34 @@ class KokoroEngine(TTSEngine):
                     sample_rate = chunk_sample_rate
 
             except Exception as e:
-                # Log the error but continue with other chunks
-                print(f"⚠️  Warning: Skipping chunk {i+1} due to synthesis error: {e}")
-                print(f"    Chunk preview: {chunk[:80]}...")
+                # Split the failing chunk and retry
+                print(f"⚠️  Chunk {i+1} failed ({e}), splitting and retrying...")
+                sub_chunks = self._chunk_text_intelligently(chunk, max_length=len(chunk) // 2)
+                for sub in sub_chunks:
+                    if not sub.strip():
+                        continue
+                    try:
+                        sanitized_sub = self._sanitize_text(sub.strip())
+                        voice_id = list(voice_blend.keys())[0] if len(voice_blend) == 1 else max(voice_blend.items(), key=lambda x: x[1])[0]
+                        samples, sr = self.kokoro.create(text=sanitized_sub, voice=voice_id, speed=speed, lang=self._get_voice_lang(voice_id))
+                        audio_segments.append(samples)
+                        if sample_rate is None:
+                            sample_rate = sr
+                    except Exception as sub_e:
+                        print(f"⚠️  Sub-chunk also failed, skipping: {sub[:60]}...")
+                        continue
                 continue
-        
+
         if not audio_segments:
             raise RuntimeError("Failed to synthesize any chunks from the text")
-        
+
         # Merge audio segments
         import numpy as np
         merged_samples = np.concatenate(audio_segments)
-        
+
         # Convert to WAV bytes
         return self._samples_to_wav_bytes(merged_samples, sample_rate)
-    
+
     def _synthesize_chunks_streaming(self, chunks: List[str], voice_blend: Dict[str, float], speed: float) -> bytes:
         """Memory-efficient synthesis using temporary files for large texts."""
         import tempfile
@@ -549,9 +562,26 @@ class KokoroEngine(TTSEngine):
                     temp_files.append(temp_file.name)
 
                 except Exception as e:
-                    # Log the error but continue with other chunks
-                    print(f"⚠️  Warning: Skipping chunk {i+1} due to synthesis error: {e}")
-                    print(f"    Chunk preview: {chunk[:80]}...")
+                    # Split the failing chunk and retry
+                    print(f"⚠️  Chunk {i+1} failed ({e}), splitting and retrying...")
+                    sub_chunks = self._chunk_text_intelligently(chunk, max_length=len(chunk) // 2)
+                    for sub in sub_chunks:
+                        if not sub.strip():
+                            continue
+                        try:
+                            sanitized_sub = self._sanitize_text(sub.strip())
+                            voice_id = list(voice_blend.keys())[0] if len(voice_blend) == 1 else max(voice_blend.items(), key=lambda x: x[1])[0]
+                            samples, sr = self.kokoro.create(text=sanitized_sub, voice=voice_id, speed=speed, lang=self._get_voice_lang(voice_id))
+                            if sample_rate is None:
+                                sample_rate = sr
+                            temp_file = tempfile.NamedTemporaryFile(suffix='.wav', delete=False)
+                            wav_data = self._samples_to_wav_bytes(samples, sr)
+                            temp_file.write(wav_data)
+                            temp_file.close()
+                            temp_files.append(temp_file.name)
+                        except Exception as sub_e:
+                            print(f"⚠️  Sub-chunk also failed, skipping: {sub[:60]}...")
+                            continue
                     continue
             
             if not temp_files:
