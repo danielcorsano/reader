@@ -312,7 +312,7 @@ audio:
   format: m4b             # Audiobook format with chapters
   add_metadata: true
 processing:
-  chunk_size: 400
+  chunk_size: 300
   pause_between_chapters: 1.0
   auto_detect_chapters: true
 output_dir: /audiobooks   # Your audiobook library

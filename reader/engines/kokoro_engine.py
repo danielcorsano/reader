@@ -246,7 +246,7 @@ class KokoroEngine(TTSEngine):
         voice_blend = self._parse_voice_blend(voice)
         
         # Check text length and chunk if necessary (should rarely happen with optimized input)
-        if len(text) > 450:  # Slightly higher limit since we pre-chunk at 400
+        if len(text) > 350:  # Slightly higher limit since we pre-chunk at 300
             return self._synthesize_long_text(text, voice_blend, speed)  # Note: is_phonemes not passed; long text re-chunks which would break phoneme sequences
         
         try:
@@ -439,7 +439,7 @@ class KokoroEngine(TTSEngine):
     def _synthesize_long_text(self, text: str, voice_blend: Dict[str, float], speed: float) -> bytes:
         """Synthesize long text by intelligent chunking with streaming to prevent memory issues."""
         # Split text into chunks at natural break points
-        chunks = self._chunk_text_intelligently(text, max_length=400)
+        chunks = self._chunk_text_intelligently(text, max_length=300)
         
         if len(chunks) <= 4:
             # For smaller texts, use in-memory processing
@@ -634,8 +634,11 @@ class KokoroEngine(TTSEngine):
         wav_buffer.seek(0)
         return wav_buffer.read()
     
-    def _chunk_text_intelligently(self, text: str, max_length: int = 400) -> List[str]:
-        """Chunk text at natural break points while staying under max_length."""
+    def _chunk_text_intelligently(self, text: str, max_length: int = 300) -> List[str]:
+        """Chunk text at natural break points while guaranteeing no chunk exceeds max_length."""
+        # Normalize: collapse all whitespace (newlines, tabs) to single spaces
+        text = ' '.join(text.split())
+
         chunks = []
         current_chunk = ""
 
@@ -648,7 +651,7 @@ class KokoroEngine(TTSEngine):
                 # Split by commas, semicolons, or other punctuation (using pre-compiled pattern)
                 sub_parts = self.PUNCTUATION_SPLIT_PATTERN.split(sentence)
                 temp_part = ""
-                
+
                 for i, part in enumerate(sub_parts):
                     if len(temp_part + part) <= max_length:
                         temp_part += part
@@ -656,7 +659,7 @@ class KokoroEngine(TTSEngine):
                         if temp_part.strip():
                             chunks.append(temp_part.strip())
                         temp_part = part
-                
+
                 if temp_part.strip():
                     if len(current_chunk + " " + temp_part) <= max_length:
                         current_chunk += " " + temp_part if current_chunk else temp_part
@@ -673,12 +676,28 @@ class KokoroEngine(TTSEngine):
                     if current_chunk.strip():
                         chunks.append(current_chunk.strip())
                     current_chunk = sentence
-        
+
         # Add remaining chunk
         if current_chunk.strip():
             chunks.append(current_chunk.strip())
-        
-        return chunks
+
+        # Safety: hard-split any chunk that still exceeds max_length (e.g. no punctuation at all)
+        safe_chunks = []
+        for chunk in chunks:
+            if len(chunk) <= max_length:
+                safe_chunks.append(chunk)
+            else:
+                # Split on whitespace nearest to max_length
+                while len(chunk) > max_length:
+                    split_at = chunk.rfind(' ', 0, max_length)
+                    if split_at == -1:
+                        split_at = max_length
+                    safe_chunks.append(chunk[:split_at].strip())
+                    chunk = chunk[split_at:].strip()
+                if chunk:
+                    safe_chunks.append(chunk)
+
+        return safe_chunks
 
     def _samples_to_wav_bytes(self, samples, sample_rate: int) -> bytes:
         """Convert audio samples to WAV bytes."""
