@@ -438,7 +438,7 @@ audio:
   bitrate: 48k             # MP3 bitrate (32k-64k typical for audiobooks)
   add_metadata: true       # Metadata support
 processing:
-  chunk_size: 400          # Text chunk size for processing (Kokoro optimal)
+  chunk_size: 300          # Text chunk size (safe for Kokoro's 510 phoneme limit)
   auto_detect_chapters: true  # Chapter detection
   pause_between_chapters: 1.0  # Seconds of silence between chapters (0 to disable)
 output_dir: downloads      # Output location: "downloads", "same", or path

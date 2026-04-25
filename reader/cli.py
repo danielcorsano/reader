@@ -431,9 +431,9 @@ class ReaderApp:
                 continue
             if tts_config.engine == "kokoro" and KOKORO_AVAILABLE:
                 kokoro_engine = self.get_tts_engine()
-                text_chunks.extend(kokoro_engine._chunk_text_intelligently(section, max_length=400))
+                text_chunks.extend(kokoro_engine._chunk_text_intelligently(section, max_length=300))
             else:
-                chunk_size = min(400, processing_config.chunk_size)
+                chunk_size = min(300, processing_config.chunk_size)
                 text_chunks.extend([section[i:i+chunk_size]
                                    for i in range(0, len(section), chunk_size)])
             # Insert empty chunk as chapter pause marker (except after last section)
@@ -1463,6 +1463,18 @@ def _parse_strip_syntax(user_input: str, total_chapters: int) -> Optional[set]:
         return indices
 
 
+def _clean_paragraph_breaks(text: str) -> str:
+    """Join mid-sentence line breaks into paragraphs. Preserves double newlines as paragraph breaks."""
+    import re
+    # Rejoin hyphenated line breaks
+    text = re.sub(r'(\w)-\n(\w)', r'\1\2', text)
+    # Replace single newlines with space (keep double newlines as paragraph breaks)
+    text = re.sub(r'(?<!\n)\n(?!\n)', ' ', text)
+    # Collapse multiple spaces
+    text = re.sub(r' {2,}', ' ', text)
+    return text.strip()
+
+
 def _write_stripped_text(chapters: List[dict], keep_indices: set, output_path: Path) -> bool:
     """Write stripped text file with only kept chapters."""
     try:
@@ -1472,7 +1484,7 @@ def _write_stripped_text(chapters: List[dict], keep_indices: set, output_path: P
             if i < len(chapters):
                 chapter = chapters[i]
                 title = chapter.get('title', f'Chapter {i}')
-                content = chapter.get('content', '')
+                content = _clean_paragraph_breaks(chapter.get('content', ''))
 
                 kept_content.append(f"{title}\n\n{content}")
 
