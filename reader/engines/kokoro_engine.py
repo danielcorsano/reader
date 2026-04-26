@@ -439,7 +439,7 @@ class KokoroEngine(TTSEngine):
     def _synthesize_long_text(self, text: str, voice_blend: Dict[str, float], speed: float) -> bytes:
         """Synthesize long text by intelligent chunking with streaming to prevent memory issues."""
         # Split text into chunks at natural break points
-        chunks = self._chunk_text_intelligently(text, max_length=300)
+        chunks = self._chunk_text_intelligently(text, max_length=400)
         
         if len(chunks) <= 4:
             # For smaller texts, use in-memory processing
@@ -634,7 +634,7 @@ class KokoroEngine(TTSEngine):
         wav_buffer.seek(0)
         return wav_buffer.read()
     
-    def _chunk_text_intelligently(self, text: str, max_length: int = 300) -> List[str]:
+    def _chunk_text_intelligently(self, text: str, max_length: int = 400) -> List[str]:
         """Chunk text at natural break points while guaranteeing no chunk exceeds max_length."""
         # Normalize: collapse all whitespace (newlines, tabs) to single spaces
         text = ' '.join(text.split())

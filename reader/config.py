@@ -25,7 +25,7 @@ class AudioConfig:
 @dataclass
 class ProcessingConfig:
     """Text processing configuration."""
-    chunk_size: int = 300  # Safe for Kokoro's 510 phoneme token limit
+    chunk_size: int = 400  # Kokoro recommended; split-and-retry catches rare phoneme overflows
     pause_between_chapters: float = 1.0
     auto_detect_chapters: bool = True
     level: str = "phase3"  # Use all available features by default

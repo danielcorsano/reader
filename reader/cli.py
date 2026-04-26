@@ -431,9 +431,9 @@ class ReaderApp:
                 continue
             if tts_config.engine == "kokoro" and KOKORO_AVAILABLE:
                 kokoro_engine = self.get_tts_engine()
-                text_chunks.extend(kokoro_engine._chunk_text_intelligently(section, max_length=300))
+                text_chunks.extend(kokoro_engine._chunk_text_intelligently(section, max_length=400))
             else:
-                chunk_size = min(300, processing_config.chunk_size)
+                chunk_size = min(400, processing_config.chunk_size)
                 text_chunks.extend([section[i:i+chunk_size]
                                    for i in range(0, len(section), chunk_size)])
             # Insert empty chunk as chapter pause marker (except after last section)
