@@ -1463,6 +1463,18 @@ def _parse_strip_syntax(user_input: str, total_chapters: int) -> Optional[set]:
         return indices
 
 
+def _clean_paragraph_breaks(text: str) -> str:
+    """Join mid-sentence line breaks into paragraphs. Preserves double newlines as paragraph breaks."""
+    import re
+    # Rejoin hyphenated line breaks
+    text = re.sub(r'(\w)-\n(\w)', r'\1\2', text)
+    # Replace single newlines with space (keep double newlines as paragraph breaks)
+    text = re.sub(r'(?<!\n)\n(?!\n)', ' ', text)
+    # Collapse multiple spaces
+    text = re.sub(r' {2,}', ' ', text)
+    return text.strip()
+
+
 def _write_stripped_text(chapters: List[dict], keep_indices: set, output_path: Path) -> bool:
     """Write stripped text file with only kept chapters."""
     try:
@@ -1472,7 +1484,7 @@ def _write_stripped_text(chapters: List[dict], keep_indices: set, output_path: P
             if i < len(chapters):
                 chapter = chapters[i]
                 title = chapter.get('title', f'Chapter {i}')
-                content = chapter.get('content', '')
+                content = _clean_paragraph_breaks(chapter.get('content', ''))
 
                 kept_content.append(f"{title}\n\n{content}")
 

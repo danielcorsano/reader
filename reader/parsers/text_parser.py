@@ -1,7 +1,7 @@
 """Plain text file parser implementation."""
+import re
 from pathlib import Path
 from typing import List, Dict, Any
-import re
 
 from ..interfaces.text_parser import TextParser, ParsedContent
 
@@ -34,7 +34,12 @@ class PlainTextParser(TextParser):
             
             if content is None:
                 raise ValueError("Could not decode file with any supported encoding")
-            
+
+            # Normalize whitespace artifacts (tabs, non-breaking spaces)
+            content = content.replace('\t', ' ')
+            content = content.replace('\u00a0', ' ')
+            content = re.sub(r'[^\S\n]+', ' ', content)
+
             # Extract basic metadata
             title = file_path.stem
             
