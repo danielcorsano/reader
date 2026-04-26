@@ -73,11 +73,3 @@ All notable user-facing changes to this project will be documented in this file.
 - **Checkpoint Recovery**: Resume interrupted conversions
 - **24kHz mono MP3** encoding with FFmpeg batch conversion
 
-[0.3.1]: https://github.com/danielcorsano/reader/releases/tag/v0.3.1
-[0.3.0]: https://github.com/danielcorsano/reader/releases/tag/v0.3.0
-[0.1.8]: https://github.com/danielcorsano/reader/releases/tag/v0.1.8
-[0.1.7]: https://github.com/danielcorsano/reader/releases/tag/v0.1.7
-[0.1.6]: https://github.com/danielcorsano/reader/releases/tag/v0.1.6
-[0.1.5]: https://github.com/danielcorsano/reader/releases/tag/v0.1.5
-[0.1.3]: https://github.com/danielcorsano/reader/releases/tag/v0.1.3
-[0.1.0]: https://github.com/danielcorsano/reader/releases/tag/v0.1.0
