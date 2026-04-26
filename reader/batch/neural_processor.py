@@ -296,11 +296,11 @@ class NeuralProcessor:
                                 audio_part = self._extract_pcm_frames(audio_part)
                             audio_parts.append(audio_part)
                         except Exception as sent_error:
-                            # If even a single sentence fails, split it in half
-                            half = len(sentence) // 2
+                            # If even a single sentence fails, split at word boundary
+                            s1, s2 = self._split_at_word_boundary(sentence)
                             try:
-                                part1 = self._process_single_chunk(sentence[:half], i, total_chunks, tts_engine, voice_blend, speed)
-                                part2 = self._process_single_chunk(sentence[half:], i, total_chunks, tts_engine, voice_blend, speed)
+                                part1 = self._process_single_chunk(s1, i, total_chunks, tts_engine, voice_blend, speed)
+                                part2 = self._process_single_chunk(s2, i, total_chunks, tts_engine, voice_blend, speed)
                                 audio_parts.append(part1)
                                 audio_parts.append(self._extract_pcm_frames(part2))
                             except Exception as final_error:
@@ -315,7 +315,8 @@ class NeuralProcessor:
                     audio_data = b''.join(audio_parts)
                     print(f"✅ Successfully processed chunk {i+1} in {len(sentences)} pieces", flush=True)
                 else:
-                    # Other errors - log and re-raise
+                    # Other synthesis errors — try splitting before giving up
+                    print(f"\n⚠️  Chunk {i+1} synthesis error ({error_str[:80]}) - splitting and retrying", flush=True)
                     if self.debug:
                         with open(self.debug_log, 'a') as f:
                             import traceback
@@ -323,12 +324,43 @@ class NeuralProcessor:
                             f.write(f"{e}\nLength: {len(chunk_text)}\n")
                             f.write(traceback.format_exc())
 
-                    if not neural_engine_confirmed:
-                        if self.progress_style == "simple":
-                            print(f"❌ Neural Engine processing failed: {str(e)}", flush=True)
-                            print(f"🔄 Falling back to CPU processing", flush=True)
-                        neural_engine_confirmed = True  # Don't spam error messages
-                    raise  # Re-raise to handle at higher level
+                    sentences = []
+                    current = []
+                    for char in chunk_text:
+                        current.append(char)
+                        if char in '.!?':
+                            sentences.append(''.join(current).strip())
+                            current = []
+                    if current:
+                        sentences.append(''.join(current).strip())
+
+                    audio_parts = []
+                    for j, sentence in enumerate(sentences):
+                        if not sentence.strip():
+                            continue
+                        try:
+                            audio_part = self._process_single_chunk(sentence, i, total_chunks, tts_engine, voice_blend, speed)
+                            if j > 0:
+                                audio_part = self._extract_pcm_frames(audio_part)
+                            audio_parts.append(audio_part)
+                        except Exception:
+                            s1, s2 = self._split_at_word_boundary(sentence)
+                            try:
+                                part1 = self._process_single_chunk(s1, i, total_chunks, tts_engine, voice_blend, speed)
+                                part2 = self._process_single_chunk(s2, i, total_chunks, tts_engine, voice_blend, speed)
+                                audio_parts.append(part1)
+                                audio_parts.append(self._extract_pcm_frames(part2))
+                            except Exception:
+                                print(f"⚠️  Cannot synthesize part of chunk {i+1}, skipping segment", flush=True)
+                                continue
+
+                    if not audio_parts:
+                        skipped_chunks.append(i + 1)
+                        print(f"\n⚠️  Warning: Skipping chunk {i+1} entirely - no segments could be synthesized", flush=True)
+                        continue
+
+                    audio_data = b''.join(audio_parts)
+                    print(f"✅ Successfully processed chunk {i+1} in {len(sentences)} pieces", flush=True)
             
             # Convert and write immediately for streaming
             self._convert_and_write_chunk(output_file, audio_data)
@@ -353,6 +385,18 @@ class NeuralProcessor:
         if skipped_chunks:
             print(f"\n⚠️  Completed with {len(skipped_chunks)} skipped chunk(s): {', '.join(map(str, skipped_chunks))}")
     
+    @staticmethod
+    def _split_at_word_boundary(text: str) -> tuple:
+        """Split text near the midpoint at a word boundary. Returns (part1, part2)."""
+        mid = len(text) // 2
+        # Search for nearest space to midpoint
+        split_at = text.rfind(' ', 0, mid + 30)
+        if split_at == -1 or split_at < mid // 2:
+            split_at = text.find(' ', mid)
+        if split_at == -1:
+            split_at = mid  # No spaces at all, forced split
+        return text[:split_at].strip(), text[split_at:].strip()
+
     def _process_single_chunk(self, chunk_text: str, chunk_idx: int, total_chunks: int,
                              tts_engine, voice_blend: Dict[str, float], speed: float) -> bytes:
         """Process a single text chunk to audio with Neural Engine."""
@@ -374,6 +418,9 @@ class NeuralProcessor:
         try:
             # Clean the text to prevent TTS issues
             clean_text = chunk_text.strip()
+
+            # Normalize interior newlines to spaces (PDF artifacts, layout breaks)
+            clean_text = ' '.join(clean_text.split())
 
             # Expand numbers to words BEFORE character replacement (for better pronunciation)
             clean_text = self.number_expander.expand_numbers(clean_text)

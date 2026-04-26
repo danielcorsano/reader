@@ -246,7 +246,7 @@ class KokoroEngine(TTSEngine):
         voice_blend = self._parse_voice_blend(voice)
         
         # Check text length and chunk if necessary (should rarely happen with optimized input)
-        if len(text) > 450:  # Slightly higher limit since we pre-chunk at 400
+        if len(text) > 350:  # Slightly higher limit since we pre-chunk at 300
             return self._synthesize_long_text(text, voice_blend, speed)  # Note: is_phonemes not passed; long text re-chunks which would break phoneme sequences
         
         try:
@@ -486,21 +486,34 @@ class KokoroEngine(TTSEngine):
                     sample_rate = chunk_sample_rate
 
             except Exception as e:
-                # Log the error but continue with other chunks
-                print(f"⚠️  Warning: Skipping chunk {i+1} due to synthesis error: {e}")
-                print(f"    Chunk preview: {chunk[:80]}...")
+                # Split the failing chunk and retry
+                print(f"⚠️  Chunk {i+1} failed ({e}), splitting and retrying...")
+                sub_chunks = self._chunk_text_intelligently(chunk, max_length=len(chunk) // 2)
+                for sub in sub_chunks:
+                    if not sub.strip():
+                        continue
+                    try:
+                        sanitized_sub = self._sanitize_text(sub.strip())
+                        voice_id = list(voice_blend.keys())[0] if len(voice_blend) == 1 else max(voice_blend.items(), key=lambda x: x[1])[0]
+                        samples, sr = self.kokoro.create(text=sanitized_sub, voice=voice_id, speed=speed, lang=self._get_voice_lang(voice_id))
+                        audio_segments.append(samples)
+                        if sample_rate is None:
+                            sample_rate = sr
+                    except Exception as sub_e:
+                        print(f"⚠️  Sub-chunk also failed, skipping: {sub[:60]}...")
+                        continue
                 continue
-        
+
         if not audio_segments:
             raise RuntimeError("Failed to synthesize any chunks from the text")
-        
+
         # Merge audio segments
         import numpy as np
         merged_samples = np.concatenate(audio_segments)
-        
+
         # Convert to WAV bytes
         return self._samples_to_wav_bytes(merged_samples, sample_rate)
-    
+
     def _synthesize_chunks_streaming(self, chunks: List[str], voice_blend: Dict[str, float], speed: float) -> bytes:
         """Memory-efficient synthesis using temporary files for large texts."""
         import tempfile
@@ -549,9 +562,26 @@ class KokoroEngine(TTSEngine):
                     temp_files.append(temp_file.name)
 
                 except Exception as e:
-                    # Log the error but continue with other chunks
-                    print(f"⚠️  Warning: Skipping chunk {i+1} due to synthesis error: {e}")
-                    print(f"    Chunk preview: {chunk[:80]}...")
+                    # Split the failing chunk and retry
+                    print(f"⚠️  Chunk {i+1} failed ({e}), splitting and retrying...")
+                    sub_chunks = self._chunk_text_intelligently(chunk, max_length=len(chunk) // 2)
+                    for sub in sub_chunks:
+                        if not sub.strip():
+                            continue
+                        try:
+                            sanitized_sub = self._sanitize_text(sub.strip())
+                            voice_id = list(voice_blend.keys())[0] if len(voice_blend) == 1 else max(voice_blend.items(), key=lambda x: x[1])[0]
+                            samples, sr = self.kokoro.create(text=sanitized_sub, voice=voice_id, speed=speed, lang=self._get_voice_lang(voice_id))
+                            if sample_rate is None:
+                                sample_rate = sr
+                            temp_file = tempfile.NamedTemporaryFile(suffix='.wav', delete=False)
+                            wav_data = self._samples_to_wav_bytes(samples, sr)
+                            temp_file.write(wav_data)
+                            temp_file.close()
+                            temp_files.append(temp_file.name)
+                        except Exception as sub_e:
+                            print(f"⚠️  Sub-chunk also failed, skipping: {sub[:60]}...")
+                            continue
                     continue
             
             if not temp_files:
@@ -605,7 +635,10 @@ class KokoroEngine(TTSEngine):
         return wav_buffer.read()
     
     def _chunk_text_intelligently(self, text: str, max_length: int = 400) -> List[str]:
-        """Chunk text at natural break points while staying under max_length."""
+        """Chunk text at natural break points while guaranteeing no chunk exceeds max_length."""
+        # Normalize: collapse all whitespace (newlines, tabs) to single spaces
+        text = ' '.join(text.split())
+
         chunks = []
         current_chunk = ""
 
@@ -618,7 +651,7 @@ class KokoroEngine(TTSEngine):
                 # Split by commas, semicolons, or other punctuation (using pre-compiled pattern)
                 sub_parts = self.PUNCTUATION_SPLIT_PATTERN.split(sentence)
                 temp_part = ""
-                
+
                 for i, part in enumerate(sub_parts):
                     if len(temp_part + part) <= max_length:
                         temp_part += part
@@ -626,7 +659,7 @@ class KokoroEngine(TTSEngine):
                         if temp_part.strip():
                             chunks.append(temp_part.strip())
                         temp_part = part
-                
+
                 if temp_part.strip():
                     if len(current_chunk + " " + temp_part) <= max_length:
                         current_chunk += " " + temp_part if current_chunk else temp_part
@@ -643,12 +676,28 @@ class KokoroEngine(TTSEngine):
                     if current_chunk.strip():
                         chunks.append(current_chunk.strip())
                     current_chunk = sentence
-        
+
         # Add remaining chunk
         if current_chunk.strip():
             chunks.append(current_chunk.strip())
-        
-        return chunks
+
+        # Safety: hard-split any chunk that still exceeds max_length (e.g. no punctuation at all)
+        safe_chunks = []
+        for chunk in chunks:
+            if len(chunk) <= max_length:
+                safe_chunks.append(chunk)
+            else:
+                # Split on whitespace nearest to max_length
+                while len(chunk) > max_length:
+                    split_at = chunk.rfind(' ', 0, max_length)
+                    if split_at == -1:
+                        split_at = max_length
+                    safe_chunks.append(chunk[:split_at].strip())
+                    chunk = chunk[split_at:].strip()
+                if chunk:
+                    safe_chunks.append(chunk)
+
+        return safe_chunks
 
     def _samples_to_wav_bytes(self, samples, sample_rate: int) -> bytes:
         """Convert audio samples to WAV bytes."""
