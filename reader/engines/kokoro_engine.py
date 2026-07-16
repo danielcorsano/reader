@@ -23,7 +23,11 @@ except ImportError:
 
 class KokoroEngine(TTSEngine):
     """TTS engine implementation using Kokoro ONNX."""
-    
+
+    # kokoro-onnx truncates phoneme strings at 510 and crashes when the token
+    # count hits exactly 510 (voice style array has 510 rows); 500 leaves margin
+    MAX_PHONEME_LENGTH = 500
+
     def __init__(self, debug: bool = False):
         """Initialize the Kokoro engine."""
         self.debug = debug
@@ -245,9 +249,12 @@ class KokoroEngine(TTSEngine):
         # Handle voice blending
         voice_blend = self._parse_voice_blend(voice)
         
-        # Check text length and chunk if necessary (should rarely happen with optimized input)
-        if len(text) > 350:  # Slightly higher limit since we pre-chunk at 300
-            return self._synthesize_long_text(text, voice_blend, speed)  # Note: is_phonemes not passed; long text re-chunks which would break phoneme sequences
+        # Chunk long inputs; phoneme input must split by phoneme count, never re-chunk as text
+        if is_phonemes:
+            if len(text) > self.MAX_PHONEME_LENGTH:
+                return self._synthesize_long_phonemes(text, voice_blend, speed)
+        elif len(text) > 350:  # Slightly higher limit since we pre-chunk at 300
+            return self._synthesize_long_text(text, voice_blend, speed)
         
         try:
             # Generate audio with Kokoro for short text
@@ -435,6 +442,46 @@ class KokoroEngine(TTSEngine):
             text = "."
 
         return text.strip()
+
+    def _synthesize_long_phonemes(self, phonemes: str, voice_blend: Dict[str, float], speed: float) -> bytes:
+        """Synthesize a pre-phonemized string longer than the Kokoro phoneme limit."""
+        import numpy as np
+
+        voice_id = max(voice_blend.items(), key=lambda x: x[1])[0]
+        lang = self._get_voice_lang(voice_id)
+
+        segments = []
+        sample_rate = None
+        for piece in self._split_phoneme_string(phonemes, self.MAX_PHONEME_LENGTH):
+            samples, sample_rate = self.kokoro.create(
+                text=piece, voice=voice_id, speed=speed, lang=lang, is_phonemes=True
+            )
+            segments.append(samples)
+
+        if not segments:
+            raise RuntimeError("Kokoro synthesis failed: empty phoneme sequence")
+
+        return self._samples_to_wav_bytes(np.concatenate(segments), sample_rate)
+
+    @staticmethod
+    def _split_phoneme_string(phonemes: str, max_length: int) -> List[str]:
+        """Split phonemes into pieces under max_length at punctuation, else spaces."""
+        pieces = []
+        remaining = phonemes.strip()
+        while len(remaining) > max_length:
+            window = remaining[:max_length]
+            cut = max(window.rfind(p) for p in '.!?;,')
+            if cut < max_length // 2:
+                cut = window.rfind(' ')
+            if cut <= 0:
+                cut = max_length - 1
+            piece = remaining[:cut + 1].strip()
+            if piece:
+                pieces.append(piece)
+            remaining = remaining[cut + 1:].strip()
+        if remaining:
+            pieces.append(remaining)
+        return pieces
 
     def _synthesize_long_text(self, text: str, voice_blend: Dict[str, float], speed: float) -> bytes:
         """Synthesize long text by intelligent chunking with streaming to prevent memory issues."""
