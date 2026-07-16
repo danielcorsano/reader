@@ -69,33 +69,38 @@ def conversion_dialog(default_speed=1.0):
     # Sort languages by display name
     lang_list = sorted(langs.keys(), key=lambda l: LANG_DISPLAY.get(l, l))
 
-    # 1. Language selection
-    click.echo("\nAvailable languages:")
-    for i, lang in enumerate(lang_list, 1):
-        display = LANG_DISPLAY.get(lang, lang)
-        count = len(langs[lang])
-        click.echo(f"  {i}. {display} ({count} voices)")
+    selected_voice = None
+    while selected_voice is None:
+        # 1. Language selection
+        click.echo("\nAvailable languages:")
+        for i, lang in enumerate(lang_list, 1):
+            display = LANG_DISPLAY.get(lang, lang)
+            count = len(langs[lang])
+            click.echo(f"  {i}. {display} ({count} voices)")
 
-    while True:
-        choice = click.prompt("Select language", type=int)
-        if 1 <= choice <= len(lang_list):
-            selected_lang = lang_list[choice - 1]
-            break
-        click.echo(f"Enter a number between 1 and {len(lang_list)}")
+        while True:
+            choice = click.prompt("Select language", type=int)
+            if 1 <= choice <= len(lang_list):
+                selected_lang = lang_list[choice - 1]
+                break
+            click.echo(f"Enter a number between 1 and {len(lang_list)}")
 
-    # 2. Voice selection within language
-    voice_list = sorted(langs[selected_lang], key=lambda v: v[1]["name"])
-    click.echo(f"\nVoices for {LANG_DISPLAY.get(selected_lang, selected_lang)}:")
-    for i, (vid, info) in enumerate(voice_list, 1):
-        grade = info.get('grade', '?')
-        click.echo(f"  {i}. {info['name']} ({info['gender']}) [{vid}] grade: {grade}")
+        # 2. Voice selection within language (last option returns to languages)
+        voice_list = sorted(langs[selected_lang], key=lambda v: v[1]["name"])
+        click.echo(f"\nVoices for {LANG_DISPLAY.get(selected_lang, selected_lang)}:")
+        for i, (vid, info) in enumerate(voice_list, 1):
+            grade = info.get('grade', '?')
+            click.echo(f"  {i}. {info['name']} ({info['gender']}) [{vid}] grade: {grade}")
+        click.echo(f"  {len(voice_list) + 1}. Back")
 
-    while True:
-        choice = click.prompt("Select voice", type=int)
-        if 1 <= choice <= len(voice_list):
-            selected_voice = voice_list[choice - 1][0]
-            break
-        click.echo(f"Enter a number between 1 and {len(voice_list)}")
+        while True:
+            choice = click.prompt("Select voice", type=int)
+            if choice == len(voice_list) + 1:
+                break
+            if 1 <= choice <= len(voice_list):
+                selected_voice = voice_list[choice - 1][0]
+                break
+            click.echo(f"Enter a number between 1 and {len(voice_list) + 1}")
 
     # 3. Speed selection
     speed_ok = click.prompt(f"\nSpeed {default_speed}x? [y/n]", type=str, default='y')
@@ -1509,97 +1514,106 @@ def _auto_strip_flow(chapters: List[dict]) -> Optional[set]:
     classifier.set_context(chapters)
     n = len(chapters)
 
-    # --- Phase 1: Front stripping ---
     front_sensitivity = 0.5
+    back_sensitivity = 0.5
     start_idx = 0
 
     while True:
-        start_idx = classifier.find_front_boundary(
-            chapters, front_sensitivity, front_bias=True)
+        # --- Phase 1: Front stripping ---
+        while True:
+            start_idx = classifier.find_front_boundary(
+                chapters, front_sensitivity, front_bias=True)
 
-        if start_idx > 0:
-            click.echo(f"\nStripping {start_idx} from front (sensitivity {front_sensitivity:.1f}):")
-            results = classifier.classify_chapters(chapters[:start_idx], front_sensitivity)
-            for i in range(start_idx):
-                r = results[i]
-                title = chapters[i].get('title', f'Chapter {i}')[:50]
-                click.echo(f"  {i}: {title}  [{r.category}, score={r.junk_score:.2f}]")
-        else:
-            click.echo("\nNo front matter detected.")
+            if start_idx > 0:
+                click.echo(f"\nStripping {start_idx} from front (sensitivity {front_sensitivity:.1f}):")
+                results = classifier.classify_chapters(chapters[:start_idx], front_sensitivity)
+                for i in range(start_idx):
+                    r = results[i]
+                    title = chapters[i].get('title', f'Chapter {i}')[:50]
+                    click.echo(f"  {i}: {title}  [{r.category}, score={r.junk_score:.2f}]")
+            else:
+                click.echo("\nNo front matter detected.")
 
-        # Show new beginning
-        if start_idx < n:
-            click.echo(f"\nNew beginning:")
-            click.echo(f"  {classifier.get_preview(chapters[start_idx])}")
+            # Show new beginning
+            if start_idx < n:
+                click.echo(f"\nNew beginning:")
+                click.echo(f"  {classifier.get_preview(chapters[start_idx])}")
 
-        click.echo(f"\n[1] Still junk at start (strip more)")
-        click.echo(f"[2] Content was cut (strip less)")
-        click.echo(f"[3] OK")
-        click.echo(f"[4] Skip auto-strip (go to manual)")
+            click.echo(f"\n[1] Still junk at start (strip more)")
+            click.echo(f"[2] Content was cut (strip less)")
+            click.echo(f"[3] OK")
+            click.echo(f"[4] Skip auto-strip (go to manual)")
 
-        choice = click.prompt("How is the beginning?", type=str, default='3')
+            choice = click.prompt("How is the beginning?", type=str, default='3')
 
-        if choice == '1':
-            front_sensitivity = min(1.0, front_sensitivity + classifier.SENSITIVITY_STEP)
-        elif choice == '2':
-            front_sensitivity = max(0.0, front_sensitivity - classifier.SENSITIVITY_STEP)
-        elif choice == '3':
-            break
-        elif choice == '4':
-            return None
-        else:
-            click.echo("Invalid choice.")
+            if choice == '1':
+                front_sensitivity = min(1.0, front_sensitivity + classifier.SENSITIVITY_STEP)
+            elif choice == '2':
+                front_sensitivity = max(0.0, front_sensitivity - classifier.SENSITIVITY_STEP)
+            elif choice == '3':
+                break
+            elif choice == '4':
+                return None
+            else:
+                click.echo("Invalid choice.")
 
-    # --- Phase 2: Back stripping ---
-    back_sensitivity = 0.5
+        # --- Phase 2: Back stripping ---
+        go_back = False
 
-    while True:
-        end_idx = classifier.find_back_boundary(
-            chapters, back_sensitivity, back_penalty=0.2)
-        stripped_back = n - end_idx
+        while True:
+            end_idx = classifier.find_back_boundary(
+                chapters, back_sensitivity, back_penalty=0.2)
+            stripped_back = n - end_idx
 
-        if stripped_back > 0:
-            click.echo(f"\nStripping {stripped_back} from back (sensitivity {back_sensitivity:.1f}):")
-            for i in range(end_idx, n):
-                r = classifier.classify(
-                    title=chapters[i].get('title', ''), content=chapters[i].get('content', ''),
-                    epub_type=chapters[i].get('epub_type', ''), guide_type=chapters[i].get('guide_type', ''),
-                    sensitivity=max(0.0, back_sensitivity - 0.2))
-                title = chapters[i].get('title', f'Chapter {i}')[:50]
-                click.echo(f"  {i}: {title}  [{r.category}, score={r.junk_score:.2f}]")
-        else:
-            click.echo("\nNo back matter detected.")
+            if stripped_back > 0:
+                click.echo(f"\nStripping {stripped_back} from back (sensitivity {back_sensitivity:.1f}):")
+                for i in range(end_idx, n):
+                    r = classifier.classify(
+                        title=chapters[i].get('title', ''), content=chapters[i].get('content', ''),
+                        epub_type=chapters[i].get('epub_type', ''), guide_type=chapters[i].get('guide_type', ''),
+                        sensitivity=max(0.0, back_sensitivity - 0.2))
+                    title = chapters[i].get('title', f'Chapter {i}')[:50]
+                    click.echo(f"  {i}: {title}  [{r.category}, score={r.junk_score:.2f}]")
+            else:
+                click.echo("\nNo back matter detected.")
 
-        # Spoiler-protected end preview
-        if end_idx > 0 and end_idx - 1 < n:
-            show_end = click.prompt(
-                "Show ending? (may contain spoilers) [y/n]",
-                type=str, default='n')
-            if show_end.lower() in ('y', 'yes'):
-                click.echo(f"\nNew ending:")
-                click.echo(f"  {classifier.get_preview(chapters[end_idx - 1])}")
+            # Spoiler-protected end preview
+            if end_idx > 0 and end_idx - 1 < n:
+                show_end = click.prompt(
+                    "Show ending? (may contain spoilers) [y/n]",
+                    type=str, default='n')
+                if show_end.lower() in ('y', 'yes'):
+                    click.echo(f"\nNew ending:")
+                    click.echo(f"  {classifier.get_preview(chapters[end_idx - 1])}")
 
-                click.echo(f"\n[1] Still junk at end (strip more)")
-                click.echo(f"[2] Content was cut (strip less)")
-                click.echo(f"[3] OK")
-                click.echo(f"[4] Skip auto-strip (go to manual)")
+                    click.echo(f"\n[1] Still junk at end (strip more)")
+                    click.echo(f"[2] Content was cut (strip less)")
+                    click.echo(f"[3] OK")
+                    click.echo(f"[4] Skip auto-strip (go to manual)")
+                    click.echo(f"[5] Back (redo beginning)")
 
-                choice = click.prompt("How is the ending?", type=str, default='3')
+                    choice = click.prompt("How is the ending?", type=str, default='3')
+                else:
+                    choice = '3'
             else:
                 choice = '3'
-        else:
-            choice = '3'
 
-        if choice == '1':
-            back_sensitivity = min(1.0, back_sensitivity + classifier.SENSITIVITY_STEP)
-        elif choice == '2':
-            back_sensitivity = max(0.0, back_sensitivity - classifier.SENSITIVITY_STEP)
-        elif choice == '3':
+            if choice == '1':
+                back_sensitivity = min(1.0, back_sensitivity + classifier.SENSITIVITY_STEP)
+            elif choice == '2':
+                back_sensitivity = max(0.0, back_sensitivity - classifier.SENSITIVITY_STEP)
+            elif choice == '3':
+                break
+            elif choice == '4':
+                return None
+            elif choice == '5':
+                go_back = True
+                break
+            else:
+                click.echo("Invalid choice.")
+
+        if not go_back:
             break
-        elif choice == '4':
-            return None
-        else:
-            click.echo("Invalid choice.")
 
     # Summary
     keep_indices = set(range(start_idx, end_idx))
