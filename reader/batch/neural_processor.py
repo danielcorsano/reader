@@ -267,101 +267,26 @@ class NeuralProcessor:
 
             except Exception as e:
                 error_str = str(e)
+                reason = "exceeds phoneme limit" if ("510" in error_str and "out of bounds" in error_str) \
+                    else f"synthesis error ({error_str[:80]})"
+                print(f"\n⚠️  Chunk {i+1} {reason} - splitting and retrying", flush=True)
+                if self.debug:
+                    with open(self.debug_log, 'a') as f:
+                        import traceback
+                        f.write(f"\n!!! EXCEPTION chunk {i+1} !!!\n")
+                        f.write(f"{e}\nLength: {len(chunk_text)}\n")
+                        f.write(traceback.format_exc())
 
-                # Check if this is the Kokoro phoneme limit bug (510 phonemes)
-                if "510" in error_str and "out of bounds" in error_str:
-                    print(f"\n⚠️  Chunk {i+1} exceeds phoneme limit - splitting into smaller pieces", flush=True)
+                audio_data, piece_count = self._synthesize_with_recovery(
+                    chunk_text, i, total_chunks, tts_engine, voice_blend, speed)
 
-                    # Split chunk into smaller pieces and process each
-                    # Find sentence boundaries for clean splits
-                    sentences = []
-                    current = []
-                    for char in chunk_text:
-                        current.append(char)
-                        if char in '.!?':
-                            sentences.append(''.join(current).strip())
-                            current = []
-                    if current:
-                        sentences.append(''.join(current).strip())
+                if audio_data is None:
+                    skipped_chunks.append(i + 1)
+                    print(f"\n⚠️  Warning: Skipping chunk {i+1} entirely - no segments could be synthesized", flush=True)
+                    continue
 
-                    # Process each sentence separately
-                    audio_parts = []
-                    for j, sentence in enumerate(sentences):
-                        if not sentence.strip():
-                            continue
-                        try:
-                            audio_part = self._process_single_chunk(sentence, i, total_chunks, tts_engine, voice_blend, speed)
-                            # Strip WAV header from all but first part
-                            if j > 0:
-                                audio_part = self._extract_pcm_frames(audio_part)
-                            audio_parts.append(audio_part)
-                        except Exception as sent_error:
-                            # If even a single sentence fails, split at word boundary
-                            s1, s2 = self._split_at_word_boundary(sentence)
-                            try:
-                                part1 = self._process_single_chunk(s1, i, total_chunks, tts_engine, voice_blend, speed)
-                                part2 = self._process_single_chunk(s2, i, total_chunks, tts_engine, voice_blend, speed)
-                                audio_parts.append(part1)
-                                audio_parts.append(self._extract_pcm_frames(part2))
-                            except Exception as final_error:
-                                print(f"⚠️  Cannot synthesize part of chunk {i+1}, skipping this segment", flush=True)
-                                continue
+                print(f"✅ Successfully processed chunk {i+1} in {piece_count} piece(s)", flush=True)
 
-                    if not audio_parts:
-                        skipped_chunks.append(i + 1)
-                        print(f"\n⚠️  Warning: Skipping chunk {i+1} entirely - no segments could be synthesized", flush=True)
-                        continue
-
-                    audio_data = b''.join(audio_parts)
-                    print(f"✅ Successfully processed chunk {i+1} in {len(sentences)} pieces", flush=True)
-                else:
-                    # Other synthesis errors — try splitting before giving up
-                    print(f"\n⚠️  Chunk {i+1} synthesis error ({error_str[:80]}) - splitting and retrying", flush=True)
-                    if self.debug:
-                        with open(self.debug_log, 'a') as f:
-                            import traceback
-                            f.write(f"\n!!! EXCEPTION chunk {i+1} !!!\n")
-                            f.write(f"{e}\nLength: {len(chunk_text)}\n")
-                            f.write(traceback.format_exc())
-
-                    sentences = []
-                    current = []
-                    for char in chunk_text:
-                        current.append(char)
-                        if char in '.!?':
-                            sentences.append(''.join(current).strip())
-                            current = []
-                    if current:
-                        sentences.append(''.join(current).strip())
-
-                    audio_parts = []
-                    for j, sentence in enumerate(sentences):
-                        if not sentence.strip():
-                            continue
-                        try:
-                            audio_part = self._process_single_chunk(sentence, i, total_chunks, tts_engine, voice_blend, speed)
-                            if j > 0:
-                                audio_part = self._extract_pcm_frames(audio_part)
-                            audio_parts.append(audio_part)
-                        except Exception:
-                            s1, s2 = self._split_at_word_boundary(sentence)
-                            try:
-                                part1 = self._process_single_chunk(s1, i, total_chunks, tts_engine, voice_blend, speed)
-                                part2 = self._process_single_chunk(s2, i, total_chunks, tts_engine, voice_blend, speed)
-                                audio_parts.append(part1)
-                                audio_parts.append(self._extract_pcm_frames(part2))
-                            except Exception:
-                                print(f"⚠️  Cannot synthesize part of chunk {i+1}, skipping segment", flush=True)
-                                continue
-
-                    if not audio_parts:
-                        skipped_chunks.append(i + 1)
-                        print(f"\n⚠️  Warning: Skipping chunk {i+1} entirely - no segments could be synthesized", flush=True)
-                        continue
-
-                    audio_data = b''.join(audio_parts)
-                    print(f"✅ Successfully processed chunk {i+1} in {len(sentences)} pieces", flush=True)
-            
             # Convert and write immediately for streaming
             self._convert_and_write_chunk(output_file, audio_data)
 
@@ -396,6 +321,62 @@ class NeuralProcessor:
         if split_at == -1:
             split_at = mid  # No spaces at all, forced split
         return text[:split_at].strip(), text[split_at:].strip()
+
+    @staticmethod
+    def _split_into_sentences(text: str) -> List[str]:
+        """Split text into sentences on '.', '!', '?' boundaries."""
+        sentences = []
+        current = []
+        for char in text:
+            current.append(char)
+            if char in '.!?':
+                sentences.append(''.join(current).strip())
+                current = []
+        if current:
+            sentences.append(''.join(current).strip())
+        return [s for s in sentences if s]
+
+    def _synthesize_with_recovery(self, chunk_text: str, chunk_idx: int, total_chunks: int,
+                                 tts_engine, voice_blend: Dict[str, float], speed: float):
+        """Synthesize a chunk that failed as a whole by splitting into sentences,
+        recursively bisecting any sentence that still fails until each piece
+        succeeds or can't usefully be split further.
+
+        Returns (audio_bytes, sentence_count), or (None, 0) if nothing in the
+        chunk could be synthesized.
+        """
+        sentences = self._split_into_sentences(chunk_text)
+        parts = []
+        for sentence in sentences:
+            parts.extend(self._synthesize_segment(sentence, chunk_idx, total_chunks, tts_engine, voice_blend, speed))
+
+        if not parts:
+            return None, 0
+
+        # Only the first WAV blob keeps its header; the rest are stripped to raw
+        # frames before concatenation.
+        audio_data = parts[0] + b''.join(self._extract_pcm_frames(p) for p in parts[1:])
+        return audio_data, len(sentences)
+
+    def _synthesize_segment(self, text: str, chunk_idx: int, total_chunks: int,
+                           tts_engine, voice_blend: Dict[str, float], speed: float) -> List[bytes]:
+        """Synthesize one segment. On failure, recursively bisect at a word
+        boundary until each half succeeds or the split makes no progress
+        (single word/character left). Returns a list of raw WAV blobs, in
+        order, or an empty list if the segment couldn't be synthesized at all.
+        """
+        text = text.strip()
+        if not text:
+            return []
+        try:
+            return [self._process_single_chunk(text, chunk_idx, total_chunks, tts_engine, voice_blend, speed)]
+        except Exception:
+            s1, s2 = self._split_at_word_boundary(text)
+            if not s1 or not s2:
+                print(f"⚠️  Cannot synthesize segment, skipping: {text[:60]}...", flush=True)
+                return []
+            return (self._synthesize_segment(s1, chunk_idx, total_chunks, tts_engine, voice_blend, speed) +
+                    self._synthesize_segment(s2, chunk_idx, total_chunks, tts_engine, voice_blend, speed))
 
     def _process_single_chunk(self, chunk_text: str, chunk_idx: int, total_chunks: int,
                              tts_engine, voice_blend: Dict[str, float], speed: float) -> bytes:
