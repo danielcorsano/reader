@@ -253,7 +253,7 @@ class KokoroEngine(TTSEngine):
         if is_phonemes:
             if len(text) > self.MAX_PHONEME_LENGTH:
                 return self._synthesize_long_phonemes(text, voice_blend, speed)
-        elif len(text) > 350:  # Slightly higher limit since we pre-chunk at 300
+        elif len(text) > 450:  # Margin above the 400-char pre-chunk default (cli.py/config.py)
             return self._synthesize_long_text(text, voice_blend, speed)
         
         try:
