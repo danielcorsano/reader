@@ -436,7 +436,7 @@ class ReaderApp:
                 continue
             if tts_config.engine == "kokoro" and KOKORO_AVAILABLE:
                 kokoro_engine = self.get_tts_engine()
-                text_chunks.extend(kokoro_engine._chunk_text_intelligently(section, max_length=400))
+                text_chunks.extend(kokoro_engine._chunk_text_intelligently(section, max_length=processing_config.chunk_size))
             else:
                 chunk_size = min(400, processing_config.chunk_size)
                 text_chunks.extend([section[i:i+chunk_size]
@@ -462,7 +462,8 @@ class ReaderApp:
             'voice': tts_config.voice,
             'speed': tts_config.speed,
             'processing_level': processing_config.level,
-            'format': audio_config.format
+            'format': audio_config.format,
+            'chunk_size': processing_config.chunk_size
         }
 
         # Process chunks with Neural Engine

@@ -25,7 +25,7 @@ class AudioConfig:
 @dataclass
 class ProcessingConfig:
     """Text processing configuration."""
-    chunk_size: int = 400  # Kokoro recommended; split-and-retry catches rare phoneme overflows
+    chunk_size: int = 400  # Target size (chars) for grouping sentences into one streaming/checkpoint unit; phoneme-limit safety is enforced separately regardless of this value
     pause_between_chapters: float = 1.0
     auto_detect_chapters: bool = True
     level: str = "phase3"  # Use all available features by default
