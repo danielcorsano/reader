@@ -67,7 +67,13 @@ class Phonemizer:
             return text, False
 
     def _phonemize_safe(self, g2p, text, lang_code):
-        """Handle None phonemes from unknown words by substituting original text."""
+        """Handle None phonemes from unknown words.
+
+        Retries the lexicon, then the espeak fallback (if configured); only
+        substitutes raw text as a last resort so we don't feed Kokoro's IPA-only
+        vocab literal English/foreign letters (most get silently dropped or
+        misread as unrelated phonemes by the model).
+        """
         try:
             from misaki.en import G2P as EnG2P, TokenContext, replace
 
@@ -76,22 +82,24 @@ class Phonemizer:
             tokens = g2p.fold_left(tokens)
             tokens = EnG2P.retokenize(tokens)
 
+            def resolve(t, ctx):
+                if t.phonemes is None:
+                    t.phonemes, t.rating = g2p.lexicon(replace(t), ctx)
+                if t.phonemes is None and g2p.fallback is not None:
+                    t.phonemes, t.rating = g2p.fallback(replace(t))
+                if t.phonemes is None:
+                    t.phonemes = t.text
+
             ctx = TokenContext()
             flat = []
             for w in reversed(tokens):
                 if not isinstance(w, list):
-                    if w.phonemes is None:
-                        w.phonemes, w.rating = g2p.lexicon(replace(w), ctx)
-                    if w.phonemes is None:
-                        w.phonemes = w.text
+                    resolve(w, ctx)
                     ctx = EnG2P.token_context(ctx, w.phonemes, w)
                     flat.insert(0, w)
                 else:
                     for t in w:
-                        if t.phonemes is None:
-                            t.phonemes, t.rating = g2p.lexicon(replace(t), ctx)
-                        if t.phonemes is None:
-                            t.phonemes = t.text
+                        resolve(t, ctx)
                         flat.insert(0, t)
 
             result = ''.join(t.phonemes + t.whitespace for t in flat)
@@ -116,7 +124,7 @@ class Phonemizer:
         try:
             if module_name == 'en':
                 from misaki import en
-                g2p = en.G2P(trf=False, british=bool(british), fallback=None)
+                g2p = en.G2P(trf=False, british=bool(british), fallback=self._make_espeak_fallback(bool(british)))
 
             elif module_name == 'ja':
                 from misaki import ja
@@ -139,9 +147,37 @@ class Phonemizer:
             self._g2p_cache[lang_code] = None
             return None
         except Exception as e:
-            if self.debug:
-                print(f"  [G2P] Failed to init {lang_code}: {e}")
+            # misaki is installed but failed to init (e.g. spaCy model download
+            # failed) - warn even outside --debug, since the user otherwise has
+            # no way to know G2P silently isn't running.
+            print(f"⚠️  G2P (misaki) failed to initialize for {lang_code}, "
+                  f"falling back to standard TTS pronunciation: {e}")
             self._g2p_cache[lang_code] = None
+            return None
+
+    @staticmethod
+    def _make_espeak_fallback(british):
+        """Build misaki's espeak-ng fallback for words its lexicon doesn't know
+        (proper nouns, foreign loanwords, etc.) instead of leaving them
+        unphonemized. Returns None if espeak-ng can't be located, in which case
+        unknown words fall through to raw text (existing behavior).
+
+        Points phonemizer's espeak backend at the espeakng_loader-bundled
+        library (already a hard dependency via kokoro-onnx) before misaki's own
+        espeak module runs its lookup - misaki's default lookup only checks a
+        hardcoded Homebrew path, which doesn't work on Linux, Windows, or even
+        non-Homebrew macOS installs.
+        """
+        try:
+            from phonemizer.backend.espeak.wrapper import EspeakWrapper
+            if not EspeakWrapper._ESPEAK_LIBRARY:
+                import espeakng_loader
+                EspeakWrapper.set_data_path(espeakng_loader.get_data_path())
+                EspeakWrapper.set_library(espeakng_loader.get_library_path())
+
+            from misaki.espeak import EspeakFallback
+            return EspeakFallback(british=british)
+        except Exception:
             return None
 
 
