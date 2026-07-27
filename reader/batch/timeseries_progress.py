@@ -1,7 +1,6 @@
 """Timeseries visualization progress display for Neural Engine processing."""
 import time
 import os
-from pathlib import Path
 from collections import deque
 from .neural_processor import ProgressDisplay
 

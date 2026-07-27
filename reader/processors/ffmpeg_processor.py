@@ -9,8 +9,8 @@ from ..interfaces.audio_processor import AudioProcessor
 from ..utils.setup import get_ffmpeg_path
 
 try:
-    from mutagen.mp4 import MP4, MP4Cover
-    from mutagen.id3 import ID3, TIT2, TPE1, TALB, TRCK, TPOS, CHAP, CTOC
+    from mutagen.mp4 import MP4
+    from mutagen.id3 import ID3, TIT2, TPE1, TALB, CHAP, CTOC
     AUDIO_LIBS_AVAILABLE = True
 except ImportError:
     AUDIO_LIBS_AVAILABLE = False

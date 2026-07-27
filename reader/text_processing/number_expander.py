@@ -14,7 +14,6 @@ text-to-speech synthesis. It handles:
 Performance optimized with pre-compiled regex patterns for minimal overhead.
 """
 import re
-from typing import Dict, List
 
 
 class NumberExpander:

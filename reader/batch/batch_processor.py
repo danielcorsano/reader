@@ -15,13 +15,13 @@ from ..parsers.pdf_parser import PDFParser
 from ..parsers.text_parser import PlainTextParser
 
 try:
-    from ..engines.kokoro_engine import KokoroEngine
+    from ..engines.kokoro_engine import KokoroEngine  # noqa: F401 - import doubles as availability check
     KOKORO_AVAILABLE = True
 except ImportError:
     KOKORO_AVAILABLE = False
 
 try:
-    from ..voices.character_mapper import CharacterVoiceMapper
+    from ..voices.character_mapper import CharacterVoiceMapper  # noqa: F401 - import doubles as availability check
     from ..chapters.chapter_manager import ChapterManager
     from ..processors.ffmpeg_processor import get_audio_processor
     PHASE_3_AVAILABLE = True

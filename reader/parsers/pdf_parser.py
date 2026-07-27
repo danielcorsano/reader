@@ -2,7 +2,7 @@
 import re
 import PyPDF2
 from pathlib import Path
-from typing import List, Dict, Any
+from typing import List
 
 from ..interfaces.text_parser import TextParser, ParsedContent
 

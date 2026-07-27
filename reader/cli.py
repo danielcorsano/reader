@@ -37,7 +37,7 @@ from .batch.neural_processor import NeuralProcessor
 from .batch.batch_processor import create_batch_processor
 from .processors.ffmpeg_processor import get_audio_processor
 from .voices.voice_previewer import get_voice_previewer
-from .utils.setup import validate_environment, check_ffmpeg
+from .utils.setup import check_ffmpeg
 
 
 LANG_DISPLAY = {
@@ -642,8 +642,6 @@ def convert(voice, speed, format, file, characters, character_config, chapters, 
 @click.option('--gender', type=click.Choice(['male', 'female']), help='Filter by gender')
 def voices(language, gender):
     """List available Kokoro TTS voices."""
-    app = ReaderApp()
-
     if not KOKORO_AVAILABLE:
         click.echo("❌ Kokoro engine not available.")
         click.echo("📥 Install: See docs/KOKORO_SETUP.md")
@@ -774,7 +772,7 @@ def detect(file_path, output, auto_assign):
     if auto_assign:
         # Auto-assign gender-appropriate voices
         click.echo("Auto-assigning voices...")
-        assignments = app.character_mapper.auto_assign_voices(detected_chars)
+        app.character_mapper.auto_assign_voices(detected_chars)
         for char_name in sorted(detected_chars):
             char_voice = app.character_mapper.get_character_voice(char_name)
             if char_voice:
@@ -835,7 +833,7 @@ def create(name, voice_spec, description):
 
 
 @blend.command()
-def list():
+def list():  # noqa: F811 - distinct Click subcommand, not a redefinition (blend list vs characters list)
     """List all voice blends."""
     app = ReaderApp()
     if not app.character_mapper:
@@ -1249,7 +1247,7 @@ def batch():
 @click.option('--directory', '-d', type=click.Path(exists=True), help='Add all files from directory')
 @click.option('--recursive', '-r', is_flag=True, help='Search directory recursively')
 @click.option('--output-dir', type=click.Path(), help='Output directory for converted files')
-def add(files, directory, recursive, output_dir):
+def add(files, directory, recursive, output_dir):  # noqa: F811 - distinct Click subcommand, not a redefinition (batch add vs characters add)
     """Add files to batch processing queue."""
     app = ReaderApp(init_tts=False)  # Batch processor handles TTS internally
     batch_processor = create_batch_processor(app.config_manager)

@@ -1,7 +1,7 @@
 """Multi-signal content classifier for detecting non-content chapters."""
 import re
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Tuple
 
 
 @dataclass

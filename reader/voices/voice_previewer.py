@@ -1,11 +1,9 @@
 """Voice preview functionality for Phase 3."""
 import tempfile
 from pathlib import Path
-from typing import Dict, Any, List, Optional, Union
+from typing import Dict, Any, List, Optional
 import random
 import json
-
-from ..interfaces.tts_engine import TTSEngine
 
 try:
     from ..engines.kokoro_engine import KokoroEngine

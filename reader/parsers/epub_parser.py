@@ -3,7 +3,7 @@ import ebooklib
 from ebooklib import epub
 from bs4 import BeautifulSoup
 from pathlib import Path
-from typing import List, Dict, Any, Optional
+from typing import List, Dict
 import warnings
 import sys
 import re
@@ -139,7 +139,7 @@ class EPUBParser(TextParser):
     def _has_lxml(self) -> bool:
         """Check if lxml parser is available."""
         try:
-            import lxml
+            import lxml  # noqa: F401 - import doubles as availability check
             return True
         except ImportError:
             return False
@@ -154,7 +154,6 @@ class EPUBParser(TextParser):
         text = soup.get_text(separator=' ', strip=True)
         
         # Clean up excessive whitespace
-        import re
         text = re.sub(r'\s+', ' ', text)
         
         return text.strip()

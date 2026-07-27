@@ -1,7 +1,7 @@
 """Character voice mapping and management system."""
 import yaml
 from pathlib import Path
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Dict, List, Optional, Set
 from dataclasses import dataclass, asdict
 import re
 

@@ -1,7 +1,7 @@
 """Chapter management and metadata extraction for Phase 3."""
 import re
 from pathlib import Path
-from typing import List, Dict, Any, Optional, Tuple, Union
+from typing import List, Dict, Any, Optional
 from dataclasses import dataclass, asdict
 import json
 
