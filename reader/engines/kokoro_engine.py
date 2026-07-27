@@ -1,8 +1,7 @@
 """Kokoro TTS engine implementation with voice blending."""
 import re
 from pathlib import Path
-from typing import List, Dict, Any, Optional, Tuple
-import tempfile
+from typing import List, Dict, Any, Optional
 import warnings
 
 from ..interfaces.tts_engine import TTSEngine
