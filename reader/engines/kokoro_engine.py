@@ -28,6 +28,13 @@ class KokoroEngine(TTSEngine):
     # count hits exactly 510 (voice style array has 510 rows); 500 leaves margin
     MAX_PHONEME_LENGTH = 500
 
+    # Backstop for _chunk_text_intelligently: an individual sentence is only
+    # force-split at punctuation/whitespace if it exceeds this (~500 words -
+    # comfortably above any real prose sentence). This bounds worst-case chunk
+    # size for degenerate, unpunctuated input; it is NOT a phoneme-safety
+    # threshold - synthesize() enforces MAX_PHONEME_LENGTH precisely regardless.
+    SENTENCE_FORCE_SPLIT_LENGTH = 3000
+
     def __init__(self, debug: bool = False):
         """Initialize the Kokoro engine."""
         self.debug = debug
@@ -225,14 +232,14 @@ class KokoroEngine(TTSEngine):
             speed: Speech rate multiplier
             volume: Volume multiplier (not directly supported by Kokoro)
             is_phonemes: If True, text is pre-phonemized IPA from misaki G2P
-            
+
         Returns:
             Audio data as bytes (WAV format)
         """
         self._ensure_initialized()
         if not self.kokoro:
             raise RuntimeError("Kokoro engine not initialized")
-        
+
         # Default voice
         if not voice:
             voice = "bm_fable"
@@ -248,25 +255,28 @@ class KokoroEngine(TTSEngine):
 
         # Handle voice blending
         voice_blend = self._parse_voice_blend(voice)
-        
-        # Chunk long inputs; phoneme input must split by phoneme count, never re-chunk as text
-        if is_phonemes:
-            if len(text) > self.MAX_PHONEME_LENGTH:
-                return self._synthesize_long_phonemes(text, voice_blend, speed)
-        elif len(text) > 450:  # Margin above the 400-char pre-chunk default (cli.py/config.py)
-            return self._synthesize_long_text(text, voice_blend, speed)
-        
+        voice_id = (list(voice_blend.items())[0][0] if len(voice_blend) == 1
+                    else max(voice_blend.items(), key=lambda x: x[1])[0])
+        lang = self._get_voice_lang(voice_id)
+
+        # Sanitize once, whether this is raw text or already-phonemized IPA.
+        text = self._sanitize_text(text)
+
+        # Non-G2P text: phonemize it ourselves via Kokoro's own espeak-based
+        # tokenizer (the same call kokoro.create() would make internally) so
+        # the real phoneme length is known before deciding whether to split.
+        # This replaces relying on kokoro-onnx's own internal batching, which
+        # only splits on punctuation and can still overflow on a long
+        # punctuation-free run.
+        if not is_phonemes:
+            text = self.kokoro.tokenizer.phonemize(text, lang)
+
+        # Every input is phonemes from here on; split precisely if it exceeds
+        # Kokoro's hard 510-token limit (MAX_PHONEME_LENGTH leaves margin).
+        if len(text) > self.MAX_PHONEME_LENGTH:
+            return self._synthesize_long_phonemes(text, voice_blend, speed)
+
         try:
-            # Generate audio with Kokoro for short text
-            # Sanitize text to avoid index errors
-            text = self._sanitize_text(text)
-
-            # Determine voice to use
-            if len(voice_blend) == 1:
-                voice_id, _ = list(voice_blend.items())[0]
-            else:
-                voice_id = max(voice_blend.items(), key=lambda x: x[1])[0]
-
             # Suppress Kokoro warnings unless in debug mode
             if not self.debug:
                 import warnings
@@ -280,8 +290,8 @@ class KokoroEngine(TTSEngine):
                         text=text,
                         voice=voice_id,
                         speed=speed,
-                        lang=self._get_voice_lang(voice_id),
-                        is_phonemes=is_phonemes
+                        lang=lang,
+                        is_phonemes=True
                     )
                 kokoro_logger.setLevel(original_level)
             else:
@@ -289,8 +299,8 @@ class KokoroEngine(TTSEngine):
                     text=text,
                     voice=voice_id,
                     speed=speed,
-                    lang=self._get_voice_lang(voice_id),
-                    is_phonemes=is_phonemes
+                    lang=lang,
+                    is_phonemes=True
                 )
 
             # Convert to WAV bytes
@@ -483,218 +493,28 @@ class KokoroEngine(TTSEngine):
             pieces.append(remaining)
         return pieces
 
-    def _synthesize_long_text(self, text: str, voice_blend: Dict[str, float], speed: float) -> bytes:
-        """Synthesize long text by intelligent chunking with streaming to prevent memory issues."""
-        # Split text into chunks at natural break points
-        chunks = self._chunk_text_intelligently(text, max_length=400)
-        
-        if len(chunks) <= 4:
-            # For smaller texts, use in-memory processing
-            return self._synthesize_chunks_in_memory(chunks, voice_blend, speed)
-        else:
-            # For large texts, use streaming with temporary files
-            return self._synthesize_chunks_streaming(chunks, voice_blend, speed)
-    
-    def _synthesize_chunks_in_memory(self, chunks: List[str], voice_blend: Dict[str, float], speed: float) -> bytes:
-        """Memory-efficient synthesis for smaller chunk sets."""
-        audio_segments = []
-        sample_rate = None
-        total_chunks = len(chunks)
-        
-        for i, chunk in enumerate(chunks):
-            if not chunk.strip():
-                continue
-
-            try:
-                # Sanitize chunk text
-                sanitized_chunk = self._sanitize_text(chunk.strip())
-
-                if len(voice_blend) == 1:
-                    # Single voice
-                    voice_id, _ = list(voice_blend.items())[0]
-                    samples, chunk_sample_rate = self.kokoro.create(
-                        text=sanitized_chunk,
-                        voice=voice_id,
-                        speed=speed,
-                        lang=self._get_voice_lang(voice_id)
-                    )
-                else:
-                    # Voice blending - use primary voice (highest weight)
-                    primary_voice = max(voice_blend.items(), key=lambda x: x[1])[0]
-                    samples, chunk_sample_rate = self.kokoro.create(
-                        text=sanitized_chunk,
-                        voice=primary_voice,
-                        speed=speed,
-                        lang=self._get_voice_lang(primary_voice)
-                    )
-
-                audio_segments.append(samples)
-                if sample_rate is None:
-                    sample_rate = chunk_sample_rate
-
-            except Exception as e:
-                # Split the failing chunk and retry
-                print(f"⚠️  Chunk {i+1} failed ({e}), splitting and retrying...")
-                sub_chunks = self._chunk_text_intelligently(chunk, max_length=len(chunk) // 2)
-                for sub in sub_chunks:
-                    if not sub.strip():
-                        continue
-                    try:
-                        sanitized_sub = self._sanitize_text(sub.strip())
-                        voice_id = list(voice_blend.keys())[0] if len(voice_blend) == 1 else max(voice_blend.items(), key=lambda x: x[1])[0]
-                        samples, sr = self.kokoro.create(text=sanitized_sub, voice=voice_id, speed=speed, lang=self._get_voice_lang(voice_id))
-                        audio_segments.append(samples)
-                        if sample_rate is None:
-                            sample_rate = sr
-                    except Exception as sub_e:
-                        print(f"⚠️  Sub-chunk also failed, skipping: {sub[:60]}...")
-                        continue
-                continue
-
-        if not audio_segments:
-            raise RuntimeError("Failed to synthesize any chunks from the text")
-
-        # Merge audio segments
-        import numpy as np
-        merged_samples = np.concatenate(audio_segments)
-
-        # Convert to WAV bytes
-        return self._samples_to_wav_bytes(merged_samples, sample_rate)
-
-    def _synthesize_chunks_streaming(self, chunks: List[str], voice_blend: Dict[str, float], speed: float) -> bytes:
-        """Memory-efficient synthesis using temporary files for large texts."""
-        import tempfile
-        
-        temp_files = []
-        sample_rate = None
-        total_chunks = len(chunks)
-        
-        try:
-            # Process chunks and save to temporary files
-            for i, chunk in enumerate(chunks):
-                if not chunk.strip():
-                    continue
-
-                try:
-                    # Sanitize chunk text
-                    sanitized_chunk = self._sanitize_text(chunk.strip())
-
-                    if len(voice_blend) == 1:
-                        # Single voice
-                        voice_id, _ = list(voice_blend.items())[0]
-                        samples, chunk_sample_rate = self.kokoro.create(
-                            text=sanitized_chunk,
-                            voice=voice_id,
-                            speed=speed,
-                            lang=self._get_voice_lang(voice_id)
-                        )
-                    else:
-                        # Voice blending - use primary voice (highest weight)
-                        primary_voice = max(voice_blend.items(), key=lambda x: x[1])[0]
-                        samples, chunk_sample_rate = self.kokoro.create(
-                            text=sanitized_chunk,
-                            voice=primary_voice,
-                            speed=speed,
-                            lang=self._get_voice_lang(primary_voice)
-                        )
-
-                    if sample_rate is None:
-                        sample_rate = chunk_sample_rate
-
-                    # Save to temporary file
-                    temp_file = tempfile.NamedTemporaryFile(suffix='.wav', delete=False)
-                    wav_data = self._samples_to_wav_bytes(samples, chunk_sample_rate)
-                    temp_file.write(wav_data)
-                    temp_file.close()
-                    temp_files.append(temp_file.name)
-
-                except Exception as e:
-                    # Split the failing chunk and retry
-                    print(f"⚠️  Chunk {i+1} failed ({e}), splitting and retrying...")
-                    sub_chunks = self._chunk_text_intelligently(chunk, max_length=len(chunk) // 2)
-                    for sub in sub_chunks:
-                        if not sub.strip():
-                            continue
-                        try:
-                            sanitized_sub = self._sanitize_text(sub.strip())
-                            voice_id = list(voice_blend.keys())[0] if len(voice_blend) == 1 else max(voice_blend.items(), key=lambda x: x[1])[0]
-                            samples, sr = self.kokoro.create(text=sanitized_sub, voice=voice_id, speed=speed, lang=self._get_voice_lang(voice_id))
-                            if sample_rate is None:
-                                sample_rate = sr
-                            temp_file = tempfile.NamedTemporaryFile(suffix='.wav', delete=False)
-                            wav_data = self._samples_to_wav_bytes(samples, sr)
-                            temp_file.write(wav_data)
-                            temp_file.close()
-                            temp_files.append(temp_file.name)
-                        except Exception as sub_e:
-                            print(f"⚠️  Sub-chunk also failed, skipping: {sub[:60]}...")
-                            continue
-                    continue
-            
-            if not temp_files:
-                raise RuntimeError("Failed to synthesize any chunks from the text")
-            
-            # Concatenate temporary files
-            print(f"Merging {len(temp_files)} audio segments...")
-            return self._concatenate_temp_files(temp_files, sample_rate)
-            
-        finally:
-            # Clean up temporary files
-            for temp_file in temp_files:
-                try:
-                    Path(temp_file).unlink(missing_ok=True)
-                except:
-                    pass
-    
-    def _concatenate_temp_files(self, temp_files: List[str], sample_rate: int) -> bytes:
-        """Concatenate temporary audio files into a single audio stream."""
-        import wave
-        import io
-        
-        # Read all WAV files and concatenate the audio data
-        all_audio_data = []
-        
-        for temp_file in temp_files:
-            try:
-                with wave.open(temp_file, 'rb') as wav_file:
-                    audio_data = wav_file.readframes(wav_file.getnframes())
-                    all_audio_data.append(audio_data)
-            except Exception as e:
-                print(f"Warning: Failed to read temp file {temp_file}: {e}")
-                continue
-        
-        if not all_audio_data:
-            raise RuntimeError("Failed to read any temporary audio files")
-        
-        # Create final WAV file in memory
-        wav_buffer = io.BytesIO()
-        
-        with wave.open(wav_buffer, 'wb') as wav_file:
-            wav_file.setnchannels(1)  # Mono
-            wav_file.setsampwidth(2)  # 16-bit
-            wav_file.setframerate(sample_rate)
-            
-            # Write all concatenated audio data
-            for audio_data in all_audio_data:
-                wav_file.writeframes(audio_data)
-        
-        wav_buffer.seek(0)
-        return wav_buffer.read()
-    
     def _chunk_text_intelligently(self, text: str, max_length: int = 400) -> List[str]:
-        """Chunk text at natural break points while guaranteeing no chunk exceeds max_length."""
+        """Group sentences into chunks up to max_length for streaming/checkpoint
+        granularity. This is NOT a phoneme-safety mechanism - synthesize()
+        enforces the real 510-token limit precisely regardless of chunk size.
+        An individual sentence is only force-split (at punctuation, falling
+        back to whitespace) if it exceeds SENTENCE_FORCE_SPLIT_LENGTH, a
+        generous backstop that bounds worst-case chunk size for degenerate,
+        unpunctuated input - not a correctness threshold.
+        """
         # Normalize: collapse all whitespace (newlines, tabs) to single spaces
         text = ' '.join(text.split())
 
         chunks = []
         current_chunk = ""
+        hard_limit = self.SENTENCE_FORCE_SPLIT_LENGTH
 
         # Split by sentences first (using pre-compiled pattern)
         sentences = self.SENTENCE_SPLIT_PATTERN.split(text)
 
         for sentence in sentences:
             # If sentence itself is too long, split by smaller units
-            if len(sentence) > max_length:
+            if len(sentence) > hard_limit:
                 # Split by commas, semicolons, or other punctuation (using pre-compiled pattern)
                 sub_parts = self.PUNCTUATION_SPLIT_PATTERN.split(sentence)
                 temp_part = ""
@@ -728,17 +548,21 @@ class KokoroEngine(TTSEngine):
         if current_chunk.strip():
             chunks.append(current_chunk.strip())
 
-        # Safety: hard-split any chunk that still exceeds max_length (e.g. no punctuation at all)
+        # Safety: hard-split any chunk that still exceeds the backstop (e.g. no
+        # punctuation at all). Deliberately NOT max_length here - a single
+        # sentence between max_length and hard_limit is meant to stay intact
+        # as its own chunk; only the degenerate case above hard_limit forces
+        # a whitespace split.
         safe_chunks = []
         for chunk in chunks:
-            if len(chunk) <= max_length:
+            if len(chunk) <= hard_limit:
                 safe_chunks.append(chunk)
             else:
-                # Split on whitespace nearest to max_length
-                while len(chunk) > max_length:
-                    split_at = chunk.rfind(' ', 0, max_length)
+                # Split on whitespace nearest to hard_limit
+                while len(chunk) > hard_limit:
+                    split_at = chunk.rfind(' ', 0, hard_limit)
                     if split_at == -1:
-                        split_at = max_length
+                        split_at = hard_limit
                     safe_chunks.append(chunk[:split_at].strip())
                     chunk = chunk[split_at:].strip()
                 if chunk:
