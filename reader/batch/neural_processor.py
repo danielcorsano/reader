@@ -434,15 +434,23 @@ class NeuralProcessor:
                 voice_str = ",".join(voice_parts)
 
             # G2P phonemization (optional, improves pronunciation if misaki is installed)
-            is_phonemes = False
-            if self.use_g2p:
-                lang_code = tts_engine._get_voice_lang(voice_str) if hasattr(tts_engine, '_get_voice_lang') else 'en-us'
-                clean_text, is_phonemes = self.phonemizer.phonemize(clean_text, lang_code)
+            clean_text, is_phonemes = self._maybe_phonemize(clean_text, voice_str, tts_engine)
 
             return tts_engine.synthesize(clean_text, voice_str, speed, is_phonemes=is_phonemes)
 
         except Exception as e:
             raise RuntimeError(f"Neural Engine processing failed on chunk {chunk_idx + 1}: {str(e)}") from e
+
+    def _maybe_phonemize(self, text: str, voice_str: str, tts_engine) -> tuple:
+        """Phonemize text via G2P if enabled, using the given voice's language.
+
+        Shared by the narrator and character-voice synthesis paths so both get
+        the same pronunciation handling (unknown words, numbers, homographs).
+        """
+        if not self.use_g2p:
+            return text, False
+        lang_code = tts_engine._get_voice_lang(voice_str) if hasattr(tts_engine, '_get_voice_lang') else 'en-us'
+        return self.phonemizer.phonemize(text, lang_code)
 
     def _synthesize_with_character_voices(self, segments: List, tts_engine,
                                          default_voice_blend: Dict[str, float], speed: float) -> bytes:
@@ -450,7 +458,8 @@ class NeuralProcessor:
         audio_parts = []
 
         for segment in segments:
-            if not segment.text.strip():
+            raw_text = segment.text.strip()
+            if not raw_text:
                 continue
 
             # Determine voice for this segment
@@ -466,14 +475,17 @@ class NeuralProcessor:
                 # Narration - use default narrator voice
                 voice_str = self._voice_blend_to_str(default_voice_blend)
 
-            # Synthesize segment
+            # Synthesize segment (phonemized per-voice, since character voices
+            # can differ in language from the narrator)
             try:
-                audio_data = tts_engine.synthesize(segment.text.strip(), voice_str, speed)
+                text, is_phonemes = self._maybe_phonemize(raw_text, voice_str, tts_engine)
+                audio_data = tts_engine.synthesize(text, voice_str, speed, is_phonemes=is_phonemes)
                 audio_parts.append(audio_data)
-            except Exception as e:
+            except Exception:
                 # Fall back to default voice on error
                 voice_str = self._voice_blend_to_str(default_voice_blend)
-                audio_data = tts_engine.synthesize(segment.text.strip(), voice_str, speed)
+                text, is_phonemes = self._maybe_phonemize(raw_text, voice_str, tts_engine)
+                audio_data = tts_engine.synthesize(text, voice_str, speed, is_phonemes=is_phonemes)
                 audio_parts.append(audio_data)
 
         # Concatenate all audio parts
@@ -532,7 +544,7 @@ class NeuralProcessor:
                                 break
 
                     all_audio_data.append(frames)
-            except Exception as e:
+            except Exception:
                 # Skip corrupted segments
                 continue
 
@@ -614,7 +626,7 @@ class NeuralProcessor:
                 '-y', str(self.output_path)
             ]
 
-            result = subprocess.run(cmd, capture_output=True, check=True)
+            subprocess.run(cmd, capture_output=True, check=True)
 
             # Clean up temp raw PCM file
             self.temp_wav_path.unlink(missing_ok=True)
@@ -638,7 +650,6 @@ class NeuralProcessor:
         if not self.temp_wav_path or not self.temp_wav_path.exists():
             return
         wav_output = self.output_path.with_suffix('.wav')
-        raw_size = self.temp_wav_path.stat().st_size
         try:
             with wave.open(str(wav_output), 'wb') as wav_file:
                 wav_file.setnchannels(1)
