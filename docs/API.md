@@ -309,11 +309,11 @@ The recommended workflow is to strip non-content chapters first, then convert:
 reader strip mybook.epub
 # → Auto-detects and removes front/back matter
 # → Review and refine chapter selection
-# → Saves mybook_stripped.epub
+# → Saves mybook_stripped.txt
 
 # Then convert the stripped file
 import reader
-output = reader.convert("mybook_stripped.epub", voice="bm_fable")
+output = reader.convert("mybook_stripped.txt", voice="bm_fable")
 ```
 
 Or do everything from the CLI:

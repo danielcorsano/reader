@@ -20,12 +20,18 @@ Interactive chapter removal with 5-signal content classifier:
 ```bash
 reader strip book.epub
 
-# Selection syntax:
+# Boundary tuning (front first, then back):
+#   [1] strip more   [2] strip less   [3] OK   [4] skip auto-strip
+#   The back menu adds [5] Back (redo beginning)
+
+# Manual selection syntax:
 #   s 0, 6-8   → Strip chapters 0, 6, 7, 8
 #   k 1-5      → Keep chapters 1-5 only
 ```
 
-Signals: title keywords, EPUB metadata, content patterns, prose density, relative length. Front-matter gets higher sensitivity, back-matter is conservative. End preview is spoiler-protected.
+Signals: title keywords, EPUB metadata, content patterns, prose density, relative length. Front-matter gets higher sensitivity, back-matter is conservative. The ending is previewed only on request, so auto-strip never spoils it.
+
+Output is always plain text: `book_stripped.txt`, saved next to the original.
 
 ## G2P Pronunciation Enhancement
 

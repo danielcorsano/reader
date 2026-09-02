@@ -284,13 +284,14 @@ reader strip book.epub
 # Flow:
 # 1. Tiered chapter detection (marked → headings → formatting)
 # 2. Auto-strip with 5-signal classifier (title, EPUB, patterns, density, relative length)
-# 3. Manual refinement with strip/keep syntax
-# 4. Spoiler-protected end preview
+# 3. Tune the front boundary, then the back: [1] strip more, [2] strip less, [3] OK
+#    (the end preview is only shown if you ask — spoiler protection)
+# 4. Optional manual refinement with strip/keep syntax
 #
 # Syntax examples:
 #   s 0, 6-8   → Strip chapters 0, 6, 7, 8 (keep the rest)
 #   k 1-5      → Keep chapters 1-5 only (strip the rest)
-# Output: book_stripped.epub (saved next to original)
+# Output: book_stripped.txt (saved next to original)
 ```
 
 ### Configuration Management
@@ -399,9 +400,9 @@ reader convert --voice bf_emma --file text/sample.txt
 # Strip unnecessary chapters, then convert — all in one flow
 reader strip "Philosophy Textbook.epub"
 # → Detects sections (headings for PDF/TXT, structural markup for EPUB)
-# → Auto-strip suggests front/back matter removal
+# → Auto-strip suggests front/back matter removal, tune with strip more/less
 # → Manual refinement if needed
-# → Saves Philosophy Textbook_stripped.epub
+# → Saves Philosophy Textbook_stripped.txt
 # → "Convert to audiobook?" → interactive language/voice/speed dialog
 
 # Works with PDFs too — detects headings like "Preface", "Part I", "Index"

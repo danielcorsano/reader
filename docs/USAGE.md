@@ -130,18 +130,18 @@ reader strip textbook.txt
 #    (title keywords, EPUB metadata, content patterns, prose density, relative length)
 #    - Front-matter bias (copyright/title pages detected more aggressively)
 #    - Conservative back-stripping (harder to accidentally cut ending)
-#    - Spoiler-protected end preview
-# 3. Manual refinement:
+# 3. Boundary tuning — front first, then back:
+#    [1] strip more  [2] strip less  [3] OK  [4] skip auto-strip (go to manual)
+#    The back menu adds [5] Back (redo beginning)
+#    The ending is only previewed if you answer yes to "Show ending?" (spoiler protection)
+# 4. Optional manual refinement:
 #    s 0, 6-8  → Strip chapters 0, 6, 7, 8 (keep the rest)
 #    k 1-5     → Keep chapters 1-5 only (strip the rest)
-# 4. Saves stripped file, offers conversion
-# 5. Interactive dialog: choose language → voice → speed
+# 5. Saves stripped file, offers conversion
+# 6. Interactive dialog: choose language → voice → speed
 ```
 
-**Output formats:**
-- EPUB → `_stripped.epub` (preserves structure, CSS, images)
-- TXT/MD/RST → `_stripped.txt`
-- PDF → `_stripped.txt` (extracts to text)
+**Output:** always plain text — `<name>_stripped.txt`, saved next to the original. EPUB and PDF are extracted to text.
 
 ### Voice Management
 
@@ -239,21 +239,56 @@ reader convert --file story.txt --output-dir /audiobooks
 ```bash
 # Strip a philosophy textbook to just the main chapters
 reader strip "Spinoza - Ethics.epub"
-# Output:
-#   0: Title Page
-#      "THE ESSENTIAL SPINOZA..."
-#   1: Editor's Introduction
-#      "This volume brings together..."
-#   2: Part I - On God
-#      "By substance I understand..."
-#   ...
-# Strip chapters? [y/n]: y
-# Enter selection: k 2-8
-# Keeping 7 of 12 chapters...
-# Saved: Spinoza - Ethics_stripped.epub
-# Convert to audiobook? [y/n]: y
-# → Select language, voice, and speed interactively
 ```
+
+```
+Parsing Spinoza - Ethics.epub...
+
+Detected 12 chapters:
+
+  0: Title Page
+     "THE ESSENTIAL SPINOZA"
+
+  1: Editor's Introduction
+     "This volume brings together..."
+
+  2: Part I - On God
+     "By substance I understand that which is in itself..."
+  ...
+
+Auto-strip non-content? [y/n] [y]: y
+
+Stripping 2 from front (sensitivity 0.5):
+  0: Title Page  [front_matter, score=0.88]
+  1: Editor's Introduction  [junk, score=0.71]
+
+New beginning:
+  "By substance I understand that which is in itself..."
+
+[1] Still junk at start (strip more)
+[2] Content was cut (strip less)
+[3] OK
+[4] Skip auto-strip (go to manual)
+How is the beginning? [3]: 3
+
+Stripping 3 from back (sensitivity 0.5):
+  9: Bibliography  [bibliography, score=0.90]
+  10: Index  [index, score=0.93]
+  11: About the Translator  [about_author, score=0.82]
+
+Show ending? (may contain spoilers) [y/n] [n]: n
+
+Keeping chapters 2-8 (7 of 12)
+
+Refine manually? [y/n] [n]: n
+
+Keeping 7 of 12 chapters...
+Saved: Spinoza - Ethics_stripped.txt
+
+Convert to audiobook? [y/n] [n]: y
+```
+
+Answering `y` opens the language → voice → speed dialog.
 
 ### EPUB Example
 

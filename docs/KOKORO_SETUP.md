@@ -166,7 +166,7 @@ The recommended workflow is to strip non-content chapters first, then convert:
 reader strip mybook.epub
 # → Auto-detects and removes front/back matter (copyright, TOC, index, etc.)
 # → Review and refine chapter selection
-# → Saves mybook_stripped.epub
+# → Saves mybook_stripped.txt
 # → "Convert to audiobook?" → interactive language/voice/speed dialog
 ```
 

@@ -75,7 +75,8 @@ Grades from [Kokoro-82M VOICES.md](https://huggingface.co/hexgrad/Kokoro-82M/blo
 ```bash
 # Strip unwanted chapters (TOC, bibliography, index, etc.)
 reader strip "Ethics.epub"
-# → Auto-detects non-content, lets you refine, saves _stripped.epub
+# → Auto-detects non-content, tune the boundaries, refine manually if needed
+# → Saves Ethics_stripped.txt next to the original
 # → Offers to convert immediately
 
 # Works with PDFs too
