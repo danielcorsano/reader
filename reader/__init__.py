@@ -7,10 +7,15 @@ Features character voice mapping, dialogue detection, and professional audio out
 For system TTS fallback support, see reader-small package.
 """
 
-__version__ = "0.4.5"
+import os
+
+# Opt out of onnxruntime's default-on telemetry; must be set before onnxruntime initializes
+os.environ.setdefault("ORT_DISABLE_TELEMETRY", "1")
+
+__version__ = "0.4.6"
 __author__ = "danielcorsano"
 
 # Public API
-from .api import Reader, convert, list_voices
+from .api import Reader, convert, list_voices  # noqa: E402
 
 __all__ = ["Reader", "convert", "list_voices"]

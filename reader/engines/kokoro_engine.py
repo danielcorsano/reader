@@ -1,5 +1,6 @@
 """Kokoro TTS engine implementation with voice blending."""
 import re
+import importlib.util
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 import warnings
@@ -12,11 +13,9 @@ KOKORO_MODEL_FILE = f"kokoro-{KOKORO_MODEL_VERSION}.onnx"
 KOKORO_VOICES_FILE = f"voices-{KOKORO_MODEL_VERSION}.bin"
 KOKORO_MODEL_URL = f"https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-{KOKORO_MODEL_VERSION}"
 
-try:
-    from kokoro_onnx import Kokoro
-    KOKORO_AVAILABLE = True
-except ImportError:
-    KOKORO_AVAILABLE = False
+# Availability check without importing: kokoro_onnx loads onnxruntime, deferred until synthesis is needed
+KOKORO_AVAILABLE = importlib.util.find_spec("kokoro_onnx") is not None
+if not KOKORO_AVAILABLE:
     warnings.warn("Kokoro ONNX not available. Install with: poetry add kokoro-onnx")
 
 
@@ -132,6 +131,7 @@ class KokoroEngine(TTSEngine):
             return
 
         try:
+            from kokoro_onnx import Kokoro
             # Get model paths from cache directory
             from ..utils.model_downloader import get_cache_dir, download_models
 
